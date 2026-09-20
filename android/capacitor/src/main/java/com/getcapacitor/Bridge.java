@@ -88,10 +88,6 @@ public class Bridge {
     public static final String CAPACITOR_CONTENT_START = "/_capacitor_content_";
     public static final String CAPACITOR_HTTP_INTERCEPTOR_START = "/_capacitor_http_interceptor_";
 
-    /** @deprecated CAPACITOR_HTTPS_INTERCEPTOR_START is no longer required. All proxied requests are handled via CAPACITOR_HTTP_INTERCEPTOR_START instead */
-    @Deprecated
-    public static final String CAPACITOR_HTTPS_INTERCEPTOR_START = "/_capacitor_https_interceptor_";
-
     public static final String CAPACITOR_HTTP_INTERCEPTOR_URL_PARAM = "u";
 
     public static final int DEFAULT_ANDROID_WEBVIEW_VERSION = 60;
@@ -597,17 +593,6 @@ public class Bridge {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private String getLegacyPluginName(Class<? extends Plugin> pluginClass) {
-        NativePlugin legacyPluginAnnotation = pluginClass.getAnnotation(NativePlugin.class);
-        if (legacyPluginAnnotation == null) {
-            Logger.error("Plugin doesn't have the @CapacitorPlugin annotation. Please add it");
-            return null;
-        }
-
-        return legacyPluginAnnotation.name();
-    }
-
     /**
      * Register a plugin class
      * @param pluginClass a class inheriting from Plugin
@@ -650,20 +635,18 @@ public class Bridge {
     }
 
     private String pluginName(Class<? extends Plugin> clazz) {
-        String pluginName;
         CapacitorPlugin pluginAnnotation = clazz.getAnnotation(CapacitorPlugin.class);
         if (pluginAnnotation == null) {
-            pluginName = this.getLegacyPluginName(clazz);
-        } else {
-            pluginName = pluginAnnotation.name();
+            Logger.error("Plugin doesn't have the @CapacitorPlugin annotation. Please add it");
+            return null;
         }
 
-        return pluginName;
+        return pluginAnnotation.name();
     }
 
     private void logInvalidPluginException(Class<? extends Plugin> clazz) {
         Logger.error(
-            "NativePlugin " +
+            "Plugin " +
                 clazz.getName() +
                 " is invalid. Ensure the @CapacitorPlugin annotation exists on the plugin class and" +
                 " the class extends Plugin"
@@ -671,55 +654,11 @@ public class Bridge {
     }
 
     private void logPluginLoadException(Class<? extends Plugin> clazz, Exception ex) {
-        Logger.error("NativePlugin " + clazz.getName() + " failed to load", ex);
+        Logger.error("Plugin " + clazz.getName() + " failed to load", ex);
     }
 
     public PluginHandle getPlugin(String pluginId) {
         return this.plugins.get(pluginId);
-    }
-
-    /**
-     * Find the plugin handle that responds to the given request code. This will
-     * fire after certain Android OS intent results/permission checks/etc.
-     * @param requestCode
-     * @return
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public PluginHandle getPluginWithRequestCode(int requestCode) {
-        for (PluginHandle handle : this.plugins.values()) {
-            int[] requestCodes;
-
-            CapacitorPlugin pluginAnnotation = handle.getPluginAnnotation();
-            if (pluginAnnotation == null) {
-                // Check for legacy plugin annotation, @NativePlugin
-                NativePlugin legacyPluginAnnotation = handle.getLegacyPluginAnnotation();
-                if (legacyPluginAnnotation == null) {
-                    continue;
-                }
-
-                if (legacyPluginAnnotation.permissionRequestCode() == requestCode) {
-                    return handle;
-                }
-
-                requestCodes = legacyPluginAnnotation.requestCodes();
-
-                for (int rc : requestCodes) {
-                    if (rc == requestCode) {
-                        return handle;
-                    }
-                }
-            } else {
-                requestCodes = pluginAnnotation.requestCodes();
-
-                for (int rc : requestCodes) {
-                    if (rc == requestCode) {
-                        return handle;
-                    }
-                }
-            }
-        }
-        return null;
     }
 
     /**
@@ -1018,43 +957,6 @@ public class Bridge {
         }
     }
 
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public void startActivityForPluginWithResult(PluginCall call, Intent intent, int requestCode) {
-        Logger.debug("Starting activity for result");
-
-        pluginCallForLastActivity = call;
-
-        getActivity().startActivityForResult(intent, requestCode);
-    }
-
-    /**
-     * Check for legacy Capacitor plugins that may have registered to handle a permission
-     * request, and handle them if so. If not handled, false is returned.
-     *
-     * @param requestCode the code that was requested
-     * @param permissions the permissions requested
-     * @param grantResults the set of granted/denied permissions
-     * @return true if permission code was handled by a plugin explicitly, false if not
-     */
-    @SuppressWarnings("deprecation")
-    boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        PluginHandle plugin = getPluginWithRequestCode(requestCode);
-
-        if (plugin == null) {
-            Logger.debug("Unable to find a Capacitor plugin to handle permission requestCode " + requestCode);
-            return false;
-        }
-
-        // Call deprecated method if using deprecated NativePlugin annotation
-        if (plugin.getPluginAnnotation() == null) {
-            plugin.getInstance().handleRequestPermissionsResult(requestCode, permissions, grantResults);
-            return true;
-        }
-
-        return false;
-    }
-
     /**
      * Saves permission states and rejects if permissions were not correctly defined in
      * the AndroidManifest.xml file.
@@ -1168,41 +1070,6 @@ public class Bridge {
         }
 
         return permissionsResults;
-    }
-
-    /**
-     * Handle an activity result and pass it to a plugin that has indicated it wants to
-     * handle the result.
-     * @param requestCode
-     * @param resultCode
-     * @param data
-     */
-    @SuppressWarnings("deprecation")
-    boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-        PluginHandle plugin = getPluginWithRequestCode(requestCode);
-
-        if (plugin == null || plugin.getInstance() == null) {
-            Logger.debug("Unable to find a Capacitor plugin to handle requestCode " + requestCode);
-            return false;
-        }
-
-        // deprecated, to be removed
-        PluginCall lastCall = plugin.getInstance().getSavedCall();
-
-        // If we don't have a saved last call (because our app was killed and restarted, for example),
-        // Then we should see if we have any saved plugin call information and generate a new,
-        // "dangling" plugin call (a plugin call that doesn't have a corresponding web callback)
-        // and then send that to the plugin
-        if (lastCall == null && pluginCallForLastActivity != null) {
-            plugin.getInstance().saveCall(pluginCallForLastActivity);
-        }
-
-        plugin.getInstance().handleOnActivityResult(requestCode, resultCode, data);
-
-        // Clear the plugin call we may have re-hydrated on app launch
-        pluginCallForLastActivity = null;
-
-        return true;
     }
 
     /**

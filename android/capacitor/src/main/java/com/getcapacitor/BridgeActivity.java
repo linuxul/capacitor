@@ -139,60 +139,6 @@ public class BridgeActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Handles permission request results.
-     *
-     * Capacitor is backwards compatible such that plugins using legacy permission request codes
-     * may coexist with plugins using the AndroidX Activity v1.2 permission callback flow introduced
-     * in Capacitor 3.0.
-     *
-     * In this method, plugins are checked first for ownership of the legacy permission request code.
-     * If the {@link Bridge#onRequestPermissionsResult(int, String[], int[])} method indicates it has
-     * handled the permission, then the permission callback will be considered complete. Otherwise,
-     * the permission will be handled using the AndroidX Activity flow.
-     *
-     * @param requestCode the request code associated with the permission request
-     * @param permissions the Android permission strings requested
-     * @param grantResults the status result of the permission request
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        if (this.bridge == null) {
-            return;
-        }
-
-        if (!bridge.onRequestPermissionsResult(requestCode, permissions, grantResults)) {
-            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        }
-    }
-
-    /**
-     * Handles activity results.
-     *
-     * Capacitor is backwards compatible such that plugins using legacy activity result codes
-     * may coexist with plugins using the AndroidX Activity v1.2 activity callback flow introduced
-     * in Capacitor 3.0.
-     *
-     * In this method, plugins are checked first for ownership of the legacy request code. If the
-     * {@link Bridge#onActivityResult(int, int, Intent)} method indicates it has handled the activity
-     * result, then the callback will be considered complete. Otherwise, the result will be handled
-     * using the AndroidX Activiy flow.
-     *
-     * @param requestCode the request code associated with the activity result
-     * @param resultCode the result code
-     * @param data any data included with the activity result
-     */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (this.bridge == null) {
-            return;
-        }
-
-        if (!bridge.onActivityResult(requestCode, resultCode, data)) {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
-    }
-
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
