@@ -2,14 +2,13 @@ package com.getcapacitor.util
 
 import android.graphics.Color
 
-object WebColor {
+public object WebColor {
     /**
      * Parse the color string, and return the corresponding color-int. If the string cannot be parsed, throws an IllegalArgumentException exception.
      * @param colorString The hexadecimal color string. The format is an RGB or RGBA hex string.
      * @return The corresponding color as an int.
      */
-    @JvmStatic
-    fun parseColor(colorString: String): Int {
+    public fun parseColor(colorString: String): Int {
         var formattedColor = colorString
         if (colorString[0] != '#') {
             formattedColor = "#$formattedColor"

@@ -1,7 +1,6 @@
 package com.getcapacitor.plugin.util
 
 import android.os.LocaleList
-import android.text.TextUtils
 import com.getcapacitor.Bridge
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -28,7 +27,7 @@ import javax.net.ssl.SSLSocketFactory
  * @param connection the base HttpUrlConnection. You can pass the value from
  * `(HttpUrlConnection) URL.openConnection()`
  */
-class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : ICapacitorHttpUrlConnection {
+public class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : ICapacitorHttpUrlConnection {
     init {
         setDefaultRequestProperties()
     }
@@ -37,9 +36,9 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * Returns the underlying HttpUrlConnection value
      * @return the underlying HttpUrlConnection value
      */
-    fun getHttpConnection(): HttpURLConnection = connection
+    public fun getHttpConnection(): HttpURLConnection = connection
 
-    fun disconnect() {
+    public fun disconnect() {
         connection.disconnect()
     }
 
@@ -50,7 +49,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * @param   isAllowedInteraction   the new value.
      * @throws IllegalStateException if already connected
      */
-    fun setAllowUserInteraction(isAllowedInteraction: Boolean) {
+    public fun setAllowUserInteraction(isAllowedInteraction: Boolean) {
         connection.allowUserInteraction = isAllowedInteraction
     }
 
@@ -74,8 +73,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      *              method is "TRACE", but the "allowHttpTrace"
      *              NetPermission is not granted.
      */
-    @Throws(ProtocolException::class)
-    fun setRequestMethod(method: String?) {
+    public fun setRequestMethod(method: String?) {
         connection.requestMethod = method
     }
 
@@ -99,7 +97,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      *               timeout value in milliseconds
      * @throws IllegalArgumentException if the timeout parameter is negative
      */
-    fun setConnectTimeout(timeout: Int) {
+    public fun setConnectTimeout(timeout: Int) {
         if (timeout < 0) {
             throw IllegalArgumentException("timeout can not be negative")
         }
@@ -118,7 +116,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * value to be used in milliseconds
      * @throws IllegalArgumentException if the timeout parameter is negative
      */
-    fun setReadTimeout(timeout: Int) {
+    public fun setReadTimeout(timeout: Int) {
         if (timeout < 0) {
             throw IllegalArgumentException("timeout can not be negative")
         }
@@ -129,7 +127,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * Sets whether automatic HTTP redirects should be disabled
      * @param disableRedirects the flag to determine if redirects should be followed
      */
-    fun setDisableRedirects(disableRedirects: Boolean) {
+    public fun setDisableRedirects(disableRedirects: Boolean) {
         connection.instanceFollowRedirects = !disableRedirects
     }
 
@@ -137,7 +135,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * Sets the request headers given a JSObject of key-value pairs
      * @param headers the JSObject values to map to the HttpUrlConnection request headers
      */
-    fun setRequestHeaders(headers: JSObject) {
+    public fun setRequestHeaders(headers: JSObject) {
         val keys = headers.keys()
         while (keys.hasNext()) {
             val key = keys.next()
@@ -157,17 +155,11 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * @param  shouldDoOutput   the new value.
      * @throws IllegalStateException if already connected
      */
-    fun setDoOutput(shouldDoOutput: Boolean) {
+    public fun setDoOutput(shouldDoOutput: Boolean) {
         connection.doOutput = shouldDoOutput
     }
 
-    @Throws(JSONException::class, IOException::class)
-    fun setRequestBody(call: PluginCall, body: JSValue?) {
-        setRequestBody(call, body, null)
-    }
-
-    @Throws(JSONException::class, IOException::class)
-    fun setRequestBody(call: PluginCall, body: JSValue?, bodyType: String?) {
+    public fun setRequestBody(call: PluginCall, body: JSValue?, bodyType: String? = null) {
         val contentType = connection.getRequestProperty("Content-Type")
         var dataString: String? = ""
 
@@ -225,7 +217,6 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      *
      * @param body The string value to write to the connection stream.
      */
-    @Throws(IOException::class)
     private fun writeRequestBody(body: String) {
         DataOutputStream(connection.outputStream).use { os ->
             os.write(body.toByteArray(StandardCharsets.UTF_8))
@@ -233,7 +224,6 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
         }
     }
 
-    @Throws(IOException::class, JSONException::class)
     private fun writeObjectRequestBody(obj: JSObject) {
         DataOutputStream(connection.outputStream).use { os ->
             val keys = obj.keys()
@@ -252,7 +242,6 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
         }
     }
 
-    @Throws(IOException::class, JSONException::class)
     private fun writeFormDataRequestBody(boundary: String, entries: JSArray) {
         DataOutputStream(connection.outputStream).use { os ->
             val lineEnd = "\r\n"
@@ -311,8 +300,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * @throws  IOException  if an I/O error occurs while opening the
      *               connection.
      */
-    @Throws(IOException::class)
-    fun connect() {
+    public fun connect() {
         connection.connect()
     }
 
@@ -329,8 +317,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * @throws IOException if an error occurred connecting to the server.
      * @return the HTTP Status-Code, or -1
      */
-    @Throws(IOException::class)
-    fun getResponseCode(): Int = connection.responseCode
+    public fun getResponseCode(): Int = connection.responseCode
 
     /**
      * Returns the value of this `URLConnection`'s `URL`
@@ -339,7 +326,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      * @return  the value of this `URLConnection`'s `URL`
      *          field.
      */
-    fun getURL(): URL? = connection.url
+    public fun getURL(): URL? = connection.url
 
     /**
      * Returns the error stream if the connection failed
@@ -388,7 +375,6 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      *               input.
      * @see #setReadTimeout(int)
      */
-    @Throws(IOException::class)
     override fun getInputStream(): InputStream = connection.inputStream
 
     /**
@@ -400,7 +386,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      *
      * @return a Map of header fields
      */
-    fun getHeaderFields(): Map<String?, List<String>> = connection.headerFields
+    public fun getHeaderFields(): Map<String?, List<String>> = connection.headerFields
 
     /**
      * Sets the default request properties on the newly created connection.
@@ -408,7 +394,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
      */
     private fun setDefaultRequestProperties() {
         val acceptLanguage = buildDefaultAcceptLanguageProperty()
-        if (!TextUtils.isEmpty(acceptLanguage)) {
+        if (acceptLanguage.isNotEmpty()) {
             connection.setRequestProperty("Accept-Language", acceptLanguage)
         }
     }
@@ -421,9 +407,9 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
         var result = ""
         val lang = locale.language
         val country = locale.country
-        if (!TextUtils.isEmpty(lang)) {
+        if (!lang.isNullOrEmpty()) {
             result =
-                if (!TextUtils.isEmpty(country)) {
+                if (!country.isNullOrEmpty()) {
                     String.format("%s-%s,%s;q=0.5", lang, country, lang)
                 } else {
                     String.format("%s;q=0.5", lang)
@@ -432,7 +418,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
         return result
     }
 
-    fun setSSLSocketFactory(bridge: Bridge?) {
+    public fun setSSLSocketFactory(bridge: Bridge?) {
         // Attach SSL Certificates if Enterprise Plugin is available
         try {
             val sslPinningImpl = Class.forName("io.ionic.sslpinning.SSLPinning")
@@ -445,7 +431,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
         }
     }
 
-    companion object {
+    public companion object {
         /**
          * Extracts the boundary value from the `Content-Type` header for multipart/form-data requests, if provided.
          *
@@ -454,8 +440,7 @@ class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : IC
          * @param contentType The `Content-Type` header string.
          * @return The boundary value if found, otherwise `null`.
          */
-        @JvmStatic
-        fun extractBoundaryFromContentType(contentType: String): String? {
+        public fun extractBoundaryFromContentType(contentType: String): String? {
             val boundaryPrefix = "boundary="
             val boundaryIndex = contentType.indexOf(boundaryPrefix)
             if (boundaryIndex == -1) {

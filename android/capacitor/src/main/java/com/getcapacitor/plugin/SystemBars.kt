@@ -19,7 +19,7 @@ import java.util.Locale
 import java.util.regex.Pattern
 
 @CapacitorPlugin
-class SystemBars : Plugin() {
+public class SystemBars : Plugin() {
     private var insetsHandling: String = INSETS_HANDLING_CSS
     private var hasViewportCover = false
 
@@ -113,7 +113,7 @@ class SystemBars : Plugin() {
     }
 
     @PluginMethod
-    fun setStyle(call: PluginCall) {
+    public fun setStyle(call: PluginCall) {
         // PluginCall.getString returns the given default when the key is absent, so the elvis never fires.
         val bar = call.getString("bar", "") ?: ""
         val style = call.getString("style", STYLE_DEFAULT) ?: STYLE_DEFAULT
@@ -125,7 +125,7 @@ class SystemBars : Plugin() {
     }
 
     @PluginMethod
-    fun show(call: PluginCall) {
+    public fun show(call: PluginCall) {
         val bar = call.getString("bar", "") ?: ""
 
         bridge.executeOnMainThread {
@@ -135,7 +135,7 @@ class SystemBars : Plugin() {
     }
 
     @PluginMethod
-    fun hide(call: PluginCall) {
+    public fun hide(call: PluginCall) {
         val bar = call.getString("bar", "") ?: ""
 
         bridge.executeOnMainThread {
@@ -145,7 +145,7 @@ class SystemBars : Plugin() {
     }
 
     @PluginMethod
-    fun setAnimation(call: PluginCall) {
+    public fun setAnimation(call: PluginCall) {
         call.resolve()
     }
 
@@ -283,7 +283,7 @@ class SystemBars : Plugin() {
         return STYLE_DARK
     }
 
-    fun getThemeColor(context: Context, attrRes: Int): Int {
+    public fun getThemeColor(context: Context, attrRes: Int): Int {
         val typedValue = TypedValue()
 
         val theme = context.theme

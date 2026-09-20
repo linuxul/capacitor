@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 
 @CapacitorPlugin
-class CapacitorCookies : Plugin() {
+public class CapacitorCookies : Plugin() {
     // Assigned in load(), right after the JavaScript interface is registered.
     private var cookieManager: CapacitorCookieManager? = null
 
@@ -35,7 +35,7 @@ class CapacitorCookies : Plugin() {
 
     // Must stay a function: a Kotlin property would not be exposed to JavaScript under this name.
     @JavascriptInterface
-    fun isEnabled(): Boolean {
+    public fun isEnabled(): Boolean {
         val pluginConfig = bridge.config.getPluginConfiguration("CapacitorCookies")
         return pluginConfig.getBoolean("enabled", false)
     }
@@ -43,12 +43,12 @@ class CapacitorCookies : Plugin() {
     // Called from JavaScript: both arguments can arrive as null. CapacitorCookieManager.setCookie
     // tolerates that (it logs "Failed to set cookie." at worst), exactly as it did for the Java original.
     @JavascriptInterface
-    fun setCookie(domain: String?, action: String?) {
+    public fun setCookie(domain: String?, action: String?) {
         cookieManager?.setCookie(domain, action)
     }
 
     @PluginMethod
-    fun getCookies(call: PluginCall) {
+    public fun getCookies(call: PluginCall) {
         bridge.eval("document.cookie") { value: String? ->
             val cookieMap = JSObject()
 
@@ -84,7 +84,7 @@ class CapacitorCookies : Plugin() {
     }
 
     @PluginMethod
-    fun setCookie(call: PluginCall) {
+    public fun setCookie(call: PluginCall) {
         // Same as the Java original: a missing key/value rejects but does not stop the method.
         val key = call.getString("key")
         if (null == key) {
@@ -102,7 +102,7 @@ class CapacitorCookies : Plugin() {
     }
 
     @PluginMethod
-    fun deleteCookie(call: PluginCall) {
+    public fun deleteCookie(call: PluginCall) {
         // Same as the Java original: a missing key rejects but does not stop the method.
         val key = call.getString("key")
         if (null == key) {
@@ -114,7 +114,7 @@ class CapacitorCookies : Plugin() {
     }
 
     @PluginMethod
-    fun clearCookies(call: PluginCall) {
+    public fun clearCookies(call: PluginCall) {
         val cookieManager = cookieManager!!
         val url = call.getString("url")
         val cookies = cookieManager.getCookies(url)
@@ -125,7 +125,7 @@ class CapacitorCookies : Plugin() {
     }
 
     @PluginMethod
-    fun clearAllCookies(call: PluginCall) {
+    public fun clearAllCookies(call: PluginCall) {
         cookieManager!!.removeAllCookies()
         call.resolve()
     }

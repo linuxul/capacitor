@@ -8,18 +8,18 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.webkit.WebView
 
-open class CapacitorWebView(context: Context, attrs: AttributeSet?) : WebView(context, attrs) {
+public open class CapacitorWebView(context: Context, attrs: AttributeSet?) : WebView(context, attrs) {
     private var capInputConnection: BaseInputConnection? = null
     private var bridge: Bridge? = null
 
-    fun setBridge(bridge: Bridge?) {
+    public fun setBridge(bridge: Bridge?) {
         this.bridge = bridge
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo?): InputConnection? {
         val config = bridge?.config ?: CapConfig.loadDefault(context)
 
-        val captureInput = config.isInputCaptured()
+        val captureInput = config.isInputCaptured
         if (captureInput) {
             val connection = capInputConnection ?: BaseInputConnection(this, false).also { capInputConnection = it }
             return connection

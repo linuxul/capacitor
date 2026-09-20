@@ -28,13 +28,13 @@ import java.util.concurrent.CopyOnWriteArrayList
  * adding the [CapacitorPlugin] annotation to add additional required
  * metadata about the Plugin
  */
-open class Plugin {
+public open class Plugin {
     /**
      * Reference to the Bridge. Set by [PluginHandle] before [load] is called.
      *
      * Java sees the `bridge` field plus `getBridge()`/`setBridge(Bridge)`.
      */
-    lateinit var bridge: Bridge
+    public lateinit var bridge: Bridge
 
     /**
      * Reference to the [PluginHandle] wrapper for this Plugin. Set by [PluginHandle] before [load] is called.
@@ -66,7 +66,7 @@ open class Plugin {
      * Called when the plugin has been connected to the bridge
      * and is ready to start initializing.
      */
-    open fun load() {}
+    public open fun load() {}
 
     /**
      * Registers activity result launchers defined on plugins, used for permission requests and
@@ -145,7 +145,7 @@ open class Plugin {
      * @param callbackName the name of the callback to run when the launched activity is finished
      * @since 3.0.0
      */
-    open fun startActivityForResult(call: PluginCall, intent: Intent, callbackName: String?) {
+    public open fun startActivityForResult(call: PluginCall, intent: Intent, callbackName: String?) {
         // return when null since call was rejected in getLauncherOrReject
         val activityResultLauncher = getActivityLauncherOrReject(call, callbackName) ?: return
         bridge.setPluginCallForLastActivity(call)
@@ -165,13 +165,13 @@ open class Plugin {
     /**
      * Get the main [Context] for the current Activity (your app)
      */
-    val context: Context
+    public val context: Context
         get() = bridge.context
 
     /**
      * Get the main Activity for the app
      */
-    val activity: AppCompatActivity
+    public val activity: AppCompatActivity
         get() = bridge.activity
 
     /**
@@ -179,7 +179,7 @@ open class Plugin {
      * contains additional metadata about the Plugin instance (such
      * as indexed methods for reflection, and [CapacitorPlugin] annotation data).
      */
-    var pluginHandle: PluginHandle
+    public var pluginHandle: PluginHandle
         get() = handle
         set(pluginHandle) {
             handle = pluginHandle
@@ -188,7 +188,7 @@ open class Plugin {
     /**
      * Get the root App ID
      */
-    val appId: String
+    public val appId: String
         get() = context.packageName
 
     /**
@@ -197,7 +197,7 @@ open class Plugin {
      * @return a config object representing the plugin config options, or an empty config
      * if none exists
      */
-    val config: PluginConfig
+    public val config: PluginConfig
         get() = bridge.config.getPluginConfiguration(handle.id)
 
     /**
@@ -205,7 +205,7 @@ open class Plugin {
      * @param alias a permission alias defined on the plugin
      * @return true only if all permissions associated with the given alias are declared in the manifest
      */
-    open fun isPermissionDeclared(alias: String): Boolean {
+    public open fun isPermissionDeclared(alias: String): Boolean {
         val annotation: CapacitorPlugin? = handle.pluginAnnotation
         if (annotation != null) {
             for (perm in annotation.permissions) {
@@ -367,7 +367,7 @@ open class Plugin {
      * @param alias the permission alias to get
      * @return the state of the provided permission alias or null
      */
-    open fun getPermissionState(alias: String?): PermissionState? = permissionStates[alias]
+    public open fun getPermissionState(alias: String?): PermissionState? = permissionStates[alias]
 
     /**
      * Helper to check all permissions defined on a plugin and see the state of each.
@@ -375,7 +375,7 @@ open class Plugin {
      * @since 3.0.0
      * @return A mapping of permission aliases to the associated granted status.
      */
-    val permissionStates: Map<String, PermissionState>
+    public val permissionStates: Map<String, PermissionState>
         get() = bridge.getPermissionStates(this)
 
     /**
@@ -407,8 +407,11 @@ open class Plugin {
 
     /**
      * Notify all listeners that an event occurred
+     *
+     * @param retainUntilConsumed keep the event for the first listener that gets added, if there is none yet
      */
-    protected open fun notifyListeners(eventName: String?, data: JSObject?, retainUntilConsumed: Boolean) {
+    @JvmOverloads
+    protected open fun notifyListeners(eventName: String?, data: JSObject?, retainUntilConsumed: Boolean = false) {
         Logger.verbose(logTag, "Notifying listeners for event $eventName")
         val listeners = eventListeners[eventName]
         if (listeners == null || listeners.isEmpty()) {
@@ -426,14 +429,6 @@ open class Plugin {
         for (call in listenersCopy) {
             call.resolve(data)
         }
-    }
-
-    /**
-     * Notify all listeners that an event occurred
-     * This calls [notifyListeners] with retainUntilConsumed set to false
-     */
-    protected open fun notifyListeners(eventName: String?, data: JSObject?) {
-        notifyListeners(eventName, data, false)
     }
 
     /**
@@ -463,9 +458,9 @@ open class Plugin {
      * Exported plugin call for adding a listener to this plugin
      */
     @PluginMethod(returnType = PluginMethod.RETURN_NONE)
-    open fun addListener(call: PluginCall) {
+    public open fun addListener(call: PluginCall) {
         val eventName = call.getString("eventName")
-        call.setKeepAlive(true)
+        call.keepAlive = true
         addEventListener(eventName, call)
     }
 
@@ -473,7 +468,7 @@ open class Plugin {
      * Exported plugin call to remove a listener from this plugin
      */
     @PluginMethod(returnType = PluginMethod.RETURN_NONE)
-    open fun removeListener(call: PluginCall) {
+    public open fun removeListener(call: PluginCall) {
         val eventName = call.getString("eventName")
         val callbackId = call.getString("callbackId")
         val savedCall = bridge.getSavedCall(callbackId)
@@ -487,12 +482,12 @@ open class Plugin {
      * Exported plugin call to remove all listeners from this plugin
      */
     @PluginMethod(returnType = PluginMethod.RETURN_PROMISE)
-    open fun removeAllListeners(call: PluginCall) {
+    public open fun removeAllListeners(call: PluginCall) {
         eventListeners.clear()
         call.resolve()
     }
 
-    open fun removeAllListeners() {
+    public open fun removeAllListeners() {
         eventListeners.clear()
     }
 
@@ -505,7 +500,7 @@ open class Plugin {
      */
     @PluginMethod
     @PermissionCallback
-    open fun checkPermissions(pluginCall: PluginCall) {
+    public open fun checkPermissions(pluginCall: PluginCall) {
         val permissionsResult = permissionStates
 
         if (permissionsResult.isEmpty()) {
@@ -531,7 +526,7 @@ open class Plugin {
      * @param call the plugin call
      */
     @PluginMethod
-    open fun requestPermissions(call: PluginCall) {
+    public open fun requestPermissions(call: PluginCall) {
         val annotation = handle.pluginAnnotation
         // handle permission requests for plugins defined with @CapacitorPlugin (since 3.0.0)
         var permAliases: Array<String>? = null
@@ -675,19 +670,19 @@ open class Plugin {
      * Returning null will defer to the default Capacitor policy.
      * Not called for Capacitor's internal HTTP proxy path, which is always blocked.
      */
-    open fun shouldOverrideLoad(url: Uri?): Boolean? = null
+    public open fun shouldOverrideLoad(url: Uri?): Boolean? = null
 
     /**
      * Execute the given runnable on the Bridge's task handler
      */
-    open fun execute(runnable: Runnable) {
+    public open fun execute(runnable: Runnable) {
         bridge.execute(runnable)
     }
 
     /**
      * Shortcut for getting the plugin log tag
      */
-    protected open fun getLogTag(vararg subTags: String?): String = Logger.tags(*subTags)
+    protected fun getLogTag(vararg subTags: String): String = Logger.tags(*subTags)
 
     /**
      * Gets a plugin log tag with the child's class name as subTag.

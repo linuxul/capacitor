@@ -7,7 +7,7 @@ import java.util.Locale
  *
  * @since 3.0.0
  */
-enum class PermissionState(private val state: String) {
+public enum class PermissionState(private val state: String) {
     GRANTED("granted"),
     DENIED("denied"),
     PROMPT("prompt"),
@@ -16,8 +16,7 @@ enum class PermissionState(private val state: String) {
 
     override fun toString(): String = state
 
-    companion object {
-        @JvmStatic
-        fun byState(state: String): PermissionState = valueOf(state.uppercase(Locale.ROOT).replace('-', '_'))
+    public companion object {
+        public fun byState(state: String): PermissionState = valueOf(state.uppercase(Locale.ROOT).replace('-', '_'))
     }
 }

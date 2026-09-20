@@ -9,10 +9,14 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
 
 class ConfigBuildingTest {
+    @get:Rule
+    val logs = RecordingLogSink()
+
     private val context = mock<Activity>()
     private val pluginConfig = JSONObject()
     private val testPluginObject = JSONObject()
@@ -62,18 +66,18 @@ class ConfigBuildingTest {
 
     @Test
     fun getCoreConfigValues() {
-        assertTrue(config.isMixedContentAllowed())
+        assertTrue(config.isMixedContentAllowed)
         assertArrayEquals(arrayOf("http://www.google.com"), config.allowNavigation)
         assertEquals("test", config.androidScheme)
-        assertTrue(config.isInputCaptured())
-        assertTrue(config.isLoggingEnabled())
-        assertFalse(config.isHTML5Mode())
+        assertTrue(config.isInputCaptured)
+        assertTrue(config.isLoggingEnabled)
+        assertFalse(config.isHTML5Mode)
         assertEquals("test-user-agent", config.overriddenUserAgentString)
         assertEquals("test-append", config.appendedUserAgentString)
-        assertTrue(config.isWebContentsDebuggingEnabled())
+        assertTrue(config.isWebContentsDebuggingEnabled)
         assertEquals("red", config.backgroundColor)
         assertEquals("http://www.google.com", config.serverUrl)
-        assertFalse(config.isResolveServiceWorkerRequests())
+        assertFalse(config.isResolveServiceWorkerRequests)
     }
 
     @Test

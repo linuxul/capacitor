@@ -45,8 +45,8 @@ import java.util.regex.Pattern
  * Common File utilities, such as resolve content URIs and
  * creating portable web paths from low-level files
  */
-object FileUtils {
-    enum class Type(private val type: String) {
+public object FileUtils {
+    public enum class Type(private val type: String) {
         IMAGE("image"),
     }
 
@@ -54,8 +54,7 @@ object FileUtils {
     private val COLON: Pattern = Pattern.compile(":")
     private val SLASH: Pattern = Pattern.compile("/")
 
-    @JvmStatic
-    fun getPortablePath(c: Context, host: String?, u: Uri): String {
+    public fun getPortablePath(c: Context, host: String?, u: Uri): String {
         // Same as the Java original: throws if the uri cannot be resolved to a path.
         var path = getFileUrlForUri(c, u)!!
         if (path.startsWith("file://")) {
@@ -64,8 +63,7 @@ object FileUtils {
         return host + Bridge.CAPACITOR_FILE_START + path
     }
 
-    @JvmStatic
-    fun getFileUrlForUri(context: Context, uri: Uri): String? {
+    public fun getFileUrlForUri(context: Context, uri: Uri): String? {
         // DocumentProvider
         if (DocumentsContract.isDocumentUri(context, uri)) {
             // ExternalStorageProvider
@@ -142,9 +140,7 @@ object FileUtils {
      * @return The contents of the file path.
      * @throws IOException Thrown if any issues reading the provided file path.
      */
-    @JvmStatic
-    @Throws(IOException::class)
-    fun readFileFromAssets(assetManager: AssetManager, fileName: String): String =
+    internal fun readFileFromAssets(assetManager: AssetManager, fileName: String): String =
         BufferedReader(InputStreamReader(assetManager.open(fileName))).use { reader -> readLines(reader) }
 
     /**
@@ -154,11 +150,8 @@ object FileUtils {
      * @return The contents of the file path.
      * @throws IOException Thrown if any issues reading the provided file path.
      */
-    @JvmStatic
-    @Throws(IOException::class)
-    fun readFileFromDisk(file: File): String = BufferedReader(FileReader(file)).use { reader -> readLines(reader) }
+    internal fun readFileFromDisk(file: File): String = BufferedReader(FileReader(file)).use { reader -> readLines(reader) }
 
-    @Throws(IOException::class)
     private fun readLines(reader: BufferedReader): String {
         val buffer = StringBuilder()
         var line = reader.readLine()

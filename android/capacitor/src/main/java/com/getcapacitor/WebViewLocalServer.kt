@@ -40,7 +40,7 @@ import java.util.regex.Pattern
  * This class is intended to be used from within the
  * [android.webkit.WebViewClient.shouldInterceptRequest] methods.
  */
-class WebViewLocalServer internal constructor(
+public class WebViewLocalServer internal constructor(
     context: Context,
     private val bridge: Bridge,
     private val jsInjector: JSInjector?,
@@ -48,7 +48,7 @@ class WebViewLocalServer internal constructor(
     // Whether to route all requests to paths without extensions back to `index.html`
     private val html5mode: Boolean,
 ) {
-    var basePath: String? = null
+    public var basePath: String? = null
         private set
 
     private val uriMatcher = UriMatcher(null)
@@ -69,32 +69,29 @@ class WebViewLocalServer internal constructor(
      * means that the amount of time spend blocking in this method should be kept to an absolute
      * minimum.
      */
-    abstract class PathHandler
-        @JvmOverloads
-        constructor(
-            val encoding: String? = null,
-            val charset: String? = null,
-            val statusCode: Int = 200,
-            val reasonPhrase: String = "OK",
-            responseHeaders: MutableMap<String, String>? = null,
-        ) {
-            @JvmField
-            protected var mimeType: String? = null
+    public abstract class PathHandler(
+        public val encoding: String? = null,
+        public val charset: String? = null,
+        public val statusCode: Int = 200,
+        public val reasonPhrase: String = "OK",
+        responseHeaders: MutableMap<String, String>? = null,
+    ) {
+        protected var mimeType: String? = null
 
-            private val responseHeaders: MutableMap<String, String>
+        private val responseHeaders: MutableMap<String, String>
 
-            init {
-                val tempResponseHeaders = responseHeaders ?: HashMap()
-                tempResponseHeaders["Cache-Control"] = "no-cache"
-                this.responseHeaders = tempResponseHeaders
-            }
-
-            open fun handle(request: WebResourceRequest): InputStream? = handle(request.url)
-
-            abstract fun handle(url: Uri): InputStream?
-
-            open fun buildDefaultResponseHeaders(): MutableMap<String, String> = HashMap(responseHeaders)
+        init {
+            val tempResponseHeaders = responseHeaders ?: HashMap()
+            tempResponseHeaders["Cache-Control"] = "no-cache"
+            this.responseHeaders = tempResponseHeaders
         }
+
+        public open fun handle(request: WebResourceRequest): InputStream? = handle(request.url)
+
+        public abstract fun handle(url: Uri): InputStream?
+
+        public open fun buildDefaultResponseHeaders(): MutableMap<String, String> = HashMap(responseHeaders)
+    }
 
     /**
      * Attempt to retrieve the WebResourceResponse associated with the given `request`.
@@ -104,7 +101,7 @@ class WebViewLocalServer internal constructor(
      * @param request the request to process.
      * @return a response if the request URL had a matching handler, null if no handler was found.
      */
-    fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
+    public fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
         val loadingUrl = request.url
 
         val loadingPath = loadingUrl.path
@@ -209,7 +206,6 @@ class WebViewLocalServer internal constructor(
         }
 
     // Every failure in here (including the NullPointerExceptions of the Java original) is caught by the caller.
-    @Throws(IOException::class)
     private fun handleCapacitorHttpRequest(request: WebResourceRequest): WebResourceResponse {
         val urlString = request.url.getQueryParameter(Bridge.CAPACITOR_HTTP_INTERCEPTOR_URL_PARAM)
         val url = URL(urlString)
@@ -428,7 +424,7 @@ class WebViewLocalServer internal constructor(
      * @param original the original `InputStream`
      * @return the modified `InputStream`
      */
-    fun getJavaScriptInjectedStream(original: InputStream?): InputStream? {
+    public fun getJavaScriptInjectedStream(original: InputStream?): InputStream? {
         if (jsInjector != null) {
             return jsInjector.getInjectedStream(original)
         }
@@ -565,7 +561,7 @@ class WebViewLocalServer internal constructor(
      * @param assetPath the local path in the application's asset folder which will be made
      * available by the server (for example "/www").
      */
-    fun hostAssets(assetPath: String?) {
+    public fun hostAssets(assetPath: String?) {
         isAsset = true
         basePath = assetPath
         createHostingDetails()
@@ -579,7 +575,7 @@ class WebViewLocalServer internal constructor(
      * @param basePath the local path in the application's data folder which will be made
      * available by the server (for example "/www").
      */
-    fun hostFiles(basePath: String?) {
+    public fun hostFiles(basePath: String?) {
         isAsset = false
         this.basePath = basePath
         createHostingDetails()
@@ -675,31 +671,26 @@ class WebViewLocalServer internal constructor(
 
         protected abstract fun handle(): InputStream?
 
-        @Throws(IOException::class)
         override fun available(): Int {
             val stream = getInputStream()
             return stream?.available() ?: -1
         }
 
-        @Throws(IOException::class)
         override fun read(): Int {
             val stream = getInputStream()
             return stream?.read() ?: -1
         }
 
-        @Throws(IOException::class)
         override fun read(b: ByteArray): Int {
             val stream = getInputStream()
             return stream?.read(b) ?: -1
         }
 
-        @Throws(IOException::class)
         override fun read(b: ByteArray, off: Int, len: Int): Int {
             val stream = getInputStream()
             return stream?.read(b, off, len) ?: -1
         }
 
-        @Throws(IOException::class)
         override fun skip(n: Long): Long {
             val stream = getInputStream()
             return stream?.skip(n) ?: 0

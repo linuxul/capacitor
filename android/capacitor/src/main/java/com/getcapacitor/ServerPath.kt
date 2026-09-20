@@ -1,7 +1,7 @@
 package com.getcapacitor
 
-class ServerPath(val type: PathType, val path: String) {
-    enum class PathType {
+public class ServerPath(public val type: PathType, public val path: String) {
+    public enum class PathType {
         BASE_PATH,
         ASSET_PATH,
     }

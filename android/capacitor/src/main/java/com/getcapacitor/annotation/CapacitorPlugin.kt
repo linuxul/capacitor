@@ -5,7 +5,7 @@ package com.getcapacitor.annotation
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.CLASS)
-annotation class CapacitorPlugin(
+public annotation class CapacitorPlugin(
     /**
      * A custom name for the plugin, otherwise uses the
      * simple class name.

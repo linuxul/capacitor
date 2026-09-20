@@ -1,21 +1,18 @@
 package com.getcapacitor
 
 import android.content.Context
-import android.text.TextUtils
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 
-object JSExport {
+internal object JSExport {
     private const val CATCHALL_OPTIONS_PARAM = "_options"
     private const val CALLBACK_PARAM = "_callback"
 
-    @JvmStatic
     fun getGlobalJS(context: Context?, loggingEnabled: Boolean, isDebug: Boolean): String =
         "window.Capacitor = { DEBUG: $isDebug, isLoggingEnabled: $loggingEnabled, Plugins: {} };"
 
-    @JvmStatic
     fun getMiscFileJS(paths: ArrayList<String>, context: Context): String {
         val lines = ArrayList<String>()
 
@@ -28,10 +25,9 @@ object JSExport {
             }
         }
 
-        return TextUtils.join("\n", lines)
+        return lines.joinToString("\n")
     }
 
-    @JvmStatic
     fun getPluginJS(plugins: Collection<PluginHandle>): String {
         val lines = ArrayList<String>()
         val pluginArray = JSONArray()
@@ -64,10 +60,9 @@ object JSExport {
             pluginArray.put(createPluginHeader(plugin))
         }
 
-        return TextUtils.join("\n", lines) + "\nwindow.Capacitor.PluginHeaders = " + pluginArray.toString() + ";"
+        return lines.joinToString("\n") + "\nwindow.Capacitor.PluginHeaders = " + pluginArray.toString() + ";"
     }
 
-    @JvmStatic
     fun getFilesContent(context: Context, path: String): String {
         val builder = StringBuilder()
         try {
@@ -122,8 +117,6 @@ object JSExport {
         return methodObj
     }
 
-    @JvmStatic
-    @Throws(JSExportException::class)
     fun getBridgeJS(context: Context): String = getFilesContent(context, "native-bridge.js")
 
     private fun generateMethodJS(plugin: PluginHandle, method: PluginMethodHandle): String {
@@ -139,7 +132,7 @@ object JSExport {
         }
 
         // Create the method function declaration
-        lines.add("t['" + method.name + "'] = function(" + TextUtils.join(", ", args) + ") {")
+        lines.add("t['" + method.name + "'] = function(" + args.joinToString(", ") + ") {")
 
         when (returnType) {
             PluginMethod.RETURN_NONE ->
@@ -175,6 +168,6 @@ object JSExport {
 
         lines.add("}")
 
-        return TextUtils.join("\n", lines)
+        return lines.joinToString("\n")
     }
 }

@@ -9,7 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 
 // The framework does not annotate these callbacks, so every reference parameter is taken as nullable.
-open class BridgeWebViewClient(private val bridge: Bridge) : WebViewClient() {
+public open class BridgeWebViewClient(private val bridge: Bridge) : WebViewClient() {
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
         if (request == null) return null
         return bridge.localServer.shouldInterceptRequest(request)

@@ -7,9 +7,8 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 
-class PluginManager(private val assetManager: AssetManager) {
-    @Throws(PluginLoadException::class)
-    fun loadPluginClasses(): List<Class<out Plugin>> {
+public class PluginManager(private val assetManager: AssetManager) {
+    public fun loadPluginClasses(): List<Class<out Plugin>> {
         val pluginsJSON = parsePluginsJSON()
         val pluginList = ArrayList<Class<out Plugin>>()
 
@@ -29,7 +28,6 @@ class PluginManager(private val assetManager: AssetManager) {
         return pluginList
     }
 
-    @Throws(PluginLoadException::class)
     private fun parsePluginsJSON(): JSONArray {
         try {
             BufferedReader(InputStreamReader(assetManager.open("capacitor.plugins.json"))).use { reader ->

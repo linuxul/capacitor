@@ -3,6 +3,6 @@ package com.getcapacitor
 /**
  * An interface used in the processing of routes
  */
-interface RouteProcessor {
-    fun process(basePath: String?, path: String?): ProcessedRoute?
+public fun interface RouteProcessor {
+    public fun process(basePath: String?, path: String?): ProcessedRoute?
 }

@@ -6,13 +6,13 @@ import android.webkit.WebView
 /**
  * Provides callbacks associated with the [BridgeWebViewClient]
  */
-abstract class WebViewListener {
+public abstract class WebViewListener {
     /**
      * Callback for page load event.
      *
      * @param webView The WebView that loaded
      */
-    open fun onPageLoaded(webView: WebView?) {
+    public open fun onPageLoaded(webView: WebView?) {
         // Override me to add behavior to the page loaded event
     }
 
@@ -21,7 +21,7 @@ abstract class WebViewListener {
      *
      * @param webView The WebView that loaded
      */
-    open fun onReceivedError(webView: WebView?) {
+    public open fun onReceivedError(webView: WebView?) {
         // Override me to add behavior to handle the onReceivedError event
     }
 
@@ -30,7 +30,7 @@ abstract class WebViewListener {
      *
      * @param webView The WebView that loaded
      */
-    open fun onReceivedHttpError(webView: WebView?) {
+    public open fun onReceivedHttpError(webView: WebView?) {
         // Override me to add behavior to handle the onReceivedHttpError event
     }
 
@@ -39,7 +39,7 @@ abstract class WebViewListener {
      *
      * @param webView The WebView that loaded
      */
-    open fun onPageStarted(webView: WebView?) {
+    public open fun onPageStarted(webView: WebView?) {
         // Override me to add behavior to the page started event
     }
 
@@ -49,7 +49,7 @@ abstract class WebViewListener {
      * @param webView The WebView that loaded
      * @return returns false by default if the listener is not overridden and used
      */
-    open fun onRenderProcessGone(webView: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+    public open fun onRenderProcessGone(webView: WebView?, detail: RenderProcessGoneDetail?): Boolean {
         // Override me to add behavior to the web view render process gone event
         return false
     }
@@ -60,7 +60,7 @@ abstract class WebViewListener {
      * @param view The WebView for which the navigation occurred.
      * @param url The URL corresponding to the page navigation that triggered this callback.
      */
-    open fun onPageCommitVisible(view: WebView?, url: String?) {
+    public open fun onPageCommitVisible(view: WebView?, url: String?) {
         // Override me to add behavior to handle the onPageCommitVisible event
     }
 }

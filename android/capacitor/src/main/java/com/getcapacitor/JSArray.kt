@@ -3,20 +3,17 @@ package com.getcapacitor
 import org.json.JSONArray
 import org.json.JSONException
 
-open class JSArray : JSONArray {
-    constructor() : super()
+public open class JSArray : JSONArray {
+    public constructor() : super()
 
-    @Throws(JSONException::class)
-    constructor(json: String) : super(json)
+    public constructor(json: String) : super(json)
 
-    constructor(copyFrom: Collection<*>?) : super(copyFrom)
+    public constructor(copyFrom: Collection<*>?) : super(copyFrom)
 
-    @Throws(JSONException::class)
-    constructor(array: Any?) : super(array)
+    public constructor(array: Any?) : super(array)
 
     @Suppress("UNCHECKED_CAST")
-    @Throws(JSONException::class)
-    fun <E> toList(): MutableList<E> {
+    public fun <E> toList(): MutableList<E> {
         val items = ArrayList<E>()
         for (i in 0 until length()) {
             val o = get(i)
@@ -29,12 +26,11 @@ open class JSArray : JSONArray {
         return items
     }
 
-    companion object {
+    public companion object {
         /**
          * Create a new JSArray without throwing a error
          */
-        @JvmStatic
-        fun from(array: Any?): JSArray? {
+        public fun from(array: Any?): JSArray? {
             try {
                 return JSArray(array)
             } catch (ex: JSONException) {

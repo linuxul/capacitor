@@ -11,16 +11,13 @@ import java.nio.charset.StandardCharsets
  * runtime JS and any plugin JS back into HTML page responses
  * to the client.
  */
-class JSInjector(
+internal class JSInjector(
     private val globalJS: String?,
     private val bridgeJS: String?,
     private val pluginJS: String?,
     private val localUrlJS: String?,
-    private val miscJS: String?,
+    private val miscJS: String? = null,
 ) {
-    constructor(globalJS: String?, bridgeJS: String?, pluginJS: String?, localUrlJS: String?) :
-        this(globalJS, bridgeJS, pluginJS, localUrlJS, null)
-
     /**
      * Generates injectable JS content.
      * This may be used in other forms of injecting that aren't using an InputStream.

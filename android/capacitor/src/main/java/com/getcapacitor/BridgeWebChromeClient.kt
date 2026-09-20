@@ -38,7 +38,7 @@ import java.util.Locale
  *
  * The framework does not annotate these callbacks, so every reference parameter is taken as nullable.
  */
-open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeClient() {
+public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeClient() {
     private fun interface PermissionListener {
         fun onPermissionSelect(isGranted: Boolean)
     }
@@ -448,17 +448,15 @@ open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeClient()
         return true
     }
 
-    open fun isValidMsg(msg: String): Boolean =
+    public open fun isValidMsg(msg: String): Boolean =
         !(msg.contains("%cresult %c") || msg.contains("%cnative %c") || msg.equals("console.groupEnd", ignoreCase = true))
 
-    @Throws(IOException::class)
     private fun createImageFileUri(): Uri {
         val activity: Activity = bridge.activity
         val photoFile = createImageFile(activity)
         return FileProvider.getUriForFile(activity, bridge.context.packageName + ".fileprovider", photoFile)
     }
 
-    @Throws(IOException::class)
     private fun createImageFile(activity: Activity): File {
         // Create an image file name
         // The FORMAT default locale is what the single-argument SimpleDateFormat constructor used implicitly.

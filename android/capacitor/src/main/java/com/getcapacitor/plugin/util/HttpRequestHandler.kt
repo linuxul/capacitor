@@ -1,6 +1,5 @@
 package com.getcapacitor.plugin.util
 
-import android.text.TextUtils
 import android.util.Base64
 import com.getcapacitor.Bridge
 import com.getcapacitor.JSArray
@@ -23,12 +22,12 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.regex.Pattern
 
-object HttpRequestHandler {
+public object HttpRequestHandler {
     /**
      * An enum specifying conventional HTTP Response Types
      * See https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType
      */
-    enum class ResponseType(private val typeName: String) {
+    public enum class ResponseType(private val typeName: String) {
         ARRAY_BUFFER("arraybuffer"),
         BLOB("blob"),
         DOCUMENT("document"),
@@ -36,12 +35,10 @@ object HttpRequestHandler {
         TEXT("text"),
         ;
 
-        companion object {
-            @JvmField
-            val DEFAULT: ResponseType = TEXT
+        public companion object {
+            public val DEFAULT: ResponseType = TEXT
 
-            @JvmStatic
-            fun parse(value: String?): ResponseType {
+            public fun parse(value: String?): ResponseType {
                 for (responseType in entries) {
                     if (responseType.typeName.equals(value, ignoreCase = true)) {
                         return responseType
@@ -55,60 +52,59 @@ object HttpRequestHandler {
     /**
      * Internal builder class for building a CapacitorHttpUrlConnection
      */
-    open class HttpURLConnectionBuilder {
-        @JvmField
-        var connectTimeout: Int? = null
+    public open class HttpURLConnectionBuilder {
+        public var connectTimeout: Int? = null
+            private set
 
-        @JvmField
-        var readTimeout: Int? = null
+        public var readTimeout: Int? = null
+            private set
 
-        @JvmField
-        var disableRedirects: Boolean? = null
+        public var disableRedirects: Boolean? = null
+            private set
 
-        @JvmField
-        var headers: JSObject? = null
+        public var headers: JSObject? = null
+            private set
 
-        @JvmField
-        var method: String? = null
+        public var method: String? = null
+            private set
 
-        @JvmField
-        var url: URL? = null
+        public var url: URL? = null
+            private set
 
-        @JvmField
-        var connection: CapacitorHttpUrlConnection? = null
+        public var connection: CapacitorHttpUrlConnection? = null
+            private set
 
-        fun setConnectTimeout(connectTimeout: Int?): HttpURLConnectionBuilder {
+        public fun setConnectTimeout(connectTimeout: Int?): HttpURLConnectionBuilder {
             this.connectTimeout = connectTimeout
             return this
         }
 
-        fun setReadTimeout(readTimeout: Int?): HttpURLConnectionBuilder {
+        public fun setReadTimeout(readTimeout: Int?): HttpURLConnectionBuilder {
             this.readTimeout = readTimeout
             return this
         }
 
-        fun setDisableRedirects(disableRedirects: Boolean?): HttpURLConnectionBuilder {
+        public fun setDisableRedirects(disableRedirects: Boolean?): HttpURLConnectionBuilder {
             this.disableRedirects = disableRedirects
             return this
         }
 
-        fun setHeaders(headers: JSObject?): HttpURLConnectionBuilder {
+        public fun setHeaders(headers: JSObject?): HttpURLConnectionBuilder {
             this.headers = headers
             return this
         }
 
-        fun setMethod(method: String?): HttpURLConnectionBuilder {
+        public fun setMethod(method: String?): HttpURLConnectionBuilder {
             this.method = method
             return this
         }
 
-        fun setUrl(url: URL?): HttpURLConnectionBuilder {
+        public fun setUrl(url: URL?): HttpURLConnectionBuilder {
             this.url = url
             return this
         }
 
-        @Throws(IOException::class)
-        fun openConnection(): HttpURLConnectionBuilder {
+        public fun openConnection(): HttpURLConnectionBuilder {
             // Same as the Java original: a missing url or headers object throws here.
             val connection = CapacitorHttpUrlConnection(url!!.openConnection() as HttpURLConnection)
             this.connection = connection
@@ -124,11 +120,7 @@ object HttpRequestHandler {
             return this
         }
 
-        @Throws(MalformedURLException::class, URISyntaxException::class, JSONException::class)
-        fun setUrlParams(params: JSObject): HttpURLConnectionBuilder = setUrlParams(params, true)
-
-        @Throws(URISyntaxException::class, MalformedURLException::class)
-        fun setUrlParams(params: JSObject, shouldEncode: Boolean): HttpURLConnectionBuilder {
+        public fun setUrlParams(params: JSObject, shouldEncode: Boolean = true): HttpURLConnectionBuilder {
             // Same as the Java original: a missing url throws here.
             val url = this.url!!
             val initialQuery = url.query
@@ -183,7 +175,7 @@ object HttpRequestHandler {
             return this
         }
 
-        fun build(): CapacitorHttpUrlConnection? = connection
+        public fun build(): CapacitorHttpUrlConnection? = connection
 
         private companion object {
             fun addUrlParam(sb: StringBuilder, key: String?, value: String?, shouldEncode: Boolean) {
@@ -203,17 +195,6 @@ object HttpRequestHandler {
     }
 
     /**
-     * Builds an HTTP Response given CapacitorHttpUrlConnection and ResponseType objects.
-     * Defaults to ResponseType.DEFAULT
-     * @param connection The CapacitorHttpUrlConnection to respond with
-     * @throws IOException Thrown if the InputStream is unable to be parsed correctly
-     * @throws JSONException Thrown if the JSON is unable to be parsed
-     */
-    @JvmStatic
-    @Throws(IOException::class, JSONException::class)
-    fun buildResponse(connection: CapacitorHttpUrlConnection): JSObject = buildResponse(connection, ResponseType.DEFAULT)
-
-    /**
      * Builds an HTTP Response given CapacitorHttpUrlConnection and ResponseType objects
      * @param connection The CapacitorHttpUrlConnection to respond with
      * @param responseType The requested ResponseType
@@ -221,9 +202,7 @@ object HttpRequestHandler {
      * @throws IOException Thrown if the InputStream is unable to be parsed correctly
      * @throws JSONException Thrown if the JSON is unable to be parsed
      */
-    @JvmStatic
-    @Throws(IOException::class, JSONException::class)
-    fun buildResponse(connection: CapacitorHttpUrlConnection, responseType: ResponseType): JSObject {
+    public fun buildResponse(connection: CapacitorHttpUrlConnection, responseType: ResponseType = ResponseType.DEFAULT): JSObject {
         val statusCode = connection.getResponseCode()
 
         val output = JSObject()
@@ -248,9 +227,7 @@ object HttpRequestHandler {
      * @throws IOException Thrown if the InputStreams cannot be properly parsed
      * @throws JSONException Thrown if the JSON is malformed when parsing as JSON
      */
-    @JvmStatic
-    @Throws(IOException::class, JSONException::class)
-    fun readData(connection: ICapacitorHttpUrlConnection, responseType: ResponseType): Any {
+    public fun readData(connection: ICapacitorHttpUrlConnection, responseType: ResponseType): Any {
         val errorStream = connection.getErrorStream()
         val contentType = connection.getHeaderField("Content-Type")
 
@@ -278,8 +255,7 @@ object HttpRequestHandler {
      * @param contentType The Content-Type string to check for
      * @param mimeTypes The Mime-Type values to check against
      */
-    @JvmStatic
-    fun isOneOf(contentType: String?, vararg mimeTypes: MimeType): Boolean {
+    internal fun isOneOf(contentType: String?, vararg mimeTypes: MimeType): Boolean {
         if (contentType != null) {
             for (mimeType in mimeTypes) {
                 if (contentType.contains(mimeType.value)) {
@@ -295,12 +271,11 @@ object HttpRequestHandler {
      * @param connection The CapacitorHttpUrlConnection connection
      * @return A JSObject of the header values from the CapacitorHttpUrlConnection
      */
-    @JvmStatic
-    fun buildResponseHeaders(connection: CapacitorHttpUrlConnection): JSObject {
+    public fun buildResponseHeaders(connection: CapacitorHttpUrlConnection): JSObject {
         val output = JSObject()
 
         for ((key, value) in connection.getHeaderFields()) {
-            val valuesString = TextUtils.join(", ", value)
+            val valuesString = value.joinToString(", ")
             // The status line is reported under a null key; JSONObject rejects null names and
             // JSObject.put swallows that JSONException, so such entries are skipped.
             if (key != null) {
@@ -317,9 +292,7 @@ object HttpRequestHandler {
      * @return A JSObject or JSArray
      * @throws JSONException thrown if the JSON is malformed
      */
-    @JvmStatic
-    @Throws(JSONException::class)
-    fun parseJSON(input: String): Any {
+    public fun parseJSON(input: String): Any {
         // trim { it <= ' ' } is java.lang.String.trim(); Kotlin's trim() strips Unicode whitespace instead.
         val trimmed = input.trim { it <= ' ' }
         try {
@@ -356,9 +329,7 @@ object HttpRequestHandler {
      * @return String value of InputStream
      * @throws IOException thrown if the InputStream is unable to be read as base64
      */
-    @JvmStatic
-    @Throws(IOException::class)
-    fun readStreamAsBase64(`in`: InputStream): String {
+    public fun readStreamAsBase64(`in`: InputStream): String {
         ByteArrayOutputStream().use { out ->
             val buffer = ByteArray(1024)
             var readBytes = `in`.read(buffer)
@@ -377,9 +348,7 @@ object HttpRequestHandler {
      * @return String value of InputStream
      * @throws IOException thrown if the InputStream is unable to be read
      */
-    @JvmStatic
-    @Throws(IOException::class)
-    fun readStreamAsString(`in`: InputStream): String {
+    public fun readStreamAsString(`in`: InputStream): String {
         BufferedReader(InputStreamReader(`in`)).use { reader ->
             val builder = StringBuilder()
             var line = reader.readLine()
@@ -402,9 +371,7 @@ object HttpRequestHandler {
      * @throws URISyntaxException thrown when the URI is malformed
      * @throws JSONException thrown when the incoming JSON is malformed
      */
-    @JvmStatic
-    @Throws(IOException::class, URISyntaxException::class, JSONException::class)
-    fun request(call: PluginCall, httpMethod: String?, bridge: Bridge?): JSObject {
+    public fun request(call: PluginCall, httpMethod: String?, bridge: Bridge?): JSObject {
         val urlString = call.getString("url", "")
         // getObject/getBoolean/getString return the given default when the key is absent, so these never fall through.
         val headers = call.getObject("headers", JSObject()) ?: JSObject()
@@ -473,8 +440,7 @@ object HttpRequestHandler {
         return response
     }
 
-    @JvmStatic
-    fun isDomainExcludedFromSSL(bridge: Bridge?, url: URL?): Boolean =
+    public fun isDomainExcludedFromSSL(bridge: Bridge?, url: URL?): Boolean =
         try {
             val sslPinningImpl = Class.forName("io.ionic.sslpinning.SSLPinning")
             val method = sslPinningImpl.getDeclaredMethod("isDomainExcluded", Bridge::class.java, URL::class.java)
@@ -483,8 +449,8 @@ object HttpRequestHandler {
             false
         }
 
-    fun interface ProgressEmitter {
-        fun emit(bytes: Int?, contentLength: Int?)
+    public fun interface ProgressEmitter {
+        public fun emit(bytes: Int?, contentLength: Int?)
     }
 
     // Pattern.matcher(..).matches() is what java.lang.String.matches(regex) does.

@@ -8,23 +8,23 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 
 @CapacitorPlugin
-class WebView : Plugin() {
+public class WebView : Plugin() {
     @PluginMethod
-    fun setServerAssetPath(call: PluginCall) {
+    public fun setServerAssetPath(call: PluginCall) {
         val path = call.getString("path")
         bridge.setServerAssetPath(path)
         call.resolve()
     }
 
     @PluginMethod
-    fun setServerBasePath(call: PluginCall) {
+    public fun setServerBasePath(call: PluginCall) {
         val path = call.getString("path")
         bridge.serverBasePath = path
         call.resolve()
     }
 
     @PluginMethod
-    fun getServerBasePath(call: PluginCall) {
+    public fun getServerBasePath(call: PluginCall) {
         val path = bridge.serverBasePath
         val ret = JSObject()
         ret.put("path", path)
@@ -32,7 +32,7 @@ class WebView : Plugin() {
     }
 
     @PluginMethod
-    fun persistServerBasePath(call: PluginCall) {
+    public fun persistServerBasePath(call: PluginCall) {
         val path = bridge.serverBasePath
         val prefs = context.getSharedPreferences(WEBVIEW_PREFS_NAME, Activity.MODE_PRIVATE)
         val editor = prefs.edit()
@@ -41,8 +41,8 @@ class WebView : Plugin() {
         call.resolve()
     }
 
-    companion object {
-        const val WEBVIEW_PREFS_NAME = "CapWebViewSettings"
-        const val CAP_SERVER_PATH = "serverBasePath"
+    public companion object {
+        public const val WEBVIEW_PREFS_NAME: String = "CapWebViewSettings"
+        public const val CAP_SERVER_PATH: String = "serverBasePath"
     }
 }

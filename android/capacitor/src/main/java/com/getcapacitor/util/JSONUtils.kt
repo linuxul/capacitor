@@ -7,7 +7,7 @@ import java.util.regex.Pattern
 /**
  * Helper methods for parsing JSON objects.
  */
-object JSONUtils {
+public object JSONUtils {
     // Pattern.split keeps java.lang.String.split semantics (trailing empty parts dropped).
     private val DOT: Pattern = Pattern.compile("\\.")
 
@@ -19,8 +19,7 @@ object JSONUtils {
      * @param defaultValue A default value to return if the key cannot be found
      * @return The value at the given key in the JSON object, or the default value
      */
-    @JvmStatic
-    fun getString(jsonObject: JSONObject, key: String, defaultValue: String?): String? {
+    public fun getString(jsonObject: JSONObject, key: String, defaultValue: String?): String? {
         val k = getDeepestKey(key) ?: return defaultValue
         try {
             val o = getDeepestObject(jsonObject, key)
@@ -46,8 +45,7 @@ object JSONUtils {
      * @param defaultValue A default value to return if the key cannot be found
      * @return The value at the given key in the JSON object, or the default value
      */
-    @JvmStatic
-    fun getBoolean(jsonObject: JSONObject, key: String, defaultValue: Boolean): Boolean {
+    public fun getBoolean(jsonObject: JSONObject, key: String, defaultValue: Boolean): Boolean {
         val k = getDeepestKey(key) ?: return defaultValue
         try {
             val o = getDeepestObject(jsonObject, key)
@@ -68,8 +66,7 @@ object JSONUtils {
      * @param defaultValue A default value to return if the key cannot be found
      * @return The value at the given key in the JSON object, or the default value
      */
-    @JvmStatic
-    fun getInt(jsonObject: JSONObject, key: String, defaultValue: Int): Int {
+    public fun getInt(jsonObject: JSONObject, key: String, defaultValue: Int): Int {
         val k = getDeepestKey(key) ?: return defaultValue
         try {
             val o = getDeepestObject(jsonObject, key)
@@ -89,8 +86,7 @@ object JSONUtils {
      * @param defaultValue A default value to return if the key cannot be found
      * @return The value at the given key in the JSON object, or the default value
      */
-    @JvmStatic
-    fun getDouble(jsonObject: JSONObject, key: String, defaultValue: Double): Double {
+    public fun getDouble(jsonObject: JSONObject, key: String, defaultValue: Double): Double {
         val k = getDeepestKey(key) ?: return defaultValue
         try {
             val o = getDeepestObject(jsonObject, key)
@@ -109,8 +105,7 @@ object JSONUtils {
      * @param key A key to fetch from the JSON object
      * @return The value from the config, if exists. Null if not
      */
-    @JvmStatic
-    fun getObject(jsonObject: JSONObject, key: String): JSONObject? {
+    public fun getObject(jsonObject: JSONObject, key: String): JSONObject? {
         val k = getDeepestKey(key) ?: return null
         try {
             val o = getDeepestObject(jsonObject, key)
@@ -131,8 +126,7 @@ object JSONUtils {
      * @param defaultValue A default value to return if the key cannot be found
      * @return The value at the given key in the JSON object, or the default value
      */
-    @JvmStatic
-    fun getArray(jsonObject: JSONObject, key: String, defaultValue: Array<String>?): Array<String>? {
+    public fun getArray(jsonObject: JSONObject, key: String, defaultValue: Array<String>?): Array<String>? {
         val k = getDeepestKey(key) ?: return defaultValue
         try {
             val o = getDeepestObject(jsonObject, key)
@@ -171,7 +165,6 @@ object JSONUtils {
      * @return The deepest object along the key path
      * @throws JSONException Thrown if any JSON errors
      */
-    @Throws(JSONException::class)
     private fun getDeepestObject(jsonObject: JSONObject, key: String): JSONObject {
         val parts = DOT.split(key)
         var o = jsonObject

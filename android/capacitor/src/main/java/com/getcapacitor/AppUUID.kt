@@ -7,19 +7,15 @@ import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.UUID
 
-object AppUUID {
+public object AppUUID {
     private const val KEY = "CapacitorAppUUID"
 
-    @JvmStatic
-    @Throws(Exception::class)
-    fun getAppUUID(activity: AppCompatActivity): String? {
+    public fun getAppUUID(activity: AppCompatActivity): String? {
         assertAppUUID(activity)
         return readUUID(activity)
     }
 
-    @JvmStatic
-    @Throws(Exception::class)
-    fun regenerateAppUUID(activity: AppCompatActivity) {
+    public fun regenerateAppUUID(activity: AppCompatActivity) {
         try {
             val uuid = generateUUID()
             writeUUID(activity, uuid)
@@ -28,7 +24,6 @@ object AppUUID {
         }
     }
 
-    @Throws(Exception::class)
     private fun assertAppUUID(activity: AppCompatActivity) {
         val uuid = readUUID(activity)
         if (uuid == "") {
@@ -36,7 +31,6 @@ object AppUUID {
         }
     }
 
-    @Throws(NoSuchAlgorithmException::class)
     private fun generateUUID(): String {
         val salt = MessageDigest.getInstance("SHA-256")
         salt.update(UUID.randomUUID().toString().toByteArray(StandardCharsets.UTF_8))

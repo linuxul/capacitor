@@ -14,8 +14,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.regex.Pattern
 
-class AndroidProtocolHandler(private var context: Context) {
-    @Throws(IOException::class)
+internal class AndroidProtocolHandler(private var context: Context) {
     fun openAsset(path: String): InputStream = context.assets.open(path, AssetManager.ACCESS_STREAMING)
 
     fun openResource(uri: Uri): InputStream? {
@@ -51,14 +50,12 @@ class AndroidProtocolHandler(private var context: Context) {
         return null
     }
 
-    @Throws(IOException::class)
     fun openFile(filePath: String): InputStream {
         val realPath = filePath.replace(Bridge.CAPACITOR_FILE_START, "")
         val localFile = File(realPath)
         return FileInputStream(localFile)
     }
 
-    @Throws(IOException::class)
     fun openContentUrl(uri: Uri): InputStream? {
         val port = uri.port
         var baseUrl = uri.scheme + "://" + uri.host
@@ -77,7 +74,6 @@ class AndroidProtocolHandler(private var context: Context) {
     }
 
     private companion object {
-        @Throws(ClassNotFoundException::class, NoSuchFieldException::class, IllegalAccessException::class)
         fun getFieldId(context: Context, assetType: String, assetName: String): Int {
             val d = context.classLoader.loadClass(context.packageName + ".R$" + assetType)
             val field = d.getField(assetName)

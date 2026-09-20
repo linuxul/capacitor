@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.mockStatic
@@ -28,6 +29,9 @@ import java.nio.file.Files
  * Run with UPDATE_SNAPSHOTS=1 to rewrite the files under src/test/resources/snapshots.
  */
 class JSProtocolSnapshotTest {
+    @get:Rule
+    val logs = RecordingLogSink()
+
     @CapacitorPlugin(name = "Snapshot")
     class SnapshotPlugin : Plugin() {
         @PluginMethod
@@ -123,7 +127,7 @@ class JSProtocolSnapshotTest {
 
     private fun sendResponse(keepAlive: Boolean, success: PluginResult?, error: PluginResult?): JSONObject {
         val config = mock<CapConfig>()
-        whenever(config.isUsingLegacyBridge()).thenReturn(true)
+        whenever(config.isUsingLegacyBridge).thenReturn(true)
         val bridge = mock<Bridge>()
         whenever(bridge.config).thenReturn(config)
         val webView = mock<WebView>()
@@ -133,7 +137,7 @@ class JSProtocolSnapshotTest {
 
             val handler = MessageHandler(bridge, webView)
             val call = PluginCall(handler, "Snapshot", "42", "echo", JSObject())
-            call.setKeepAlive(keepAlive)
+            call.keepAlive = keepAlive
             handler.sendResponseMessage(call, success, error)
         }
 

@@ -5,13 +5,10 @@ package com.getcapacitor
  *
  * @see com.getcapacitor.RouteProcessor
  */
-class ProcessedRoute {
-    var path: String? = null
+public class ProcessedRoute {
+    public var path: String? = null
 
-    // Java accessors stay isAsset()/setAsset(boolean).
-    var isAsset: Boolean = false
+    public var isAsset: Boolean = false
 
-    // Java accessors stay isIgnoreAssetPath()/setIgnoreAssetPath(boolean).
-    @get:JvmName("isIgnoreAssetPath")
-    var ignoreAssetPath: Boolean = false
+    public var ignoreAssetPath: Boolean = false
 }

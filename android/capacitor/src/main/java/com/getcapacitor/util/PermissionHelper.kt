@@ -9,7 +9,7 @@ import androidx.core.app.ActivityCompat
  *
  * @since 3.0.0
  */
-object PermissionHelper {
+public object PermissionHelper {
     /**
      * Checks if a list of given permissions are all granted by the user
      *
@@ -17,8 +17,7 @@ object PermissionHelper {
      * @param permissions Permissions to check.
      * @return True if all permissions are granted, false if at least one is not.
      */
-    @JvmStatic
-    fun hasPermissions(context: Context, permissions: Array<String>): Boolean {
+    public fun hasPermissions(context: Context, permissions: Array<String>): Boolean {
         for (perm in permissions) {
             if (ActivityCompat.checkSelfPermission(context, perm) != PackageManager.PERMISSION_GRANTED) {
                 return false
@@ -34,8 +33,7 @@ object PermissionHelper {
      * @param permission A permission to check.
      * @return True if the permission has been defined in the Manifest, false if not.
      */
-    @JvmStatic
-    fun hasDefinedPermission(context: Context, permission: String?): Boolean {
+    public fun hasDefinedPermission(context: Context, permission: String?): Boolean {
         val requestedPermissions = getManifestPermissions(context)
         return !requestedPermissions.isNullOrEmpty() && requestedPermissions.contains(permission)
     }
@@ -46,8 +44,7 @@ object PermissionHelper {
      * @param permissions a list of permissions
      * @return true only if all permissions are defined in the AndroidManifest.xml
      */
-    @JvmStatic
-    fun hasDefinedPermissions(context: Context, permissions: Array<String>): Boolean {
+    public fun hasDefinedPermissions(context: Context, permissions: Array<String>): Boolean {
         for (permission in permissions) {
             if (!hasDefinedPermission(context, permission)) {
                 return false
@@ -63,8 +60,7 @@ object PermissionHelper {
      * @since 3.0.0
      * @return The permissions defined in AndroidManifest.xml
      */
-    @JvmStatic
-    fun getManifestPermissions(context: Context): Array<String>? {
+    public fun getManifestPermissions(context: Context): Array<String>? {
         var requestedPermissions: Array<String>? = null
         try {
             val pm = context.packageManager
@@ -85,8 +81,7 @@ object PermissionHelper {
      * @param neededPermissions The permissions needed.
      * @return The permissions not present in AndroidManifest.xml
      */
-    @JvmStatic
-    fun getUndefinedPermissions(context: Context, neededPermissions: Array<String>): Array<String> {
+    public fun getUndefinedPermissions(context: Context, neededPermissions: Array<String>): Array<String> {
         val requestedPermissions = getManifestPermissions(context)
         if (!requestedPermissions.isNullOrEmpty()) {
             val undefinedPermissions = ArrayList<String>()

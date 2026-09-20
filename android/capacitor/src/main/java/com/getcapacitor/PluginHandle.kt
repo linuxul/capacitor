@@ -7,17 +7,16 @@ import java.lang.reflect.InvocationTargetException
  * PluginHandle is an instance of a plugin that has been registered
  * and indexed. Think of it as a Plugin instance with extra metadata goodies
  */
-class PluginHandle
-    @Throws(InvalidPluginException::class)
-    private constructor(val pluginClass: Class<out Plugin>, private val bridge: Bridge) {
+public class PluginHandle
+    private constructor(public val pluginClass: Class<out Plugin>, private val bridge: Bridge) {
         private val pluginMethods: MutableMap<String, PluginMethodHandle> = HashMap()
 
-        val id: String
+        public val id: String
 
-        val pluginAnnotation: CapacitorPlugin
+        public val pluginAnnotation: CapacitorPlugin
 
         // Both public constructors assign this before returning, so it is never observed unset from outside.
-        lateinit var instance: Plugin
+        public lateinit var instance: Plugin
             private set
 
         init {
@@ -37,21 +36,18 @@ class PluginHandle
             indexMethods()
         }
 
-        @Throws(InvalidPluginException::class, PluginLoadException::class)
-        constructor(bridge: Bridge, pluginClass: Class<out Plugin>) : this(pluginClass, bridge) {
+        public constructor(bridge: Bridge, pluginClass: Class<out Plugin>) : this(pluginClass, bridge) {
             load()
         }
 
-        @Throws(InvalidPluginException::class)
-        constructor(bridge: Bridge, plugin: Plugin) : this(plugin.javaClass, bridge) {
+        public constructor(bridge: Bridge, plugin: Plugin) : this(plugin.javaClass, bridge) {
             loadInstance(plugin)
         }
 
-        val methods: Collection<PluginMethodHandle>
+        public val methods: Collection<PluginMethodHandle>
             get() = pluginMethods.values
 
-        @Throws(PluginLoadException::class)
-        fun load(): Plugin {
+        public fun load(): Plugin {
             if (this::instance.isInitialized) {
                 return instance
             }
@@ -64,7 +60,7 @@ class PluginHandle
             }
         }
 
-        fun loadInstance(plugin: Plugin): Plugin {
+        public fun loadInstance(plugin: Plugin): Plugin {
             instance = plugin
             instance.pluginHandle = this
             instance.bridge = bridge
@@ -79,13 +75,7 @@ class PluginHandle
          * @param call the constructed PluginCall with parameters from the caller
          * @throws InvalidPluginMethodException if no method was found on that plugin
          */
-        @Throws(
-            PluginLoadException::class,
-            InvalidPluginMethodException::class,
-            InvocationTargetException::class,
-            IllegalAccessException::class,
-        )
-        fun invoke(methodName: String?, call: PluginCall?) {
+        public fun invoke(methodName: String?, call: PluginCall?) {
             if (!this::instance.isInitialized) {
                 // Can throw PluginLoadException
                 load()
@@ -102,7 +92,6 @@ class PluginHandle
          * Index all the known callable methods for a plugin for faster
          * invocation later
          */
-        @Throws(InvalidPluginException::class)
         private fun indexMethods() {
             val methods = pluginClass.methods
 

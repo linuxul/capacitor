@@ -19,7 +19,7 @@ import java.util.regex.Pattern
  * @param policy a `CookiePolicy` instance to be used by cookie manager as policy
  * callback. if `null`, ACCEPT_ORIGINAL_SERVER will be used.
  */
-open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, bridge: Bridge) : CookieManager(store, policy) {
+public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, bridge: Bridge) : CookieManager(store, policy) {
     private val webkitCookieManager: android.webkit.CookieManager = android.webkit.CookieManager.getInstance()
 
     private val localUrl: String? = bridge.localUrl
@@ -29,14 +29,13 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
     /**
      * Create a new cookie manager with the default cookie store and policy
      */
-    constructor(bridge: Bridge) : this(null, null, bridge)
+    public constructor(bridge: Bridge) : this(null, null, bridge)
 
-    fun removeSessionCookies() {
+    public fun removeSessionCookies() {
         webkitCookieManager.removeSessionCookies(null)
     }
 
-    @Throws(URISyntaxException::class)
-    fun getSanitizedDomain(url: String?): String? {
+    public fun getSanitizedDomain(url: String?): String? {
         var sanitized = url
         if (!serverUrl.isNullOrEmpty() && (sanitized.isNullOrEmpty() || serverUrl.contains(sanitized))) {
             sanitized = serverUrl
@@ -64,7 +63,6 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
         return sanitized
     }
 
-    @Throws(URISyntaxException::class)
     private fun getDomainFromCookieString(cookie: String): String? {
         // Pattern.split keeps java.lang.String.split semantics; trim { it <= ' ' } is java.lang.String.trim().
         val domain = DOMAIN_ATTRIBUTE.split(cookie.lowercase(Locale.ROOT))
@@ -76,7 +74,7 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
      * @param url the URL for which the cookies are requested
      * @return value the cookies as a string, using the format of the 'Cookie' HTTP request header
      */
-    fun getCookieString(url: String?): String? {
+    public fun getCookieString(url: String?): String? {
         try {
             val sanitized = getSanitizedDomain(url)
             Logger.info(TAG, "Getting cookies at: '$sanitized'")
@@ -95,7 +93,7 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
      * @return the `HttpCookie` value of the cookie at the key,
      * otherwise it will return null
      */
-    fun getCookie(url: String?, key: String?): HttpCookie? {
+    public fun getCookie(url: String?, key: String?): HttpCookie? {
         val cookies = getCookies(url)
         for (cookie in cookies) {
             if (cookie.name == key) {
@@ -111,7 +109,7 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
      * @param url the URL for which the cookies are requested
      * @return an `HttpCookie` array of non-expired cookies
      */
-    fun getCookies(url: String?): Array<HttpCookie> {
+    public fun getCookies(url: String?): Array<HttpCookie> {
         try {
             val cookieList = ArrayList<HttpCookie>()
             val cookieString = getCookieString(url)
@@ -135,7 +133,7 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
      * @param url the URL for which the cookie is to be set
      * @param value the cookie as a string, using the format of the 'Set-Cookie' HTTP response header
      */
-    fun setCookie(url: String?, value: String?) {
+    public fun setCookie(url: String?, value: String?) {
         try {
             val sanitized = getSanitizedDomain(url)
             Logger.info(TAG, "Setting cookie '$value' at: '$sanitized'")
@@ -152,21 +150,23 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
      * @param url the URL for which the cookie is to be set
      * @param key the `HttpCookie` name to use for lookup
      * @param value the value of the `HttpCookie` given a key
+     * @param expires optional `expires` attribute; appended together with [path] when either is given
+     * @param path optional `path` attribute
      */
-    fun setCookie(url: String?, key: String?, value: String?) {
-        val cookieValue = "$key=$value"
-        setCookie(url, cookieValue)
-    }
-
-    fun setCookie(url: String?, key: String?, value: String?, expires: String?, path: String?) {
-        val cookieValue = "$key=$value; expires=$expires; path=$path"
+    public fun setCookie(url: String?, key: String?, value: String?, expires: String? = null, path: String? = null) {
+        val cookieValue =
+            if (expires == null && path == null) {
+                "$key=$value"
+            } else {
+                "$key=$value; expires=$expires; path=$path"
+            }
         setCookie(url, cookieValue)
     }
 
     /**
      * Removes all cookies. This method is asynchronous.
      */
-    fun removeAllCookies() {
+    public fun removeAllCookies() {
         webkitCookieManager.removeAllCookies(null)
         flush()
     }
@@ -175,7 +175,7 @@ open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, br
      * Ensures all cookies currently accessible through the getCookie API are written to persistent
      * storage. This call will block the caller until it is done and may perform I/O.
      */
-    fun flush() {
+    public fun flush() {
         webkitCookieManager.flush()
     }
 

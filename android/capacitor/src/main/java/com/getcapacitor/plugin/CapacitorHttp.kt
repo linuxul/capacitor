@@ -19,7 +19,7 @@ import java.util.concurrent.Executors
         Permission(strings = [Manifest.permission.READ_EXTERNAL_STORAGE], alias = "HttpRead"),
     ],
 )
-class CapacitorHttp : Plugin() {
+public class CapacitorHttp : Plugin() {
     private val activeRequests: MutableMap<Runnable, PluginCall> = ConcurrentHashMap()
     private val executor: ExecutorService = Executors.newCachedThreadPool()
 
@@ -73,38 +73,38 @@ class CapacitorHttp : Plugin() {
 
     // Must stay a function: a Kotlin property would not be exposed to JavaScript under this name.
     @JavascriptInterface
-    fun isEnabled(): Boolean {
+    public fun isEnabled(): Boolean {
         val pluginConfig = bridge.config.getPluginConfiguration("CapacitorHttp")
         return pluginConfig.getBoolean("enabled", false)
     }
 
     @PluginMethod
-    fun request(call: PluginCall) {
+    public fun request(call: PluginCall) {
         http(call, null)
     }
 
     @PluginMethod
-    fun get(call: PluginCall) {
+    public fun get(call: PluginCall) {
         http(call, "GET")
     }
 
     @PluginMethod
-    fun post(call: PluginCall) {
+    public fun post(call: PluginCall) {
         http(call, "POST")
     }
 
     @PluginMethod
-    fun put(call: PluginCall) {
+    public fun put(call: PluginCall) {
         http(call, "PUT")
     }
 
     @PluginMethod
-    fun patch(call: PluginCall) {
+    public fun patch(call: PluginCall) {
         http(call, "PATCH")
     }
 
     @PluginMethod
-    fun delete(call: PluginCall) {
+    public fun delete(call: PluginCall) {
         http(call, "DELETE")
     }
 }

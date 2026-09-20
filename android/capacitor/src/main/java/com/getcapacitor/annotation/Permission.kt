@@ -5,7 +5,7 @@ package com.getcapacitor.annotation
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target()
-annotation class Permission(
+public annotation class Permission(
     /**
      * An array of Android permission strings.
      * Eg: {Manifest.permission.ACCESS_COARSE_LOCATION}

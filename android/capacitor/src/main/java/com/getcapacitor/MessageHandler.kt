@@ -10,11 +10,11 @@ import androidx.webkit.WebViewFeature
  * MessageHandler handles messages from the WebView, dispatching them
  * to plugins.
  */
-class MessageHandler(private val bridge: Bridge, private val webView: WebView) {
+public class MessageHandler(private val bridge: Bridge, private val webView: WebView) {
     private var javaScriptReplyProxy: JavaScriptReplyProxy? = null
 
     init {
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && !bridge.config.isUsingLegacyBridge()) {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && !bridge.config.isUsingLegacyBridge) {
             val capListener =
                 WebViewCompat.WebMessageListener { _, message, _, isMainFrame, replyProxy ->
                     if (isMainFrame) {
@@ -42,7 +42,7 @@ class MessageHandler(private val bridge: Bridge, private val webView: WebView) {
      * non-null parameter check would crash the bridge thread instead of reaching the catch below.
      */
     @JavascriptInterface
-    fun postMessage(jsonStr: String?) {
+    public fun postMessage(jsonStr: String?) {
         try {
             // A null message throws here (NullPointerException from JSONTokener, as in the Java original) and is logged below.
             val postData = JSObject(jsonStr!!)
@@ -77,10 +77,10 @@ class MessageHandler(private val bridge: Bridge, private val webView: WebView) {
         }
     }
 
-    fun sendResponseMessage(call: PluginCall, successResult: PluginResult?, errorResult: PluginResult?) {
+    public fun sendResponseMessage(call: PluginCall, successResult: PluginResult?, errorResult: PluginResult?) {
         try {
             val data = PluginResult()
-            data.put("save", call.isKeptAlive())
+            data.put("save", call.keepAlive)
             data.put("callbackId", call.callbackId)
             data.put("pluginId", call.pluginId)
             data.put("methodName", call.methodName)
@@ -101,7 +101,7 @@ class MessageHandler(private val bridge: Bridge, private val webView: WebView) {
             val isValidCallbackId = call.callbackId!! != PluginCall.CALLBACK_ID_DANGLING
             if (isValidCallbackId) {
                 val replyProxy = javaScriptReplyProxy
-                if (bridge.config.isUsingLegacyBridge()) {
+                if (bridge.config.isUsingLegacyBridge) {
                     legacySendResponseMessage(data)
                 } else if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && replyProxy != null) {
                     replyProxy.postMessage(data.toString())
@@ -114,7 +114,7 @@ class MessageHandler(private val bridge: Bridge, private val webView: WebView) {
         } catch (ex: Exception) {
             Logger.error("sendResponseMessage: error: $ex")
         }
-        if (!call.isKeptAlive()) {
+        if (!call.keepAlive) {
             call.release(bridge)
         }
     }

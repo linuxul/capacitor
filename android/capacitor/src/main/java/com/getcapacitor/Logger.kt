@@ -1,110 +1,103 @@
 package com.getcapacitor
 
-import android.text.TextUtils
 import android.util.Log
 
-// Every member stays a JVM static for now: the Java tests call them statically and mock them with mockStatic.
-object Logger {
-    const val LOG_TAG_CORE = "Capacitor"
+/**
+ * Receives everything [Logger] decides to log.
+ *
+ * [priority] is one of the android.util.Log priority constants.
+ */
+public fun interface LogSink {
+    public fun log(priority: Int, tag: String, message: String, throwable: Throwable?)
+}
 
-    @JvmField
-    var config: CapConfig? = null
-
-    @JvmStatic
-    fun init(config: CapConfig?) {
-        Logger.config = config
+/**
+ * The default [LogSink]: writes to logcat through android.util.Log.
+ */
+public object AndroidLogSink : LogSink {
+    override fun log(priority: Int, tag: String, message: String, throwable: Throwable?) {
+        when (priority) {
+            Log.VERBOSE -> Log.v(tag, message)
+            Log.DEBUG -> Log.d(tag, message)
+            Log.INFO -> Log.i(tag, message)
+            Log.WARN -> Log.w(tag, message)
+            else -> Log.e(tag, message, throwable)
+        }
     }
+}
 
-    @JvmStatic
-    fun tags(vararg subtags: String?): String {
+public object Logger {
+    public const val LOG_TAG_CORE: String = "Capacitor"
+
+    /**
+     * Whether anything gets logged. The bridge sets this from the loaded config (`loggingBehavior`);
+     * until then everything is logged.
+     */
+    @Volatile
+    public var loggingEnabled: Boolean = true
+
+    /**
+     * Where log entries go. Tests replace this with a recording sink.
+     */
+    @Volatile
+    internal var sink: LogSink = AndroidLogSink
+
+    public fun tags(vararg subtags: String?): String {
         if (subtags.isNotEmpty()) {
-            return LOG_TAG_CORE + "/" + TextUtils.join("/", subtags)
+            return LOG_TAG_CORE + "/" + subtags.joinToString("/")
         }
 
         return LOG_TAG_CORE
     }
 
-    @JvmStatic
-    fun verbose(message: String?) {
+    public fun verbose(message: String?) {
         verbose(LOG_TAG_CORE, message)
     }
 
-    @JvmStatic
-    fun verbose(tag: String?, message: String?) {
-        if (!shouldLog()) {
-            return
-        }
-
-        Log.v(tag, message.orNullText())
+    public fun verbose(tag: String?, message: String?) {
+        log(Log.VERBOSE, tag, message, null)
     }
 
-    @JvmStatic
-    fun debug(message: String?) {
+    public fun debug(message: String?) {
         debug(LOG_TAG_CORE, message)
     }
 
-    @JvmStatic
-    fun debug(tag: String?, message: String?) {
-        if (!shouldLog()) {
-            return
-        }
-
-        Log.d(tag, message.orNullText())
+    public fun debug(tag: String?, message: String?) {
+        log(Log.DEBUG, tag, message, null)
     }
 
-    @JvmStatic
-    fun info(message: String?) {
+    public fun info(message: String?) {
         info(LOG_TAG_CORE, message)
     }
 
-    @JvmStatic
-    fun info(tag: String?, message: String?) {
-        if (!shouldLog()) {
-            return
-        }
-
-        Log.i(tag, message.orNullText())
+    public fun info(tag: String?, message: String?) {
+        log(Log.INFO, tag, message, null)
     }
 
-    @JvmStatic
-    fun warn(message: String?) {
+    public fun warn(message: String?) {
         warn(LOG_TAG_CORE, message)
     }
 
-    @JvmStatic
-    fun warn(tag: String?, message: String?) {
-        if (!shouldLog()) {
-            return
-        }
-
-        Log.w(tag, message.orNullText())
+    public fun warn(tag: String?, message: String?) {
+        log(Log.WARN, tag, message, null)
     }
 
-    @JvmStatic
-    fun error(message: String?) {
-        error(LOG_TAG_CORE, message, null)
-    }
-
-    @JvmStatic
-    fun error(message: String?, e: Throwable?) {
+    public fun error(message: String?, e: Throwable? = null) {
         error(LOG_TAG_CORE, message, e)
     }
 
-    @JvmStatic
-    fun error(tag: String?, message: String?, e: Throwable?) {
+    public fun error(tag: String?, message: String?, e: Throwable?) {
+        log(Log.ERROR, tag, message, e)
+    }
+
+    public fun shouldLog(): Boolean = loggingEnabled
+
+    // A null tag or message is logged as the text "null", which is what android.util.Log printed for them.
+    private fun log(priority: Int, tag: String?, message: String?, throwable: Throwable?) {
         if (!shouldLog()) {
             return
         }
 
-        Log.e(tag, message, e)
-    }
-
-    // android.util.Log.v/d/i/w reject a null message with a NullPointerException; log the text "null" instead.
-    private fun String?.orNullText(): String = this ?: "null"
-
-    @JvmStatic
-    fun shouldLog(): Boolean {
-        val config = config
-        return config == null || config.isLoggingEnabled()
+        sink.log(priority, tag ?: "null", message ?: "null", throwable)
     }
 }

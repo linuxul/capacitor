@@ -6,25 +6,25 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.getcapacitor.android.R
 
-open class BridgeActivity : AppCompatActivity() {
+public open class BridgeActivity : AppCompatActivity() {
     // These stay JVM fields (not properties): Java subclasses read and assign them directly.
     @JvmField
     protected var bridge: Bridge? = null
 
     @JvmField
-    protected var keepRunning = true
+    protected var keepRunning: Boolean = true
 
     @JvmField
     protected var config: CapConfig? = null
 
     @JvmField
-    protected var activityDepth = 0
+    protected var activityDepth: Int = 0
 
     @JvmField
     protected var initialPlugins: MutableList<Class<out Plugin>> = ArrayList()
 
     @JvmField
-    protected val bridgeBuilder = Bridge.Builder(this)
+    protected val bridgeBuilder: Bridge.Builder = Bridge.Builder(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,15 +58,15 @@ open class BridgeActivity : AppCompatActivity() {
         intent?.let { onNewIntent(it) }
     }
 
-    open fun registerPlugin(plugin: Class<out Plugin>) {
+    public open fun registerPlugin(plugin: Class<out Plugin>) {
         bridgeBuilder.addPlugin(plugin)
     }
 
-    open fun registerPlugins(plugins: List<Class<out Plugin>>) {
+    public open fun registerPlugins(plugins: List<Class<out Plugin>>) {
         bridgeBuilder.addPlugins(plugins)
     }
 
-    open fun getBridge(): Bridge? = bridge
+    public open fun getBridge(): Bridge? = bridge
 
     public override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)

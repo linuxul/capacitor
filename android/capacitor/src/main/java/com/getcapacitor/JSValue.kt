@@ -8,11 +8,11 @@ import org.json.JSONException
  * @param call The capacitor plugin call, used for accessing the value safely.
  * @param name The name of the property to access.
  */
-class JSValue(call: PluginCall, name: String) {
+public class JSValue(call: PluginCall, name: String) {
     /**
      * Returns the coerced but uncasted underlying value.
      */
-    val value: Any? = toValue(call, name)
+    public val value: Any? = toValue(call, name)
 
     // Same as the Java original: throws if the underlying value is null.
     override fun toString(): String = value!!.toString()
@@ -22,8 +22,7 @@ class JSValue(call: PluginCall, name: String) {
      *
      * @throws JSONException If the underlying value is not a JSObject.
      */
-    @Throws(JSONException::class)
-    fun toJSObject(): JSObject {
+    public fun toJSObject(): JSObject {
         if (value is JSObject) return value
         throw JSONException("JSValue could not be coerced to JSObject.")
     }
@@ -33,8 +32,7 @@ class JSValue(call: PluginCall, name: String) {
      *
      * @throws JSONException If the underlying value is not a JSArray.
      */
-    @Throws(JSONException::class)
-    fun toJSArray(): JSArray {
+    public fun toJSArray(): JSArray {
         if (value is JSArray) return value
         throw JSONException("JSValue could not be coerced to JSArray.")
     }

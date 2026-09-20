@@ -25,13 +25,13 @@ import java.util.UUID
  *
  * @param context Application context, used to access the resources and app directory.
  */
-class AssetUtil private constructor(private val context: Context) {
+public class AssetUtil private constructor(private val context: Context) {
     /**
      * The URI for a path.
      *
      * @param path The given path.
      */
-    fun parse(path: String?): Uri {
+    public fun parse(path: String?): Uri {
         if (path == null || path.isEmpty()) {
             return Uri.EMPTY
         } else if (path.startsWith("res:")) {
@@ -185,7 +185,7 @@ class AssetUtil private constructor(private val context: Context) {
      *
      * @return The resource ID or 0 if not found.
      */
-    fun getResId(resPath: String): Int {
+    public fun getResId(resPath: String): Int {
         var resId = getResId(context.resources, resPath)
 
         if (resId == 0) {
@@ -226,8 +226,7 @@ class AssetUtil private constructor(private val context: Context) {
      *
      * @param uri Internal image URI
      */
-    @Throws(IOException::class)
-    fun getIconFromUri(uri: Uri): Bitmap? {
+    public fun getIconFromUri(uri: Uri): Bitmap? {
         val input = context.contentResolver.openInputStream(uri)
         return BitmapFactory.decodeStream(input)
     }
@@ -294,8 +293,8 @@ class AssetUtil private constructor(private val context: Context) {
      */
     private fun getPkgName(res: Resources): String = if (res === Resources.getSystem()) "android" else context.packageName
 
-    companion object {
-        const val RESOURCE_ID_ZERO_VALUE = 0
+    public companion object {
+        public const val RESOURCE_ID_ZERO_VALUE: Int = 0
 
         // Name of the storage folder
         private const val STORAGE_FOLDER = "/capacitorassets"
@@ -311,16 +310,13 @@ class AssetUtil private constructor(private val context: Context) {
          *
          * @param context Application context.
          */
-        @JvmStatic
-        fun getInstance(context: Context): AssetUtil = AssetUtil(context)
+        public fun getInstance(context: Context): AssetUtil = AssetUtil(context)
 
-        @JvmStatic
         @SuppressLint("DiscouragedApi")
-        fun getResourceID(context: Context, resourceName: String?, dir: String?): Int =
+        public fun getResourceID(context: Context, resourceName: String?, dir: String?): Int =
             context.resources.getIdentifier(resourceName, dir, context.packageName)
 
-        @JvmStatic
-        fun getResourceBaseName(resPath: String?): String? {
+        public fun getResourceBaseName(resPath: String?): String? {
             if (resPath == null) return null
 
             if (resPath.contains("/")) {

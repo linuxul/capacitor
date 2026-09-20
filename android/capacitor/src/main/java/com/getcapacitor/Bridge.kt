@@ -38,7 +38,6 @@ import org.json.JSONException
 import java.io.File
 import java.net.SocketTimeoutException
 import java.net.URL
-import java.util.LinkedList
 import java.util.regex.Pattern
 
 /**
@@ -55,39 +54,39 @@ import java.util.regex.Pattern
  * pass through to Bridge:
  * [BridgeActivity](https://github.com/ionic-team/capacitor/blob/HEAD/android/capacitor/src/main/java/com/getcapacitor/BridgeActivity.java)
  */
-class Bridge private constructor(
+public class Bridge private constructor(
     /**
      * Get the activity for the app
      */
-    val activity: AppCompatActivity,
+    public val activity: AppCompatActivity,
     // A pre-determined path to load the bridge
     internal val serverPath: ServerPath?,
     /**
      * Get the fragment for the app, if applicable. This will likely be null unless Capacitor
      * is being used embedded in a Native Android app.
      */
-    val fragment: Fragment?,
+    public val fragment: Fragment?,
     /**
      * Get the core WebView under Capacitor's control
      */
-    val webView: WebView,
+    public val webView: WebView,
     private val initialPlugins: List<Class<out Plugin>>,
     private val pluginInstances: List<Plugin>,
     config: CapConfig?,
 ) {
     // Loaded Capacitor config
-    val config: CapConfig
+    public val config: CapConfig
 
-    lateinit var localServer: WebViewLocalServer
+    public lateinit var localServer: WebViewLocalServer
         private set
-    var localUrl: String? = null
+    public var localUrl: String? = null
         private set
-    var appUrl: String? = null
+    public var appUrl: String? = null
         private set
     private var appUrlConfig: String? = null
-    lateinit var appAllowNavigationMask: HostMask
+    public lateinit var appAllowNavigationMask: HostMask
         private set
-    val allowedOriginRules: MutableSet<String> = HashSet()
+    public val allowedOriginRules: MutableSet<String> = HashSet()
     private val authorities = ArrayList<String?>()
     private var miscJSFileInjections = ArrayList<String>()
     private var canInjectJS = true
@@ -95,13 +94,13 @@ class Bridge private constructor(
     /**
      * The WebViewClient in use. Setting it also installs it on the WebView.
      */
-    var webViewClient: BridgeWebViewClient = BridgeWebViewClient(this)
+    public var webViewClient: BridgeWebViewClient = BridgeWebViewClient(this)
         set(client) {
             field = client
             webView.webViewClient = client
         }
 
-    val app: App = App()
+    public val app: App = App()
 
     // Our MessageHandler for sending and receiving data to the WebView
     private val msgHandler: MessageHandler
@@ -115,20 +114,13 @@ class Bridge private constructor(
     // A map of Plugin Id's to PluginHandle's
     private val plugins: MutableMap<String, PluginHandle> = HashMap()
 
-    // Stored plugin calls that we're keeping around to call again someday
-    private var savedCalls: MutableMap<String?, PluginCall> = HashMap()
-
-    // The call IDs of saved plugin calls with associated plugin id for handling permissions
-    private val savedPermissionCallIds: MutableMap<String?, LinkedList<String?>> = HashMap()
-
-    // Store a plugin that started a new activity, in case we need to resume
-    // the app and return that data back
-    private var pluginCallForLastActivity: PluginCall? = null
+    // Saved plugin calls: kept alive, waiting for permissions, or waiting for an activity result
+    private val savedCallStore = SavedCallStore()
 
     /**
      * Get the URI that was used to launch the app (if any)
      */
-    val intentUri: Uri?
+    public val intentUri: Uri?
 
     // A list of listeners that trigger when webView events occur
     internal var webViewListeners: MutableList<WebViewListener> = ArrayList()
@@ -142,7 +134,7 @@ class Bridge private constructor(
         taskHandler = Handler(handlerThread.looper)
 
         this.config = config ?: CapConfig.loadDefault(activity)
-        Logger.init(this.config)
+        Logger.loggingEnabled = this.config.isLoggingEnabled
 
         // Initialize web view and message handler for it
         initWebView()
@@ -178,7 +170,7 @@ class Bridge private constructor(
     }
 
     private fun loadWebView() {
-        val html5mode = config.isHTML5Mode()
+        val html5mode = config.isHTML5Mode
 
         // Start the local web server
         var injector = getJSInjector()
@@ -201,7 +193,7 @@ class Bridge private constructor(
         webView.webChromeClient = BridgeWebChromeClient(this)
         webView.webViewClient = webViewClient
 
-        if (config.isResolveServiceWorkerRequests()) {
+        if (config.isResolveServiceWorkerRequests) {
             val swController = ServiceWorkerController.getInstance()
             swController.setServiceWorkerClient(
                 object : ServiceWorkerClient() {
@@ -244,7 +236,7 @@ class Bridge private constructor(
         }
     }
 
-    fun isMinimumWebViewInstalled(): Boolean {
+    public fun isMinimumWebViewInstalled(): Boolean {
         val info = WebView.getCurrentWebViewPackage() ?: return false
         val pattern = Pattern.compile("(\\d+)")
         // The Java original threw on a WebView package without a version name; it now counts as unsupported.
@@ -261,7 +253,7 @@ class Bridge private constructor(
         return false
     }
 
-    fun launchIntent(url: Uri): Boolean {
+    public fun launchIntent(url: Uri): Boolean {
         // The proxy returns a remote body at the app origin, so block it before plugins can allow it.
         val path = url.path
         if (path != null && path.startsWith(CAPACITOR_HTTP_INTERCEPTOR_START)) {
@@ -325,7 +317,7 @@ class Bridge private constructor(
         return false
     }
 
-    fun handleAppUrlLoadError(ex: Exception?) {
+    public fun handleAppUrlLoadError(ex: Exception?) {
         if (ex is SocketTimeoutException) {
             Logger.error(
                 "Unable to load app. Ensure the server is running at " +
@@ -337,34 +329,34 @@ class Bridge private constructor(
         }
     }
 
-    val isDevMode: Boolean
+    public val isDevMode: Boolean
         get() = (activity.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     /**
      * Get the Context for the App
      */
-    val context: Context
+    public val context: Context
         get() = activity
 
     /**
      * Get scheme that is used to serve content
      */
-    val scheme: String
+    public val scheme: String
         get() = config.androidScheme
 
     /**
      * Get host name that is used to serve content
      */
-    val host: String?
+    public val host: String?
         get() = config.hostname
 
     /**
      * Get the server url that is used to serve content
      */
-    val serverUrl: String?
+    public val serverUrl: String?
         get() = config.serverUrl
 
-    val errorUrl: String?
+    public val errorUrl: String?
         get() {
             val errorPath = config.errorPath
 
@@ -381,11 +373,9 @@ class Bridge private constructor(
             return null
         }
 
-    fun reset() {
-        savedCalls = HashMap()
-        for (handle in plugins.values) {
-            handle.instance.removeAllListeners()
-        }
+    public fun reset() {
+        savedCallStore.reset()
+        eachPlugin { it.removeAllListeners() }
     }
 
     /**
@@ -399,7 +389,7 @@ class Bridge private constructor(
         settings.setGeolocationEnabled(true)
         settings.mediaPlaybackRequiresUserGesture = false
         settings.javaScriptCanOpenWindowsAutomatically = true
-        if (config.isMixedContentAllowed()) {
+        if (config.isMixedContentAllowed) {
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
@@ -423,13 +413,13 @@ class Bridge private constructor(
         }
 
         settings.displayZoomControls = false
-        settings.builtInZoomControls = config.isZoomableWebView()
+        settings.builtInZoomControls = config.isZoomableWebView
 
-        if (config.isInitialFocus()) {
+        if (config.isInitialFocus) {
             webView.requestFocusFromTouch()
         }
 
-        WebView.setWebContentsDebuggingEnabled(config.isWebContentsDebuggingEnabled())
+        WebView.setWebContentsDebuggingEnabled(config.isWebContentsDebuggingEnabled)
 
         appUrlConfig = serverUrl
         val authority = host
@@ -485,13 +475,13 @@ class Bridge private constructor(
      * Register additional plugins
      * @param pluginClasses the plugins to register
      */
-    fun registerPlugins(pluginClasses: Array<Class<out Plugin>>) {
+    public fun registerPlugins(pluginClasses: Array<Class<out Plugin>>) {
         for (plugin in pluginClasses) {
             registerPlugin(plugin)
         }
     }
 
-    fun registerPluginInstances(pluginInstances: Array<Plugin>) {
+    public fun registerPluginInstances(pluginInstances: Array<Plugin>) {
         for (plugin in pluginInstances) {
             registerPluginInstance(plugin)
         }
@@ -501,7 +491,7 @@ class Bridge private constructor(
      * Register a plugin class
      * @param pluginClass a class inheriting from Plugin
      */
-    fun registerPlugin(pluginClass: Class<out Plugin>) {
+    public fun registerPlugin(pluginClass: Class<out Plugin>) {
         val pluginId = pluginId(pluginClass) ?: return
 
         try {
@@ -513,7 +503,7 @@ class Bridge private constructor(
         }
     }
 
-    fun registerPluginInstance(plugin: Plugin) {
+    public fun registerPluginInstance(plugin: Plugin) {
         val clazz = plugin.javaClass
         val pluginId = pluginId(clazz) ?: return
 
@@ -559,7 +549,13 @@ class Bridge private constructor(
         Logger.error("Plugin " + clazz.name + " failed to load", ex)
     }
 
-    fun getPlugin(pluginId: String?): PluginHandle? = plugins[pluginId]
+    public fun getPlugin(pluginId: String?): PluginHandle? = plugins[pluginId]
+
+    private inline fun eachPlugin(block: (Plugin) -> Unit) {
+        for (handle in plugins.values) {
+            block(handle.instance)
+        }
+    }
 
     /**
      * Call a method on a plugin.
@@ -567,7 +563,7 @@ class Bridge private constructor(
      * @param methodName the name of the method to call
      * @param call the call object to pass to the method
      */
-    fun callPluginMethod(pluginId: String?, methodName: String?, call: PluginCall) {
+    public fun callPluginMethod(pluginId: String?, methodName: String?, call: PluginCall) {
         try {
             val plugin = getPlugin(pluginId)
 
@@ -595,7 +591,7 @@ class Bridge private constructor(
                     try {
                         plugin.invoke(methodName, call)
 
-                        if (call.isKeptAlive()) {
+                        if (call.keepAlive) {
                             saveCall(call)
                         }
                     } catch (ex: PluginLoadException) {
@@ -622,48 +618,44 @@ class Bridge private constructor(
      * @param callback an optional ValueCallback that will synchronously receive a value
      * after calling the JS
      */
-    fun eval(js: String, callback: ValueCallback<String>?) {
+    public fun eval(js: String, callback: ValueCallback<String>?) {
         val mainHandler = Handler(activity.mainLooper)
         mainHandler.post { webView.evaluateJavascript(js, callback) }
     }
 
-    fun logToJs(message: String?, level: String?) {
+    public fun logToJs(message: String?, level: String? = "log") {
         eval("window.Capacitor.logJs(\"$message\", \"$level\")", null)
     }
 
-    fun logToJs(message: String?) {
-        logToJs(message, "log")
-    }
-
-    fun triggerJSEvent(eventName: String?, target: String?) {
+    public fun triggerJSEvent(eventName: String?, target: String?) {
         eval("window.Capacitor.triggerEvent(\"$eventName\", \"$target\")") { }
     }
 
-    fun triggerJSEvent(eventName: String?, target: String?, data: String?) {
+    public fun triggerJSEvent(eventName: String?, target: String?, data: String?) {
         eval("window.Capacitor.triggerEvent(\"$eventName\", \"$target\", $data)") { }
     }
 
-    fun triggerWindowJSEvent(eventName: String?) {
+    public fun triggerWindowJSEvent(eventName: String?) {
         triggerJSEvent(eventName, "window")
     }
 
-    fun triggerWindowJSEvent(eventName: String?, data: String?) {
+    public fun triggerWindowJSEvent(eventName: String?, data: String?) {
         triggerJSEvent(eventName, "window", data)
     }
 
-    fun triggerDocumentJSEvent(eventName: String?) {
+    public fun triggerDocumentJSEvent(eventName: String?) {
         triggerJSEvent(eventName, "document")
     }
 
-    fun triggerDocumentJSEvent(eventName: String?, data: String?) {
+    public fun triggerDocumentJSEvent(eventName: String?, data: String?) {
         triggerJSEvent(eventName, "document", data)
     }
 
-    fun execute(runnable: Runnable) {
+    public fun execute(runnable: Runnable) {
         taskHandler.post(runnable)
     }
 
-    fun executeOnMainThread(runnable: Runnable) {
+    public fun executeOnMainThread(runnable: Runnable) {
         val mainHandler = Handler(activity.mainLooper)
 
         mainHandler.post(runnable)
@@ -672,8 +664,8 @@ class Bridge private constructor(
     /**
      * Retain a call between plugin invocations
      */
-    fun saveCall(call: PluginCall) {
-        savedCalls[call.callbackId] = call
+    public fun saveCall(call: PluginCall) {
+        savedCallStore.save(call)
     }
 
     /**
@@ -681,30 +673,20 @@ class Bridge private constructor(
      * @param callbackId the callbackId to use to lookup the call with
      * @return the stored call
      */
-    fun getSavedCall(callbackId: String?): PluginCall? {
-        if (callbackId == null) {
-            return null
-        }
-
-        return savedCalls[callbackId]
-    }
+    public fun getSavedCall(callbackId: String?): PluginCall? = savedCallStore.get(callbackId)
 
     // Not a property: reading it clears it.
-    internal fun getPluginCallForLastActivity(): PluginCall? {
-        val pluginCallForLastActivity = this.pluginCallForLastActivity
-        this.pluginCallForLastActivity = null
-        return pluginCallForLastActivity
-    }
+    internal fun getPluginCallForLastActivity(): PluginCall? = savedCallStore.takeLastActivityCall()
 
     internal fun setPluginCallForLastActivity(pluginCallForLastActivity: PluginCall?) {
-        this.pluginCallForLastActivity = pluginCallForLastActivity
+        savedCallStore.setLastActivityCall(pluginCallForLastActivity)
     }
 
     /**
      * Release a retained call
      * @param call a call to release
      */
-    fun releaseCall(call: PluginCall) {
+    public fun releaseCall(call: PluginCall) {
         releaseCall(call.callbackId)
     }
 
@@ -712,8 +694,8 @@ class Bridge private constructor(
      * Release a retained call by its ID
      * @param callbackId an ID of a callback to release
      */
-    fun releaseCall(callbackId: String?) {
-        savedCalls.remove(callbackId)
+    public fun releaseCall(callbackId: String?) {
+        savedCallStore.release(callbackId)
     }
 
     /**
@@ -722,15 +704,7 @@ class Bridge private constructor(
      *
      * @return The saved plugin call
      */
-    internal fun getPermissionCall(pluginId: String?): PluginCall? {
-        val permissionCallIds = savedPermissionCallIds[pluginId]
-        var savedCallId: String? = null
-        if (permissionCallIds != null) {
-            savedCallId = permissionCallIds.poll()
-        }
-
-        return getSavedCall(savedCallId)
-    }
+    internal fun getPermissionCall(pluginId: String?): PluginCall? = savedCallStore.takePermissionCall(pluginId)
 
     /**
      * Save a call to be retrieved after requesting permissions. Calls are saved in order.
@@ -738,12 +712,7 @@ class Bridge private constructor(
      * @param call The plugin call to save.
      */
     internal fun savePermissionCall(call: PluginCall?) {
-        if (call != null) {
-            val callIds = savedPermissionCallIds.getOrPut(call.pluginId) { LinkedList() }
-
-            callIds.add(call.callbackId)
-            saveCall(call)
-        }
+        savedCallStore.savePermissionCall(call)
     }
 
     /**
@@ -754,7 +723,7 @@ class Bridge private constructor(
      * @param callback The callback run on Activity Result.
      * @return A registered Activity Result Launcher.
      */
-    fun <I, O> registerForActivityResult(contract: ActivityResultContract<I, O>, callback: ActivityResultCallback<O>): ActivityResultLauncher<I> =
+    public fun <I, O> registerForActivityResult(contract: ActivityResultContract<I, O>, callback: ActivityResultCallback<O>): ActivityResultLauncher<I> =
         if (fragment != null) {
             fragment.registerForActivityResult(contract, callback)
         } else {
@@ -767,7 +736,7 @@ class Bridge private constructor(
      */
     private fun getJSInjector(): JSInjector? {
         try {
-            val globalJS = JSExport.getGlobalJS(activity, config.isLoggingEnabled(), isDevMode)
+            val globalJS = JSExport.getGlobalJS(activity, config.isLoggingEnabled, isDevMode)
             val bridgeJS = JSExport.getBridgeJS(activity)
             val pluginJS = JSExport.getPluginJS(plugins.values)
             val localUrlJS = "window.WEBVIEW_SERVER_URL = '$localUrl';"
@@ -787,7 +756,7 @@ class Bridge private constructor(
      * Inject JavaScript from an external file before the WebView loads.
      * @param path relative to public folder
      */
-    fun injectScriptBeforeLoad(path: String) {
+    public fun injectScriptBeforeLoad(path: String) {
         if (canInjectJS) {
             miscJSFileInjections.add(path)
         }
@@ -796,7 +765,7 @@ class Bridge private constructor(
     /**
      * Restore any saved bundle state data
      */
-    fun restoreInstanceState(savedInstanceState: Bundle) {
+    public fun restoreInstanceState(savedInstanceState: Bundle) {
         val lastPluginId = savedInstanceState.getString(BUNDLE_LAST_PLUGIN_ID_KEY)
         val lastPluginCallMethod = savedInstanceState.getString(BUNDLE_LAST_PLUGIN_CALL_METHOD_NAME_KEY)
         val lastOptionsJson = savedInstanceState.getString(BUNDLE_PLUGIN_CALL_OPTIONS_SAVED_KEY)
@@ -807,8 +776,9 @@ class Bridge private constructor(
                 try {
                     val options = JSObject(lastOptionsJson)
 
-                    pluginCallForLastActivity =
-                        PluginCall(msgHandler, lastPluginId, PluginCall.CALLBACK_ID_DANGLING, lastPluginCallMethod, options)
+                    savedCallStore.setLastActivityCall(
+                        PluginCall(msgHandler, lastPluginId, PluginCall.CALLBACK_ID_DANGLING, lastPluginCallMethod, options),
+                    )
                 } catch (ex: JSONException) {
                     Logger.error("Unable to restore plugin call, unable to parse persisted JSON object", ex)
                 }
@@ -825,12 +795,12 @@ class Bridge private constructor(
         }
     }
 
-    fun saveInstanceState(outState: Bundle) {
+    public fun saveInstanceState(outState: Bundle) {
         Logger.debug("Saving instance state!")
 
         // If there was a last PluginCall for a started activity, we need to
         // persist it so we can load it again in case our app gets terminated
-        val call = pluginCallForLastActivity
+        val call = savedCallStore.peekLastActivityCall()
         if (call != null) {
             val handle = getPlugin(call.pluginId)
 
@@ -962,73 +932,57 @@ class Bridge private constructor(
     /**
      * Handle an onNewIntent lifecycle event and notify the plugins
      */
-    fun onNewIntent(intent: Intent?) {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnNewIntent(intent)
-        }
+    public fun onNewIntent(intent: Intent?) {
+        eachPlugin { it.dispatchOnNewIntent(intent) }
     }
 
     /**
      * Handle an onConfigurationChanged event and notify the plugins
      */
-    fun onConfigurationChanged(newConfig: Configuration?) {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnConfigurationChanged(newConfig)
-        }
+    public fun onConfigurationChanged(newConfig: Configuration?) {
+        eachPlugin { it.dispatchOnConfigurationChanged(newConfig) }
     }
 
     /**
      * Handle onRestart lifecycle event and notify the plugins
      */
-    fun onRestart() {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnRestart()
-        }
+    public fun onRestart() {
+        eachPlugin { it.dispatchOnRestart() }
     }
 
     /**
      * Handle onStart lifecycle event and notify the plugins
      */
-    fun onStart() {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnStart()
-        }
+    public fun onStart() {
+        eachPlugin { it.dispatchOnStart() }
     }
 
     /**
      * Handle onResume lifecycle event and notify the plugins
      */
-    fun onResume() {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnResume()
-        }
+    public fun onResume() {
+        eachPlugin { it.dispatchOnResume() }
     }
 
     /**
      * Handle onPause lifecycle event and notify the plugins
      */
-    fun onPause() {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnPause()
-        }
+    public fun onPause() {
+        eachPlugin { it.dispatchOnPause() }
     }
 
     /**
      * Handle onStop lifecycle event and notify the plugins
      */
-    fun onStop() {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnStop()
-        }
+    public fun onStop() {
+        eachPlugin { it.dispatchOnStop() }
     }
 
     /**
      * Handle onDestroy lifecycle event and notify the plugins
      */
-    fun onDestroy() {
-        for (plugin in plugins.values) {
-            plugin.instance.dispatchOnDestroy()
-        }
+    public fun onDestroy() {
+        eachPlugin { it.dispatchOnDestroy() }
 
         handlerThread.quitSafely()
     }
@@ -1036,7 +990,7 @@ class Bridge private constructor(
     /**
      * Handle onDetachedFromWindow lifecycle event
      */
-    fun onDetachedFromWindow() {
+    public fun onDetachedFromWindow() {
         webView.removeAllViews()
         webView.destroy()
     }
@@ -1045,7 +999,7 @@ class Bridge private constructor(
      * The path the local server serves from. Setting it tells the local server to load files from the given
      * file path instead of the assets path, and reloads the app.
      */
-    var serverBasePath: String?
+    public var serverBasePath: String?
         get() = localServer.basePath
         set(path) {
             localServer.hostFiles(path)
@@ -1056,7 +1010,7 @@ class Bridge private constructor(
      * Tell the local server to load files from the given
      * asset path.
      */
-    fun setServerAssetPath(path: String?) {
+    public fun setServerAssetPath(path: String?) {
         localServer.hostAssets(path)
         loadAppUrl()
     }
@@ -1064,7 +1018,7 @@ class Bridge private constructor(
     /**
      * Reload the WebView
      */
-    fun reload() {
+    public fun reload() {
         loadAppUrl()
     }
 
@@ -1077,7 +1031,7 @@ class Bridge private constructor(
      * Add a listener that the WebViewClient can trigger on certain events.
      * @param webViewListener A [WebViewListener] to add.
      */
-    fun addWebViewListener(webViewListener: WebViewListener) {
+    public fun addWebViewListener(webViewListener: WebViewListener) {
         webViewListeners.add(webViewListener)
     }
 
@@ -1085,11 +1039,11 @@ class Bridge private constructor(
      * Remove a listener that the WebViewClient triggers on certain events.
      * @param webViewListener A [WebViewListener] to remove.
      */
-    fun removeWebViewListener(webViewListener: WebViewListener) {
+    public fun removeWebViewListener(webViewListener: WebViewListener) {
         webViewListeners.remove(webViewListener)
     }
 
-    class Builder {
+    public class Builder {
         private var instanceState: Bundle? = null
         private var config: CapConfig? = null
         private var plugins: MutableList<Class<out Plugin>> = ArrayList()
@@ -1100,36 +1054,36 @@ class Bridge private constructor(
         private val webViewListeners: MutableList<WebViewListener> = ArrayList()
         private var serverPath: ServerPath? = null
 
-        constructor(activity: AppCompatActivity) {
+        public constructor(activity: AppCompatActivity) {
             this.activity = activity
         }
 
-        constructor(fragment: Fragment) {
+        public constructor(fragment: Fragment) {
             this.activity = fragment.activity as AppCompatActivity?
             this.fragment = fragment
         }
 
-        fun setInstanceState(instanceState: Bundle?): Builder {
+        public fun setInstanceState(instanceState: Bundle?): Builder {
             this.instanceState = instanceState
             return this
         }
 
-        fun setConfig(config: CapConfig?): Builder {
+        public fun setConfig(config: CapConfig?): Builder {
             this.config = config
             return this
         }
 
-        fun setPlugins(plugins: MutableList<Class<out Plugin>>): Builder {
+        public fun setPlugins(plugins: MutableList<Class<out Plugin>>): Builder {
             this.plugins = plugins
             return this
         }
 
-        fun addPlugin(plugin: Class<out Plugin>): Builder {
+        public fun addPlugin(plugin: Class<out Plugin>): Builder {
             plugins.add(plugin)
             return this
         }
 
-        fun addPlugins(plugins: List<Class<out Plugin>>): Builder {
+        public fun addPlugins(plugins: List<Class<out Plugin>>): Builder {
             for (cls in plugins) {
                 addPlugin(cls)
             }
@@ -1137,22 +1091,22 @@ class Bridge private constructor(
             return this
         }
 
-        fun addPluginInstance(plugin: Plugin): Builder {
+        public fun addPluginInstance(plugin: Plugin): Builder {
             pluginInstances.add(plugin)
             return this
         }
 
-        fun addPluginInstances(plugins: List<Plugin>): Builder {
+        public fun addPluginInstances(plugins: List<Plugin>): Builder {
             pluginInstances.addAll(plugins)
             return this
         }
 
-        fun addWebViewListener(webViewListener: WebViewListener): Builder {
+        public fun addWebViewListener(webViewListener: WebViewListener): Builder {
             webViewListeners.add(webViewListener)
             return this
         }
 
-        fun addWebViewListeners(webViewListeners: List<WebViewListener>): Builder {
+        public fun addWebViewListeners(webViewListeners: List<WebViewListener>): Builder {
             for (listener in webViewListeners) {
                 addWebViewListener(listener)
             }
@@ -1160,17 +1114,17 @@ class Bridge private constructor(
             return this
         }
 
-        fun setRouteProcessor(routeProcessor: RouteProcessor?): Builder {
+        public fun setRouteProcessor(routeProcessor: RouteProcessor?): Builder {
             this.routeProcessor = routeProcessor
             return this
         }
 
-        fun setServerPath(serverPath: ServerPath?): Builder {
+        public fun setServerPath(serverPath: ServerPath?): Builder {
             this.serverPath = serverPath
             return this
         }
 
-        fun create(): Bridge {
+        public fun create(): Bridge {
             // Same as the Java original: a fragment without a view or a detached fragment throws here.
             val fragment = fragment
             val activity = activity!!
@@ -1195,7 +1149,7 @@ class Bridge private constructor(
         }
     }
 
-    companion object {
+    public companion object {
         private const val PERMISSION_PREFS_NAME = "PluginPermStates"
         private const val BUNDLE_LAST_PLUGIN_ID_KEY = "capacitorLastActivityPluginId"
         private const val BUNDLE_LAST_PLUGIN_CALL_METHOD_NAME_KEY = "capacitorLastActivityPluginMethod"
@@ -1206,18 +1160,18 @@ class Bridge private constructor(
         private const val MINIMUM_ANDROID_WEBVIEW_ERROR = "System WebView is not supported"
 
         // The name of the directory we use to look for index.html and the rest of our web assets
-        const val DEFAULT_WEB_ASSET_DIR = "public"
-        const val CAPACITOR_HTTP_SCHEME = "http"
-        const val CAPACITOR_HTTPS_SCHEME = "https"
-        const val CAPACITOR_FILE_START = "/_capacitor_file_"
-        const val CAPACITOR_CONTENT_START = "/_capacitor_content_"
-        const val CAPACITOR_HTTP_INTERCEPTOR_START = "/_capacitor_http_interceptor_"
+        public const val DEFAULT_WEB_ASSET_DIR: String = "public"
+        public const val CAPACITOR_HTTP_SCHEME: String = "http"
+        public const val CAPACITOR_HTTPS_SCHEME: String = "https"
+        public const val CAPACITOR_FILE_START: String = "/_capacitor_file_"
+        public const val CAPACITOR_CONTENT_START: String = "/_capacitor_content_"
+        public const val CAPACITOR_HTTP_INTERCEPTOR_START: String = "/_capacitor_http_interceptor_"
 
-        const val CAPACITOR_HTTP_INTERCEPTOR_URL_PARAM = "u"
+        public const val CAPACITOR_HTTP_INTERCEPTOR_URL_PARAM: String = "u"
 
-        const val DEFAULT_ANDROID_WEBVIEW_VERSION = 60
-        const val MINIMUM_ANDROID_WEBVIEW_VERSION = 55
-        const val DEFAULT_HUAWEI_WEBVIEW_VERSION = 10
-        const val MINIMUM_HUAWEI_WEBVIEW_VERSION = 10
+        public const val DEFAULT_ANDROID_WEBVIEW_VERSION: Int = 60
+        public const val MINIMUM_ANDROID_WEBVIEW_VERSION: Int = 55
+        public const val DEFAULT_HUAWEI_WEBVIEW_VERSION: Int = 10
+        public const val MINIMUM_HUAWEI_WEBVIEW_VERSION: Int = 10
     }
 }
