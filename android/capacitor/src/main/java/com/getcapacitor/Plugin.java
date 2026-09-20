@@ -538,8 +538,12 @@ public class Plugin {
      * Exported plugin call for adding a listener to this plugin
      * @param call
      */
+    // The returnType below is spelled as a literal ("none" == PluginMethod.RETURN_NONE) on purpose: while this
+    // class is still Java, kotlinc reads these annotations from source when compiling Kotlin subclasses and
+    // cannot resolve a constant that lives in the companion of the Kotlin PluginMethod annotation (compiler crash).
+    // Switch back to the constants once this class is Kotlin.
     @SuppressWarnings("unused")
-    @PluginMethod(returnType = PluginMethod.RETURN_NONE)
+    @PluginMethod(returnType = "none")
     public void addListener(PluginCall call) {
         String eventName = call.getString("eventName");
         call.setKeepAlive(true);
@@ -551,7 +555,7 @@ public class Plugin {
      * @param call
      */
     @SuppressWarnings("unused")
-    @PluginMethod(returnType = PluginMethod.RETURN_NONE)
+    @PluginMethod(returnType = "none")
     public void removeListener(PluginCall call) {
         String eventName = call.getString("eventName");
         String callbackId = call.getString("callbackId");
@@ -567,7 +571,7 @@ public class Plugin {
      * @param call
      */
     @SuppressWarnings("unused")
-    @PluginMethod(returnType = PluginMethod.RETURN_PROMISE)
+    @PluginMethod(returnType = "promise")
     public void removeAllListeners(PluginCall call) {
         eventListeners.clear();
         call.resolve();

@@ -4,7 +4,6 @@
     <issue id="AndroidGradlePluginVersion" severity="ignore" />
     <!-- core-ktx is intentionally not a dependency of the runtime -->
     <issue id="UseKtx" severity="ignore" />
-    <issue id="DiscouragedApi">
-        <ignore path="src/main/java/com/getcapacitor/plugin/util/AssetUtil.java" />
-    </issue>
+    <!-- trim { it <= ' ' } is java.lang.String.trim(); Kotlin's trim() strips Unicode whitespace, so the lambda is intentional -->
+    <issue id="TrimLambda" severity="ignore" />
 </lint>
