@@ -12,8 +12,8 @@ ext {
 
 
 buildscript {
-    // The ext block above is not visible here. Apps can align this with their own Kotlin version via kotlinVersion
-    ext.kotlin_gradle_version = project.hasProperty('kotlinVersion') ? rootProject.ext.kotlinVersion : '2.2.20'
+    // The ext block above is not visible here. Follows the app's kotlin_version so both use one Kotlin Gradle plugin
+    ext.kotlin_gradle_version = project.hasProperty('kotlin_version') ? rootProject.ext.kotlin_version : '2.2.20'
     repositories {
         google()
         mavenCentral()

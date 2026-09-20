@@ -1,16 +1,19 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# Rules applied to apps that consume this library.
 #
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Rules for Capacitor v3 plugins and annotations
- -keep @com.getcapacitor.annotation.CapacitorPlugin public class * {
-     @com.getcapacitor.annotation.PermissionCallback <methods>;
-     @com.getcapacitor.annotation.ActivityCallback <methods>;
-     @com.getcapacitor.annotation.Permission <methods>;
-     @com.getcapacitor.PluginMethod public <methods>;
- }
+# Plugins are discovered by reflection: the bridge reads @CapacitorPlugin and @PluginMethod at runtime,
+# including annotation members that are left at their default value.
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 
- -keep public class * extends com.getcapacitor.Plugin { *; }
+# Plugins are instantiated through their no-argument constructor and their methods are looked up by name
+-keep @com.getcapacitor.annotation.CapacitorPlugin public class * {
+    public <init>();
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
+    @com.getcapacitor.annotation.ActivityCallback <methods>;
+    @com.getcapacitor.PluginMethod public <methods>;
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+-keep public class * extends com.getcapacitor.Plugin { *; }
