@@ -1,3 +1,5 @@
+import Foundation
+
 /**
  * CAPFileManager helps map file schemes to physical files, whether they are on
  * disk, in a bundle, or in another location.

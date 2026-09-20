@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 // the @available compiler directive does not provide an easy way to split apart string literals, so ignore the line length
 // swiftlint:disable line_length

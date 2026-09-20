@@ -5,10 +5,10 @@ public class CAPWebViewPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPWebViewPlugin"
     public let jsName = "WebView"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "setServerAssetPath", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setServerBasePath", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getServerBasePath", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "persistServerBasePath", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setServerAssetPath", returnType: .promise),
+        CAPPluginMethod(name: "setServerBasePath", returnType: .promise),
+        CAPPluginMethod(name: "getServerBasePath", returnType: .promise),
+        CAPPluginMethod(name: "persistServerBasePath", returnType: .promise)
     ]
 
     @objc func setServerAssetPath(_ call: CAPPluginCall) {

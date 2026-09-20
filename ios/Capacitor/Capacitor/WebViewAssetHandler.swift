@@ -1,5 +1,6 @@
 import Foundation
 import UniformTypeIdentifiers
+import WebKit
 
 @objc(CAPWebViewAssetHandler)
 // swiftlint:disable type_body_length

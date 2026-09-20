@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import WebKit
 
 extension WKWebView: CapacitorExtension {}
@@ -19,18 +20,20 @@ public extension CapacitorExtensionTypeWrapper where T == WKWebView {
 
 private var associatedKeyboardFlagHandle: UInt8 = 0
 
-internal extension WKWebView {
-    // Our lazy property can't be represented in Obj-C so we need this simple wrapper.
-    // swiftlint:disable identifier_name
-    @objc static func _swizzleKeyboardMethods() {
-        _ = oneTimeOnlySwizzle
-    }
-
-    typealias FiveArgClosureType =  @convention(c) (Any, Selector, UnsafeRawPointer, Bool, Bool, Bool, Any?) -> Void
-
-    // dispatch_once isn't available in Swift, but lazy properties use the same mechanism under the hood so
+/// Runtime hooks that used to be installed from Obj-C `+load` methods. Swift has no equivalent, so they are installed lazily, exactly
+/// once, before the first web view or bridge is created (see `CAPBridgeViewController.loadView()` and `CapacitorBridge.init`).
+internal enum CapacitorRuntimeHooks {
+    // dispatch_once isn't available in Swift, but lazy static properties use the same mechanism under the hood so
     // we can safely assume that this block of code will only execute once.
-    static let oneTimeOnlySwizzle: () = {
+    static let install: Void = {
+        swizzleKeyboardMethods()
+        swizzleStatusBarTapAction()
+    }()
+
+    private typealias FiveArgClosureType = @convention(c) (Any, Selector, UnsafeRawPointer, Bool, Bool, Bool, Any?) -> Void
+    private typealias TapActionClosureType = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
+
+    private static func swizzleKeyboardMethods() {
         let frameworkName = "WK"
         let className = "ContentView"
         guard let targetClass = NSClassFromString(frameworkName + className) else {
@@ -51,6 +54,7 @@ internal extension WKWebView {
         let swizzleFiveArgClosure = { (method: Method, selector: Selector) in
             let originalImp: IMP = method_getImplementation(method)
             let original: FiveArgClosureType = unsafeBitCast(originalImp, to: FiveArgClosureType.self)
+            // swiftlint:disable:next identifier_name
             let block: @convention(block) (Any, UnsafeRawPointer, Bool, Bool, Bool, Any?) -> Void = { (me, arg0, arg1, arg2, arg3, arg4) in
                 if let webview = containingWebView(me), let flag = webview.capacitor.keyboardShouldRequireUserInteraction {
                     original(me, selector, arg0, !flag, arg2, arg3, arg4)
@@ -67,8 +71,32 @@ internal extension WKWebView {
         if let method = class_getInstanceMethod(targetClass, selectorMkIV) {
             swizzleFiveArgClosure(method, selectorMkIV)
         }
-    }()
+    }
 
+    /// Posts `Notification.Name.capacitorStatusBarTapped` whenever the status bar is tapped, then forwards to the original implementation.
+    private static func swizzleStatusBarTapAction() {
+        let targetClass: AnyClass = UIStatusBarManager.self
+        let selector = NSSelectorFromString("handleTapAction:")
+        guard let method = class_getInstanceMethod(targetClass, selector) else {
+            return
+        }
+
+        let originalImp: IMP = method_getImplementation(method)
+        let original: TapActionClosureType = unsafeBitCast(originalImp, to: TapActionClosureType.self)
+        // swiftlint:disable:next identifier_name
+        let block: @convention(block) (AnyObject, AnyObject?) -> Void = { (me, action) in
+            NotificationCenter.default.post(name: .capacitorStatusBarTapped, object: nil)
+            original(me, selector, action)
+        }
+        let imp: IMP = imp_implementationWithBlock(block)
+        // if the method is inherited, add an override to this class instead of replacing the implementation of the superclass
+        if !class_addMethod(targetClass, selector, imp, method_getTypeEncoding(method)) {
+            method_setImplementation(method, imp)
+        }
+    }
+}
+
+internal extension WKWebView {
     var associatedKeyboardFlagValue: Any? {
         get {
             return objc_getAssociatedObject(self, &associatedKeyboardFlagHandle)

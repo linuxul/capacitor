@@ -1,14 +1,15 @@
 import Foundation
+import UIKit
 
 @objc(CAPSystemBarsPlugin)
 public class CAPSystemBarsPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPSystemBarsPlugin"
     public let jsName = "SystemBars"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "setStyle", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setAnimation", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "show", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setStyle", returnType: .promise),
+        CAPPluginMethod(name: "setAnimation", returnType: .promise),
+        CAPPluginMethod(name: "show", returnType: .promise),
+        CAPPluginMethod(name: "hide", returnType: .promise)
     ]
 
     public private(set) var hideHomeIndicator: Bool = false

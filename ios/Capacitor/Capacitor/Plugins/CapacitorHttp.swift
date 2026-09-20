@@ -5,12 +5,12 @@ public class CAPHttpPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPHttpPlugin"
     public let jsName = "CapacitorHttp"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "get", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "post", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "put", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "patch", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "delete", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "request", returnType: .promise),
+        CAPPluginMethod(name: "get", returnType: .promise),
+        CAPPluginMethod(name: "post", returnType: .promise),
+        CAPPluginMethod(name: "put", returnType: .promise),
+        CAPPluginMethod(name: "patch", returnType: .promise),
+        CAPPluginMethod(name: "delete", returnType: .promise)
     ]
 
     @objc func http(_ call: CAPPluginCall, _ httpMethod: String?) {

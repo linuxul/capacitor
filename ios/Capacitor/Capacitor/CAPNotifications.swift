@@ -1,3 +1,5 @@
+import Foundation
+
 /**
  Notificaton types for NotificationCenter and NSNotificationCenter
 

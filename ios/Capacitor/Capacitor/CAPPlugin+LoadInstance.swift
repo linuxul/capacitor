@@ -6,6 +6,8 @@
 //  Copyright © 2022 Drifty Co. All rights reserved.
 //
 
+import Foundation
+
 extension CAPBridgedPlugin where Self: CAPPlugin {
     func load(on bridge: CAPBridgeProtocol) {
         self.bridge = bridge

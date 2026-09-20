@@ -205,6 +205,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         self.autoRegisterPlugins = autoRegisterPlugins
         super.init()
 
+        // covers bridges that are created without a CAPBridgeViewController
+        _ = CapacitorRuntimeHooks.install
+
         self.webViewDelegationHandler.bridge = self
         self.webViewAssetHandler.setConfiguration(configuration)
 
@@ -461,12 +464,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         }
 
         if !plugin.responds(to: selector) {
-            // we don't want to break up string literals
-            // swiftlint:disable line_length
             CAPLog.print("⚡️  Error: Plugin \(plugin.getId()) does not respond to method call \"\(call.method)\" using selector \"\(selector)\".")
-            CAPLog.print("⚡️  Ensure plugin method exists, uses @objc in its declaration, and arguments match selector without callbacks in CAP_PLUGIN_METHOD.")
+            CAPLog.print("⚡️  Ensure plugin method exists, uses @objc in its declaration, and is listed in the pluginMethods of the plugin.")
             CAPLog.print("⚡️  Learn more: \(docLink(DocLinks.CAPPluginMethodSelector.rawValue))")
-            // swiftlint:enable line_length
             return
         }
 
@@ -477,29 +477,15 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
             let pluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: call.method,
                                            options: JSTypes.coerceDictionaryToJSObject(call.options,
                                                                                        formattingDatesAsStrings: plugin.shouldStringifyDatesInCalls) ?? [:],
-                                           success: {(result: CAPPluginCallResult?, pluginCall: CAPPluginCall?) in
-                                            if let result = result {
-                                                self?.toJs(result: JSResult(call: call, callResult: result), save: pluginCall?.keepAlive ?? false)
-                                            } else {
-                                                self?.toJs(result: JSResult(call: call, result: .dictionary([:])), save: pluginCall?.keepAlive ?? false)
-                                            }
-                                           }, error: {(error: CAPPluginCallError?) in
-                                            if let error = error {
-                                                self?.toJsError(error: JSResultError(call: call, callError: error))
-                                            } else {
-                                                self?.toJsError(error: JSResultError(call: call,
-                                                                                     errorMessage: "",
-                                                                                     errorDescription: "",
-                                                                                     errorCode: nil,
-                                                                                     result: .dictionary([:])))
-                                            }
+                                           success: { (result: CAPPluginCallResult, pluginCall: CAPPluginCall) in
+                                            self?.toJs(result: JSResult(call: call, callResult: result), save: pluginCall.keepAlive)
+                                           }, error: { (error: CAPPluginCallError) in
+                                            self?.toJsError(error: JSResultError(call: call, callError: error))
                                            })
 
-            if let pluginCall = pluginCall {
-                plugin.perform(selector, with: pluginCall)
-                if pluginCall.keepAlive {
-                    self?.saveCall(pluginCall)
-                }
+            plugin.perform(selector, with: pluginCall)
+            if pluginCall.keepAlive {
+                self?.saveCall(pluginCall)
             }
 
             // let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
@@ -509,7 +495,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     func removeAllPluginListeners() {
         for plugin in plugins.values {
-            plugin.perform(#selector(CAPPlugin.removeAllListeners(_:)), with: nil)
+            plugin.removeAllListeners()
         }
     }
 

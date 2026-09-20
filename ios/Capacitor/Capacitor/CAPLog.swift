@@ -1,3 +1,5 @@
+import Foundation
+
 public class CAPLog {
     public static var enableLogging: Bool = true
 

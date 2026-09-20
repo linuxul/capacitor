@@ -1,4 +1,6 @@
 // convenience wrappers to transform Arrays between NSNull and Optional values, for interoperability with Obj-C
+
+import Foundation
 extension Array: CapacitorExtension {}
 extension CapacitorExtensionTypeWrapper where T == [JSValue] {
     public func replacingNullValues() -> [JSValue?] {

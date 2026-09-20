@@ -186,11 +186,6 @@ extension JSValueContainer {
     }
 }
 
-@objc protocol BridgedJSValueContainer: NSObjectProtocol {
-    static var jsDateFormatter: ISO8601DateFormatter { get }
-    var dictionaryRepresentation: NSDictionary { get }
-}
-
 /*
  Simply casting objects from foundation class clusters (such as __NSArrayM)
  doesn't work with the JSValue protocol and will always fail. So we need to

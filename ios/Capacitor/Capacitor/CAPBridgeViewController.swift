@@ -41,6 +41,8 @@ import WebKit
         assetHandler.setAssetPath(configuration.appLocation.path)
         assetHandler.setServerUrl(configuration.serverURL)
         let delegationHandler = WebViewDelegationHandler()
+        // the runtime hooks must be in place before the first web view exists
+        _ = CapacitorRuntimeHooks.install
         prepareWebView(with: configuration, assetHandler: assetHandler, delegationHandler: delegationHandler)
         view = webView
         // create the bridge

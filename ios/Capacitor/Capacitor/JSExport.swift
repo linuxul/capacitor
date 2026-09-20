@@ -1,3 +1,6 @@
+import Foundation
+import WebKit
+
 internal struct PluginHeaderMethod: Codable {
     let name: String
     let rtype: String?
@@ -107,16 +110,13 @@ internal class JSExport {
     }
 
     private static func createPluginHeaderMethod(method: CAPPluginMethod) -> PluginHeaderMethod {
-        var rtype = method.returnType
-        if rtype == "none" {
-            rtype = nil
-        }
+        let rtype: String? = method.returnType == .none ? nil : method.returnType.rawValue
         return PluginHeaderMethod(name: method.name, rtype: rtype)
     }
 
     private static func generateMethod(pluginClassName: String, method: CAPPluginMethod) -> String {
-        let methodName = method.name!
-        let returnType = method.returnType!
+        let methodName = method.name
+        let returnType = method.returnType
         var paramList = [String]()
 
         // add the catch-all
@@ -125,7 +125,7 @@ internal class JSExport {
         paramList.append(catchallOptionsParameter)
 
         // Automatically add the _callback param if returning data through a callback
-        if returnType == CAPPluginReturnCallback {
+        if returnType == .callback {
             paramList.append(callbackParameter)
         }
 
@@ -138,27 +138,25 @@ internal class JSExport {
         var lines = [String]()
 
         // Create the function declaration
-        lines.append("t['\(method.name!)'] = function(\(paramString)) {")
+        lines.append("t['\(methodName)'] = function(\(paramString)) {")
 
         // Create the call to Capacitor ...
-        if returnType == CAPPluginReturnNone {
+        switch returnType {
+        case .none:
             // ...using none
             lines.append("""
                     return w.Capacitor.nativeCallback('\(pluginClassName)', '\(methodName)', \(argObjectString));
                     """)
-        } else if returnType == CAPPluginReturnPromise {
-
+        case .promise:
             // ...using a promise
             lines.append("""
                     return w.Capacitor.nativePromise('\(pluginClassName)', '\(methodName)', \(argObjectString));
                     """)
-        } else if returnType == CAPPluginReturnCallback {
+        case .callback:
             // ...using a callback
             lines.append("""
                     return w.Capacitor.nativeCallback('\(pluginClassName)', '\(methodName)', \(argObjectString), \(callbackParameter));
                     """)
-        } else {
-            CAPLog.print("Error: plugin method return type \(returnType) is not supported!")
         }
 
         // Close the function

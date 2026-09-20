@@ -15,8 +15,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '17.0'
   s.authors = { 'Ionic Team' => 'hi@ionicframework.com' }
   s.source = { git: 'https://github.com/ionic-team/capacitor.git', tag: package['version'] }
-  s.source_files = "#{prefix}Capacitor/Capacitor/**/*.{swift,h,m}"
-  s.module_map = "#{prefix}Capacitor/Capacitor/Capacitor.modulemap"
+  s.source_files = "#{prefix}Capacitor/Capacitor/**/*.swift"
   s.resources = ["#{prefix}Capacitor/Capacitor/assets/native-bridge.js"]
   s.resource_bundles = { 'Capacitor' => ["#{prefix}Capacitor/Capacitor/PrivacyInfo.xcprivacy"] }
   s.swift_version = '5.9'

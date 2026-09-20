@@ -30,8 +30,13 @@ class BridgedTypesTests: XCTestCase {
         let date = NSDate(timeIntervalSinceReferenceDate: 632854800)
         let subDictionary: [AnyHashable: Any] = ["testIntArray": [0, 1, 2], "testStringArray": ["1", "2", "3"], "testDictionary":["foo":"bar"]]
         var dictionary: [AnyHashable: Any] = ["testInt": 1 as Int, "testFloat": Float.pi, "testBool": true as Bool, "testString": "Some string value", "testChild": subDictionary, "testDateString": formatter.string(from: date as Date)]
-        let serializer = JSONSerializationWrapper(dictionary: dictionary)!
-        var unwrappedResult = serializer.unwrappedResult()!
+        // roundtrip through the JSON serializer and receive the result as an NSDictionary so that the values keep their
+        // Foundation class cluster types (e.g. __NSCFNumber), which is what the bridge receives from the web view.
+        // swiftlint:disable force_try force_cast
+        let serializedData = try! JSONSerialization.data(withJSONObject: dictionary, options: .prettyPrinted)
+        let deserializedObject = try! JSONSerialization.jsonObject(with: serializedData, options: []) as! NSDictionary
+        var unwrappedResult = deserializedObject as! [AnyHashable: Any]
+        // swiftlint:enable force_try force_cast
         // date objects are not handled by the JSON serializer, so we have to insert these after the roundtrip
         unwrappedResult["testDateObject"] = date
         dictionary["testDateObject"] = date
@@ -198,5 +203,25 @@ class BridgedTypesTests: XCTestCase {
         let array: [Any] = ["test string 1", 1, NSNull()]
         let sparseArray = JSTypes.coerceArrayToJSArray(array)?.capacitor.replacingNullValues() as? [String?]
         XCTAssertNil(sparseArray)
+    }
+
+    func testNullHandling() throws {
+        let source: [Any] = ["test", NSNull(), 3]
+        let result = try XCTUnwrap(JSTypes.coerceArrayToJSArray(source)).capacitor.replacingNullValues().capacitor.replacingOptionalValues() as [Any]
+        // test that the replaced null value exists, both natively and when bridged to Foundation
+        XCTAssertTrue(result[1] is NSNull)
+        XCTAssertTrue((result as NSArray).object(at: 1) is NSNull)
+        // test that the null value casts to non-optional
+        let castArray = try XCTUnwrap(result as? [JSValue])
+        XCTAssertTrue(castArray[1] is NSNull)
+    }
+
+    func testOptionalHandling() throws {
+        let source: [Any] = ["test", NSNull(), 3]
+        let result = try XCTUnwrap(JSTypes.coerceArrayToJSArray(source)).capacitor.replacingNullValues() as [Any]
+        // test that the removed null value, now optional, is automatically transformed back into a NSNull when bridged
+        XCTAssertTrue((result as NSArray).object(at: 1) is NSNull)
+        // test that the optional value fails to cast to non-optional
+        XCTAssertNil(result as? [JSValue])
     }
 }

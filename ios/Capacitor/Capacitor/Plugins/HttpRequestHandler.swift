@@ -204,7 +204,7 @@ open class HttpRequestHandler {
         let timeout = (connectTimeout ?? readTimeout ?? 600000.0) / 1000.0
         request.setTimeout(timeout)
 
-        if let data = call.options["data"] as? JSValue {
+        if let data = call.options["data"] {
             do {
                 try request.setRequestBody(data, dataType)
             } catch {

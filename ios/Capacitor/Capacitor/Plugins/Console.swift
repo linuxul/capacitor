@@ -5,7 +5,7 @@ public class CAPConsolePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPConsolePlugin"
     public let jsName = "Console"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "log", returnType: CAPPluginReturnNone)
+        CAPPluginMethod(name: "log", returnType: .none)
     ]
 
     @objc public func log(_ call: CAPPluginCall) {

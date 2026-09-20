@@ -5,19 +5,49 @@ public typealias PluginCallErrorData = [String: Any]
 @available(*, deprecated, renamed: "PluginCallResultData")
 public typealias PluginResultData = [String: Any]
 
-/**
- * Swift niceties for CAPPluginCall
- */
+public typealias CAPPluginCallSuccessHandler = (_ result: CAPPluginCallResult, _ call: CAPPluginCall) -> Void
+public typealias CAPPluginCallErrorHandler = (_ error: CAPPluginCallError) -> Void
 
-extension CAPPluginCall: JSValueContainer {
-    public var jsObjectRepresentation: JSObject {
-        return options as? JSObject ?? [:]
+/// A single invocation of a plugin method from JavaScript.
+@objc(CAPPluginCall)
+open class CAPPluginCall: NSObject {
+    /// Whether the call should be retained by the bridge after the plugin method returns so that it can be resolved later or repeatedly.
+    @objc public var keepAlive: Bool = false
+    @objc public var callbackId: String
+    @objc public var methodName: String
+    public var options: JSObject
+    @objc public var successHandler: CAPPluginCallSuccessHandler
+    @objc public var errorHandler: CAPPluginCallErrorHandler
+
+    @available(*, deprecated, message: "Use 'keepAlive' instead.")
+    @objc public var isSaved: Bool {
+        get { return keepAlive }
+        set { keepAlive = newValue }
+    }
+
+    public init(callbackId: String, methodName: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
+        self.callbackId = callbackId
+        self.methodName = methodName
+        self.options = options
+        self.successHandler = success
+        self.errorHandler = error
+        super.init()
+    }
+
+    @available(*, deprecated, message: "Specify the method name as well.")
+    public convenience init(callbackId: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
+        self.init(callbackId: callbackId, methodName: "", options: options, success: success, error: error)
+    }
+
+    @available(*, deprecated, message: "Use the 'keepAlive' property instead.")
+    @objc public func save() {
+        keepAlive = true
     }
 }
 
-@objc extension CAPPluginCall: BridgedJSValueContainer {
-    public var dictionaryRepresentation: NSDictionary {
-        return options as NSDictionary
+extension CAPPluginCall: JSValueContainer {
+    public var jsObjectRepresentation: JSObject {
+        return options
     }
 
     public static var jsDateFormatter: ISO8601DateFormatter = {
@@ -92,6 +122,6 @@ public extension CAPPluginCall {
     /// - Throws: If the options cannot be decoded.
     /// - Returns: The decoded value.
     func decode<T: Decodable>(_ type: T.Type, decoder: JSValueDecoder = JSValueDecoder()) throws -> T {
-        try decoder.decode(type, from: options as? JSObject ?? [:])
+        try decoder.decode(type, from: options)
     }
 }

@@ -5,11 +5,11 @@ public class CAPCookiesPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPCookiesPlugin"
     public let jsName = "CapacitorCookies"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "getCookies", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setCookie", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "deleteCookie", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "clearCookies", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "clearAllCookies", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getCookies", returnType: .promise),
+        CAPPluginMethod(name: "setCookie", returnType: .promise),
+        CAPPluginMethod(name: "deleteCookie", returnType: .promise),
+        CAPPluginMethod(name: "clearCookies", returnType: .promise),
+        CAPPluginMethod(name: "clearAllCookies", returnType: .promise)
     ]
 
     var cookieManager: CapacitorCookieManager?

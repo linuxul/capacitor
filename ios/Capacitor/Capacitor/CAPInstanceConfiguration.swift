@@ -1,4 +1,112 @@
 import Foundation
+import UIKit
+
+@objc(CAPInstanceConfiguration)
+public final class InstanceConfiguration: NSObject {
+    @objc public let appendedUserAgentString: String?
+    @objc public let overridenUserAgentString: String?
+    @objc public let backgroundColor: UIColor?
+    @objc public let allowedNavigationHostnames: [String]
+    @objc public let localURL: URL
+    @objc public let serverURL: URL
+    @objc public let errorPath: String?
+    @objc public let pluginConfigurations: [AnyHashable: Any]
+    @objc public let loggingEnabled: Bool
+    @objc public let scrollingEnabled: Bool
+    @objc public let zoomingEnabled: Bool
+    @objc public let allowLinkPreviews: Bool
+    @objc public let handleApplicationNotifications: Bool
+    @objc public let isWebDebuggable: Bool
+    @objc public let hasInitialFocus: Bool
+    @objc public let contentInsetAdjustmentBehavior: UIScrollView.ContentInsetAdjustmentBehavior
+    @objc public let appLocation: URL
+    @objc public let appStartPath: String?
+    @objc public let limitsNavigationsToAppBoundDomains: Bool
+    @objc public let preferredContentMode: String?
+
+    @available(*, deprecated, message: "Use direct properties instead")
+    @objc public var legacyConfig: [AnyHashable: Any] {
+        return storedLegacyConfig
+    }
+
+    // backing storage so that the framework itself does not have to touch a deprecated API
+    private let storedLegacyConfig: [AnyHashable: Any]
+
+    public init(with descriptor: InstanceDescriptor, isDebug debug: Bool) {
+        // first, give the descriptor a chance to make itself internally consistent
+        descriptor.normalize()
+        // now copy the simple properties
+        appendedUserAgentString = descriptor.appendedUserAgentString
+        overridenUserAgentString = descriptor.overridenUserAgentString
+        backgroundColor = descriptor.backgroundColor
+        allowedNavigationHostnames = descriptor.allowedNavigationHostnames
+        switch descriptor.loggingBehavior {
+        case .production:
+            loggingEnabled = true
+        case .debug:
+            loggingEnabled = debug
+        case .none:
+            loggingEnabled = false
+        }
+        scrollingEnabled = descriptor.scrollingEnabled
+        zoomingEnabled = descriptor.zoomingEnabled
+        allowLinkPreviews = descriptor.allowLinkPreviews
+        handleApplicationNotifications = descriptor.handleApplicationNotifications
+        contentInsetAdjustmentBehavior = descriptor.contentInsetAdjustmentBehavior
+        appLocation = descriptor.appLocation
+        appStartPath = descriptor.appStartPath
+        limitsNavigationsToAppBoundDomains = descriptor.limitsNavigationsToAppBoundDomains
+        preferredContentMode = descriptor.preferredContentMode
+        pluginConfigurations = descriptor.pluginConfigurations
+        isWebDebuggable = descriptor.isWebDebuggable
+        hasInitialFocus = descriptor.hasInitialFocus
+        storedLegacyConfig = descriptor.legacyConfig
+        // construct the necessary URLs
+        let scheme = descriptor.urlScheme ?? InstanceDescriptorDefaults.scheme
+        let hostname = descriptor.urlHostname ?? InstanceDescriptorDefaults.hostname
+        let local = URL(string: "\(scheme)://\(hostname)") ?? InstanceConfiguration.defaultLocalURL
+        localURL = local
+        if let serverString = descriptor.serverURL, let server = URL(string: serverString) {
+            serverURL = server
+        } else {
+            serverURL = local
+        }
+        errorPath = descriptor.errorPath
+        super.init()
+    }
+
+    private init(with configuration: InstanceConfiguration, location: URL) {
+        appendedUserAgentString = configuration.appendedUserAgentString
+        overridenUserAgentString = configuration.overridenUserAgentString
+        backgroundColor = configuration.backgroundColor
+        allowedNavigationHostnames = configuration.allowedNavigationHostnames
+        localURL = configuration.localURL
+        serverURL = configuration.serverURL
+        errorPath = configuration.errorPath
+        pluginConfigurations = configuration.pluginConfigurations
+        loggingEnabled = configuration.loggingEnabled
+        scrollingEnabled = configuration.scrollingEnabled
+        zoomingEnabled = configuration.zoomingEnabled
+        allowLinkPreviews = configuration.allowLinkPreviews
+        handleApplicationNotifications = configuration.handleApplicationNotifications
+        isWebDebuggable = configuration.isWebDebuggable
+        hasInitialFocus = configuration.hasInitialFocus
+        contentInsetAdjustmentBehavior = configuration.contentInsetAdjustmentBehavior
+        limitsNavigationsToAppBoundDomains = configuration.limitsNavigationsToAppBoundDomains
+        preferredContentMode = configuration.preferredContentMode
+        storedLegacyConfig = configuration.storedLegacyConfig
+        appStartPath = configuration.appStartPath
+        appLocation = location
+        super.init()
+    }
+
+    @objc public func updatingAppLocation(_ location: URL) -> InstanceConfiguration {
+        return InstanceConfiguration(with: self, location: location)
+    }
+
+    // swiftlint:disable:next force_unwrapping
+    private static let defaultLocalURL = URL(string: "\(InstanceDescriptorDefaults.scheme)://\(InstanceDescriptorDefaults.hostname)")!
+}
 
 extension InstanceConfiguration {
     @objc public var appStartFileURL: URL {
@@ -46,12 +154,12 @@ extension InstanceConfiguration {
 
     @available(*, deprecated, message: "Use direct property accessors")
     @objc public func getValue(_ key: String) -> Any? {
-        return (legacyConfig as? JSObject)?[keyPath: KeyPath(key)]
+        return (storedLegacyConfig as? JSObject)?[keyPath: KeyPath(key)]
     }
 
     @available(*, deprecated, message: "Use direct property accessors")
     @objc public func getString(_ key: String) -> String? {
-        return (legacyConfig as? JSObject)?[keyPath: KeyPath(key)] as? String
+        return (storedLegacyConfig as? JSObject)?[keyPath: KeyPath(key)] as? String
     }
 
     // MARK: - Private
