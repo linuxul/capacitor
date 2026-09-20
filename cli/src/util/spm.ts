@@ -1,11 +1,20 @@
-import { ensureSymlink, pathExists, existsSync, readFileSync, writeFileSync, remove, move, mkdtemp } from 'fs-extra';
+import {
+  ensureSymlink,
+  pathExists,
+  existsSync,
+  readFileSync,
+  realpath,
+  writeFileSync,
+  remove,
+  move,
+  mkdtemp,
+} from 'fs-extra';
 import { tmpdir } from 'os';
-import { join, relative, resolve } from 'path';
+import { dirname, join, relative, resolve } from 'path';
 import type { PlistObject } from 'plist';
 import { build, parse } from 'plist';
 import { extract } from 'tar';
 
-import { getCapacitorPackageVersion } from '../common';
 import type { Config } from '../definitions';
 import { fatal } from '../errors';
 import { getMajoriOSVersion } from '../ios/common';
@@ -13,6 +22,7 @@ import { logger } from '../log';
 import type { Plugin } from '../plugin';
 import { getPluginType, PluginType } from '../plugin';
 import { convertToUnixPath } from '../util/fs';
+import { resolveNode } from '../util/node';
 import { runCommand } from '../util/subprocess';
 
 export interface SwiftPlugin {
@@ -97,8 +107,30 @@ export async function removeCocoapodsFiles(config: Config): Promise<void> {
   await remove(xcworkspaceFile);
 }
 
+// SwiftPM derives a local package's identity from the last component of its path. Plugins refer to the
+// runtime as "capacitor-swift-pm", so @capacitor/ios has to be reached through a directory with that name
+// for the whole package graph to resolve to this one copy.
+const capacitorPackageName = 'capacitor-swift-pm';
+
+async function linkCapacitorPackage(config: Config): Promise<string> {
+  const capacitoriOSPackageJson = resolveNode(config.app.rootDir, '@capacitor/ios', 'package.json');
+  if (!capacitoriOSPackageJson) {
+    fatal('Unable to find node_modules/@capacitor/ios.\nAre you sure @capacitor/ios is installed?');
+  }
+
+  const symlinkPath = join('symlinks', capacitorPackageName);
+  const symlinkAbs = resolve(config.ios.nativeProjectDirAbs, 'CapApp-SPM', symlinkPath);
+  const target = relative(dirname(symlinkAbs), await realpath(dirname(capacitoriOSPackageJson)));
+
+  // Always recreate the link so it follows @capacitor/ios if node_modules moved
+  await remove(symlinkAbs);
+  await ensureSymlink(target, symlinkAbs);
+
+  return convertToUnixPath(symlinkPath);
+}
+
 export async function generatePackageText(config: Config, plugins: Plugin[]): Promise<string> {
-  const iosPlatformVersion = await getCapacitorPackageVersion(config, config.ios.name);
+  const capacitorPackagePath = await linkCapacitorPackage(config);
   const iosVersion = getMajoriOSVersion(config);
   const packageTraits = config.app.extConfig.experimental?.ios?.spm?.packageTraits ?? {};
   const packageOptions = config.app.extConfig.experimental?.ios?.spm?.packageOptions ?? {};
@@ -117,7 +149,7 @@ let package = Package(
             targets: ["CapApp-SPM"])
     ],
     dependencies: [
-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "${iosPlatformVersion}")`;
+        .package(name: "${capacitorPackageName}", path: "${capacitorPackagePath}")`;
 
   for (const plugin of plugins) {
     const options = packageOptions[plugin.id];
@@ -147,7 +179,7 @@ let package = Package(
         .target(
             name: "CapApp-SPM",
             dependencies: [
-                .product(name: "Capacitor", package: "capacitor-swift-pm")`;
+                .product(name: "Capacitor", package: "${capacitorPackageName}")`;
 
   for (const plugin of plugins) {
     const aliases = Object.entries(packageOptions[plugin.id]?.moduleAliases ?? {});

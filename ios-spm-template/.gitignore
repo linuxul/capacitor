@@ -7,3 +7,6 @@ xcuserdata
 
 # Generated Config files
 App/App/capacitor.config.json
+
+# Links into node_modules, recreated by Capacitor CLI commands
+App/CapApp-SPM/symlinks

@@ -28,6 +28,17 @@ describe.each([false, true])('Update: iOS (monoRepoLike: %p)', (monoRepoLike) =>
     expect(packageSwift).toContain('.product(name: "CoolCapacitorPlugin", package: "CoolCapacitorPlugin")');
   });
 
+  it('Should consume @capacitor/ios as a local package named capacitor-swift-pm', async () => {
+    const packageSwift = await FS.read('ios/App/CapApp-SPM/Package.swift');
+    expect(packageSwift).toContain('.package(name: "capacitor-swift-pm", path: "symlinks/capacitor-swift-pm")');
+    expect(packageSwift).toContain('.product(name: "Capacitor", package: "capacitor-swift-pm")');
+    expect(packageSwift).not.toContain('https://github.com/ionic-team/capacitor-swift-pm.git');
+
+    // the link has to resolve to the installed @capacitor/ios, whose Package.swift defines the runtime
+    const linkedManifest = await FS.read('ios/App/CapApp-SPM/symlinks/capacitor-swift-pm/package.json');
+    expect(JSON.parse(linkedManifest).name).toBe('@capacitor/ios');
+  });
+
   it('Should register the Capacitor plugin class', async () => {
     const capacitorConfig = JSON.parse(await FS.read('ios/App/App/capacitor.config.json'));
     expect(capacitorConfig.packageClassList).toEqual(['CoolPlugin']);
