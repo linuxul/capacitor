@@ -84,6 +84,7 @@ What still matters from the Objective-C runtime: the class needs `@objc(Name)` b
 
 - `CAPPluginMethod(name:returnType:)` takes `CAPPluginMethod.ReturnType` (`.promise`, `.callback`, `.none`). The `CAPPluginReturnPromise`, `CAPPluginReturnCallback` and `CAPPluginReturnNone` constants are removed.
 - `CAPPlugin` subclasses that declare their own initializer must also declare `required init()`.
+- `import Capacitor` no longer brings UIKit, WebKit and the other frameworks along, because the Objective-C umbrella header that re-exported them is gone. Import what a file uses, for example `import UIKit` for `UIApplication`.
 - `shouldOverrideLoad(_:)` returns `Bool?` instead of `NSNumber?`.
 - `CAPBridgeProtocol` is a Swift protocol and no longer `@objc`. `InstanceConfiguration` is a struct.
 - `InstanceDescriptor.init(at:configuration:)` and `CapacitorBridge.init` lost their `cordovaConfiguration` parameter.
