@@ -30,13 +30,14 @@ describe.each([false, true])('Add: Android (monoRepoLike: %p)', (monoRepoLike) =
   });
 
   it('Should rename package', async () => {
-    expect(await FS.exists('android/app/src/main/java/com/getcapacitor/cli/test/MainActivity.java')).toBe(true);
+    expect(await FS.exists('android/app/src/main/java/com/getcapacitor/cli/test/MainActivity.kt')).toBe(true);
   });
 
   it('Should rename package in main activity', async () => {
-    const activityContent = await FS.read('android/app/src/main/java/com/getcapacitor/cli/test/MainActivity.java');
-    const regex = new RegExp(`package ${APP_ID};`);
+    const activityContent = await FS.read('android/app/src/main/java/com/getcapacitor/cli/test/MainActivity.kt');
+    const regex = new RegExp(`^package ${APP_ID}$`, 'm');
     expect(regex.test(activityContent)).toBe(true);
+    expect(activityContent).toContain('class MainActivity : BridgeActivity()');
   });
 
   it('Should rename app id in build.gradle', async () => {

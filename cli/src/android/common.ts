@@ -46,6 +46,47 @@ export async function resolvePlugin(plugin: Plugin): Promise<Plugin | null> {
  * This is a little trickier for Android because the appId becomes
  * the package name.
  */
+const MAIN_ACTIVITY = 'MainActivity.kt';
+
+// Hard keywords can't be used as identifiers in a Kotlin package declaration unless they are escaped
+const KOTLIN_HARD_KEYWORDS = new Set([
+  'as',
+  'break',
+  'class',
+  'continue',
+  'do',
+  'else',
+  'false',
+  'for',
+  'fun',
+  'if',
+  'in',
+  'interface',
+  'is',
+  'null',
+  'object',
+  'package',
+  'return',
+  'super',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'typealias',
+  'typeof',
+  'val',
+  'var',
+  'when',
+  'while',
+]);
+
+export function toKotlinPackageName(appId: string): string {
+  return appId
+    .split('.')
+    .map((segment) => (KOTLIN_HARD_KEYWORDS.has(segment) ? `\`${segment}\`` : segment))
+    .join('.');
+}
+
 export async function editProjectSettingsAndroid(config: Config): Promise<void> {
   const appId = config.app.appId;
   const appName = config.app.appName
@@ -65,8 +106,8 @@ export async function editProjectSettingsAndroid(config: Config): Promise<void> 
   }
 
   await copy(
-    resolve(config.android.srcMainDirAbs, 'java/com/getcapacitor/myapp/MainActivity.java'),
-    resolve(newJavaPath, 'MainActivity.java'),
+    resolve(config.android.srcMainDirAbs, `java/com/getcapacitor/myapp/${MAIN_ACTIVITY}`),
+    resolve(newJavaPath, MAIN_ACTIVITY),
   );
 
   if (appId.split('.')[1] !== 'getcapacitor') {
@@ -78,11 +119,11 @@ export async function editProjectSettingsAndroid(config: Config): Promise<void> 
     await remove(resolve(config.android.srcMainDirAbs, 'java/com/'));
   }
 
-  // Update the package in the MainActivity java file
-  const activityPath = resolve(newJavaPath, 'MainActivity.java');
+  // Update the package in the MainActivity file
+  const activityPath = resolve(newJavaPath, MAIN_ACTIVITY);
   let activityContent = await readFile(activityPath, { encoding: 'utf-8' });
 
-  activityContent = activityContent.replace(/package ([^;]*)/, `package ${appId}`);
+  activityContent = activityContent.replace(/^package\s+[\w.`]+;?/m, `package ${toKotlinPackageName(appId)}`);
   await writeFile(activityPath, activityContent, { encoding: 'utf-8' });
 
   // Update the applicationId in build.gradle
