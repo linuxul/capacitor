@@ -373,9 +373,12 @@ public open class Plugin {
      * Helper to check all permissions defined on a plugin and see the state of each.
      *
      * @since 3.0.0
+     * Plugins override this to adjust the reported states, which [checkPermissions] and
+     * [getPermissionState] both read.
+     *
      * @return A mapping of permission aliases to the associated granted status.
      */
-    public val permissionStates: Map<String, PermissionState>
+    public open val permissionStates: Map<String, PermissionState>
         get() = bridge.getPermissionStates(this)
 
     /**
