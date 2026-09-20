@@ -819,8 +819,9 @@ var nativeBridge = (function (exports) {
             cap.convertFileSrc = (filePath) => convertFileSrcServerUrl(webviewServerUrl, filePath);
             // Callback ids are random UUIDs (v4) so that a pending id cannot be guessed from an earlier one,
             // and a call that comes back from an old session after a reload never matches a new id.
-            // crypto.getRandomValues is used rather than crypto.randomUUID because the latter only exists in
-            // secure contexts, which a live reload server on plain http is not.
+            // crypto.getRandomValues works on every page, including one served over plain http such as a live
+            // reload server. crypto.randomUUID would be shorter but is undefined outside secure contexts
+            // (https and localhost), so it is not used.
             const createCallbackId = () => {
                 const bytes = win.crypto.getRandomValues(new Uint8Array(16));
                 bytes[6] = (bytes[6] & 0x0f) | 0x40;
