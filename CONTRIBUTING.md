@@ -95,10 +95,10 @@ cd ios && npm run verify && npm run spm:build
 cd cli && npm run build && npm test
 ```
 
-`npm run verify` in `ios` targets the simulator that CI uses. If it isn't installed, pick one from `xcrun simctl list devices available` and run the tests against it:
+`npm run verify` in `ios` targets the simulator that CI uses. If it isn't installed, pick one from `xcrun simctl list devices available` and pass it along:
 
 ```shell
-cd ios/Capacitor && xcodebuild test -workspace Capacitor.xcworkspace -scheme Capacitor -destination 'platform=iOS Simulator,id=<simulator id>'
+cd ios && CAPACITOR_IOS_TEST_DESTINATION='platform=iOS Simulator,id=<simulator id>' npm run verify
 ```
 
 The Android tests pin the JavaScript that the runtime injects into the WebView in `android/capacitor/src/test/resources/snapshots`. When that output is meant to change, rerun them with `UPDATE_SNAPSHOTS=1` and review the diff.
