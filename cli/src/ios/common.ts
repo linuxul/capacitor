@@ -119,12 +119,15 @@ export async function editProjectSettingsIOS(config: Config): Promise<void> {
   await writeFile(pbxPath, pbxContent, { encoding: 'utf-8' });
 }
 
+/**
+ * The lowest major deployment target across all build configurations, or undefined if none is set.
+ */
+export function getMajoriOSVersionFromPbx(pbx: string): string | undefined {
+  const majors = [...pbx.matchAll(/IPHONEOS_DEPLOYMENT_TARGET = (\d+)(?:\.\d+)*;/g)].map((m) => parseInt(m[1], 10));
+  return majors.length > 0 ? String(Math.min(...majors)) : undefined;
+}
+
 export function getMajoriOSVersion(config: Config): string {
   const pbx = readFileSync(join(config.ios.nativeXcodeProjDirAbs, 'project.pbxproj'), 'utf-8');
-  const searchString = 'IPHONEOS_DEPLOYMENT_TARGET = ';
-  const iosVersion = pbx.substring(
-    pbx.indexOf(searchString) + searchString.length,
-    pbx.indexOf(searchString) + searchString.length + 2,
-  );
-  return iosVersion;
+  return getMajoriOSVersionFromPbx(pbx) ?? config.ios.minVersion.split('.')[0];
 }

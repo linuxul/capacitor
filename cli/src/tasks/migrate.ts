@@ -48,7 +48,7 @@ const plugins = [
 const coreVersion = '^8.0.0';
 const pluginVersion = '^8.0.0';
 const gradleVersion = '8.14.3';
-const iOSVersion = '15';
+const iOSVersion = '17';
 const kotlinVersion = '2.2.20';
 let installFailed = false;
 
@@ -92,12 +92,15 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
 
   const { migrateconfirm } = noprompt
     ? { migrateconfirm: 'y' }
-    : await logPrompt(`Capacitor 8 sets a deployment target of iOS ${iOSVersion} and Android 16 (SDK 36). \n`, {
-        type: 'text',
-        name: 'migrateconfirm',
-        message: `Are you sure you want to migrate? (Y/n)`,
-        initial: 'y',
-      });
+    : await logPrompt(
+        `Capacitor 8 sets a deployment target of iOS ${iOSVersion} and a minimum of Android 13 (SDK 33). \n`,
+        {
+          type: 'text',
+          name: 'migrateconfirm',
+          message: `Are you sure you want to migrate? (Y/n)`,
+          initial: 'y',
+        },
+      );
 
   if (typeof migrateconfirm === 'string' && migrateconfirm.toLowerCase() === 'y') {
     try {
