@@ -71,6 +71,47 @@ On web, this means do not add any third party libraries such as Firebase or Loda
     brew install swiftlint
     ```
 
+1. Install ktlint to lint and format the Kotlin code.
+
+    ```shell
+    brew install ktlint
+    ```
+
+### Verifying Native Changes
+
+The native runtimes are Kotlin (`android`) and Swift (`ios`). You need JDK 21 and the Android SDK for Android, and Xcode 26 for iOS.
+
+```shell
+# Lint everything: ESLint, Prettier, SwiftLint and ktlint. Use `npm run fmt` to fix what can be fixed.
+npm run lint
+
+# Android: Android Lint (warnings are errors), build and unit tests of the runtime
+cd android && npm run verify
+
+# iOS: unit tests of the runtime, then the Swift package that SPM apps consume
+cd ios && npm run verify && npm run spm:build
+
+# CLI: the tests create real apps from the templates, so they cover template changes too
+cd cli && npm run build && npm test
+```
+
+`npm run verify` in `ios` targets the simulator that CI uses. If it isn't installed, pick one from `xcrun simctl list devices available` and run the tests against it:
+
+```shell
+cd ios/Capacitor && xcodebuild test -workspace Capacitor.xcworkspace -scheme Capacitor -destination 'platform=iOS Simulator,id=<simulator id>'
+```
+
+The Android tests pin the JavaScript that the runtime injects into the WebView in `android/capacitor/src/test/resources/snapshots`. When that output is meant to change, rerun them with `UPDATE_SNAPSHOTS=1` and review the diff.
+
+To check a change end to end, install the local packages into a scratch app and build what the CLI generates:
+
+```shell
+npm i <repo>/core <repo>/cli <repo>/android <repo>/ios
+npx cap init example com.example.app --web-dir www
+npx cap add android && (cd android && ./gradlew assembleDebug)
+npx cap add ios && (cd ios/App && xcodebuild -project App.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build)
+```
+
 ### Branches
 
 * [`main`](https://github.com/ionic-team/capacitor/tree/main): Latest stable Capacitor branch. In general PRs containing bugfixes and non-breaking features should be pointed to `main`. 

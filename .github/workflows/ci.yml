@@ -45,6 +45,11 @@ jobs:
           key: ${{ runner.OS }}-dependencies-cache-${{ hashFiles('**/package.json') }}
       - run: npm install
       - run: brew install swiftlint
+      - name: Install ktlint
+        run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint
+          chmod a+x ktlint
+          sudo mv ktlint /usr/local/bin/
       - run: npm run lint
   test-cli:
     runs-on: macos-15
@@ -113,6 +118,9 @@ jobs:
           key: ${{ runner.OS }}-dependencies-cache-${{ hashFiles('**/package.json') }}
       - run: npm install
       - run: npm run verify
+        working-directory: ./ios
+      - name: Build the Swift package
+        run: npm run spm:build
         working-directory: ./ios
       - name: Validate native podspec
         run: sh ./scripts/native-podspec.sh lint

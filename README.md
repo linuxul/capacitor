@@ -55,17 +55,16 @@ ionic start --capacitor
 
 ## FAQ
 
-#### What are the differences between Capacitor and Cordova?
+#### How does this fork differ from upstream Capacitor?
 
-In spirit, Capacitor and Cordova are very similar. Capacitor offers backward compatibility with a vast majority of Cordova plugins.
+This is a fork of Capacitor 8 whose native runtimes are written entirely in Kotlin (Android) and Swift (iOS). To get there it supports less than upstream does:
 
-Capacitor and Cordova differ in that Capacitor:
+- iOS 17 and Android 13 (API 33) are the minimum versions.
+- Plugins are Kotlin/Java on Android and Swift on iOS. Objective-C plugins are not supported.
+- Cordova plugins are not supported.
+- With Swift Package Manager, the iOS runtime is built from the source in `@capacitor/ios` rather than from the upstream binary release.
 
-- takes a more modern approach to tooling and plugin development
-- treats native projects as source artifacts as opposed to build artifacts
-- is maintained by the Ionic Team 💙😊
-
-See [the docs](https://capacitorjs.com/docs/cordova#differences-between-capacitor-and-cordova) for more details.
+See [BREAKING.md](./BREAKING.md) for what an app or plugin written for upstream Capacitor has to change.
 
 #### Do I need to use Ionic Framework with Capacitor?
 
