@@ -1,5 +1,5 @@
 import { prettyPath } from '@ionic/utils-terminal';
-import { mkdirp, readJSON, pathExists, writeFile } from 'fs-extra';
+import { readJSON, pathExists } from 'fs-extra';
 import { dirname, join } from 'path';
 
 import c from './colors';
@@ -542,16 +542,4 @@ export function parseApkNameFromFlavor(flavor: string): string {
   if (convertedName.startsWith('-')) convertedName = convertedName.replace('-', '');
 
   return `app-${convertedName ? `${convertedName}-` : ''}debug.apk`;
-}
-
-/**
- * Write empty `cordova.js` and `cordova_plugins.js` files into the native web asset directory.
- *
- * Transitional: the native runtimes may still try to read these files while
- * Cordova support is being removed. Delete this once the runtimes no longer inject them.
- */
-export async function writeLegacyCordovaStubs(webDir: string): Promise<void> {
-  await mkdirp(webDir);
-  await writeFile(join(webDir, 'cordova.js'), '');
-  await writeFile(join(webDir, 'cordova_plugins.js'), '');
 }

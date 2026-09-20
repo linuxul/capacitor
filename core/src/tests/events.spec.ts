@@ -57,21 +57,6 @@ describe('plugin', () => {
     expect(ev).toBe(false);
   });
 
-  it('triggerEvent, document, cordova fireDocumentEvent', () => {
-    let cordovaTrigger = false;
-    win.cordova = {
-      fireDocumentEvent() {
-        cordovaTrigger = true;
-      },
-    };
-    initBridge(win);
-
-    cap = createCapacitor(win);
-    const ev = cap.triggerEvent('eventName', 'document');
-    expect(ev).toBe(true);
-    expect(ev).toBe(cordovaTrigger);
-  });
-
   it('triggerEvent, document true', () => {
     cap = createCapacitor(win);
     const ev = cap.triggerEvent('eventName', 'document');

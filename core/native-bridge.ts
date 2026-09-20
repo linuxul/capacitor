@@ -213,16 +213,12 @@ const initBridge = (w: any): void => {
 
     cap.triggerEvent = (eventName, target, eventData) => {
       const doc = win.document;
-      const cordova = win.cordova;
       eventData = eventData || {};
       const ev = cap.createEvent(eventName, eventData);
 
       if (ev) {
         if (target === 'document') {
-          if (cordova?.fireDocumentEvent) {
-            cordova.fireDocumentEvent(eventName, eventData);
-            return true;
-          } else if (doc?.dispatchEvent) {
+          if (doc?.dispatchEvent) {
             return doc.dispatchEvent(ev);
           }
         } else if (target === 'window' && win.dispatchEvent) {
@@ -241,9 +237,6 @@ const initBridge = (w: any): void => {
   };
 
   const initLegacyHandlers = (win: WindowCapacitor, cap: CapacitorInstance) => {
-    // define cordova if it's not there already
-    win.cordova = win.cordova || {};
-
     const doc = win.document;
     const nav = win.navigator;
 

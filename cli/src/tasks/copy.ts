@@ -10,7 +10,6 @@ import {
   runTask,
   isValidPlatform,
   selectPlatforms,
-  writeLegacyCordovaStubs,
 } from '../common';
 import type { Config } from '../definitions';
 import { isFatal } from '../errors';
@@ -101,7 +100,6 @@ export async function copy(config: Config, platformName: string, inline = false)
         );
       }
       await copyCapacitorConfig(config, config.ios.nativeTargetDirAbs);
-      await writeLegacyCordovaStubs(await config.ios.webDirAbs);
       const iosPlugins = await getIOSPlugins(allPlugins);
       await generateIOSPackageJSON(config, iosPlugins);
     } else if (platformName === config.android.name) {
@@ -132,7 +130,6 @@ export async function copy(config: Config, platformName: string, inline = false)
         );
       }
       await copyCapacitorConfig(config, config.android.assetsDirAbs);
-      await writeLegacyCordovaStubs(config.android.webDirAbs);
     } else if (platformName === config.web.name) {
       if (usesFederatedCapacitor) {
         logger.info('FederatedCapacitor Plugin installed, skipping web bundling...');

@@ -171,9 +171,6 @@ export interface WindowCapacitor {
     };
   };
   console?: Console;
-  cordova?: {
-    fireDocumentEvent?: (eventName: string, eventData: any) => void;
-  };
   dispatchEvent?: any;
   document?: any;
   navigator?: {

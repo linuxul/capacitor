@@ -3,7 +3,7 @@ import { remove, pathExists, readFile, writeFile, writeJSON } from 'fs-extra';
 import { dirname, extname, join, relative, resolve } from 'path';
 
 import c from '../colors';
-import { checkPlatformVersions, runTask, writeLegacyCordovaStubs } from '../common';
+import { checkPlatformVersions, runTask } from '../common';
 import type { Config } from '../definitions';
 import { fatal } from '../errors';
 import { PluginType, getPluginType, getPlugins, printPlugins } from '../plugin';
@@ -36,7 +36,6 @@ export async function updateAndroid(config: Config): Promise<void> {
   if (!(await pathExists(config.android.webDirAbs))) {
     await copyTask(config, platform);
   }
-  await writeLegacyCordovaStubs(config.android.webDirAbs);
   await installGradlePlugins(config, capacitorPlugins);
 
   const incompatibleCordovaPlugins = plugins.filter((p) => getPluginType(p, platform) === PluginType.Incompatible);

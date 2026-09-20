@@ -217,16 +217,11 @@ var nativeBridge = (function (exports) {
             };
             cap.triggerEvent = (eventName, target, eventData) => {
                 const doc = win.document;
-                const cordova = win.cordova;
                 eventData = eventData || {};
                 const ev = cap.createEvent(eventName, eventData);
                 if (ev) {
                     if (target === 'document') {
-                        if (cordova === null || cordova === void 0 ? void 0 : cordova.fireDocumentEvent) {
-                            cordova.fireDocumentEvent(eventName, eventData);
-                            return true;
-                        }
-                        else if (doc === null || doc === void 0 ? void 0 : doc.dispatchEvent) {
+                        if (doc === null || doc === void 0 ? void 0 : doc.dispatchEvent) {
                             return doc.dispatchEvent(ev);
                         }
                     }
@@ -245,8 +240,6 @@ var nativeBridge = (function (exports) {
             win.Capacitor = cap;
         };
         const initLegacyHandlers = (win, cap) => {
-            // define cordova if it's not there already
-            win.cordova = win.cordova || {};
             const doc = win.document;
             const nav = win.navigator;
             if (nav) {

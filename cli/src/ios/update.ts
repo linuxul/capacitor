@@ -3,7 +3,7 @@ import { basename, dirname, join, relative } from 'path';
 import { major, prerelease } from 'semver';
 
 import c from '../colors';
-import { checkPlatformVersions, getCapacitorPackageVersion, runTask, writeLegacyCordovaStubs } from '../common';
+import { checkPlatformVersions, getCapacitorPackageVersion, runTask } from '../common';
 import type { Config } from '../definitions';
 import { fatal } from '../errors';
 import { logger } from '../log';
@@ -44,7 +44,6 @@ async function updatePluginFiles(config: Config, plugins: Plugin[], deployment: 
   if (!(await pathExists(await config.ios.webDirAbs))) {
     await copyTask(config, platform);
   }
-  await writeLegacyCordovaStubs(await config.ios.webDirAbs);
   if ((await config.ios.packageManager) === 'SPM') {
     const validSPMPackages = await checkPluginsForPackageSwift(config, plugins);
     await Promise.all(

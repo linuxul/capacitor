@@ -24,9 +24,9 @@ describe.each([false, true])('Add: Android (monoRepoLike: %p)', (monoRepoLike) =
     expect(await FS.exists('android/')).toBe(true);
   });
 
-  it('Should have Cordova JS copied', async () => {
-    expect(await FS.exists('android/app/src/main/assets/public/cordova.js')).toBe(true);
-    expect(await FS.exists('android/app/src/main/assets/public/cordova_plugins.js')).toBe(true);
+  it('Should not copy Cordova JS', async () => {
+    expect(await FS.exists('android/app/src/main/assets/public/cordova.js')).toBe(false);
+    expect(await FS.exists('android/app/src/main/assets/public/cordova_plugins.js')).toBe(false);
   });
 
   it('Should rename package', async () => {

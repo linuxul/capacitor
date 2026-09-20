@@ -16,7 +16,6 @@
     "dist/",
     "types/",
     "cookies.md",
-    "cordova.js",
     "http.md",
     "system-bars.md"
   ],
