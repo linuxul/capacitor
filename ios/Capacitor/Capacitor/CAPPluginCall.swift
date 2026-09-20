@@ -1,10 +1,5 @@
 import Foundation
 
-@available(*, deprecated, renamed: "PluginCallResultData")
-public typealias PluginCallErrorData = [String: Any]
-@available(*, deprecated, renamed: "PluginCallResultData")
-public typealias PluginResultData = [String: Any]
-
 public typealias CAPPluginCallSuccessHandler = (_ result: CAPPluginCallResult, _ call: CAPPluginCall) -> Void
 public typealias CAPPluginCallErrorHandler = (_ error: CAPPluginCallError) -> Void
 
@@ -19,12 +14,6 @@ open class CAPPluginCall: NSObject {
     @objc public var successHandler: CAPPluginCallSuccessHandler
     @objc public var errorHandler: CAPPluginCallErrorHandler
 
-    @available(*, deprecated, message: "Use 'keepAlive' instead.")
-    @objc public var isSaved: Bool {
-        get { return keepAlive }
-        set { keepAlive = newValue }
-    }
-
     public init(callbackId: String, methodName: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
         self.callbackId = callbackId
         self.methodName = methodName
@@ -34,15 +23,6 @@ open class CAPPluginCall: NSObject {
         super.init()
     }
 
-    @available(*, deprecated, message: "Specify the method name as well.")
-    public convenience init(callbackId: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
-        self.init(callbackId: callbackId, methodName: "", options: options, success: success, error: error)
-    }
-
-    @available(*, deprecated, message: "Use the 'keepAlive' property instead.")
-    @objc public func save() {
-        keepAlive = true
-    }
 }
 
 extension CAPPluginCall: JSValueContainer {
@@ -56,14 +36,6 @@ extension CAPPluginCall: JSValueContainer {
 }
 
 @objc public extension CAPPluginCall {
-    @available(*, deprecated, message: "Presence of a key should not be considered significant. Use typed accessors to check the value instead.")
-    func hasOption(_ key: String) -> Bool {
-        guard let value = options[key] else {
-            return false
-        }
-        return !(value is NSNull)
-    }
-
     func resolve() {
         successHandler(CAPPluginCallResult(nil), self)
     }

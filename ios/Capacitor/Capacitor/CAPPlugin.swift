@@ -9,11 +9,11 @@ import WebKit
 /// must also implement the required ``init()``.
 @objc(CAPPlugin)
 open class CAPPlugin: NSObject {
-    @objc public weak var webView: WKWebView?
-    @objc public weak var bridge: CAPBridgeProtocol?
-    @objc public var pluginId: String = ""
-    @objc public var pluginName: String = ""
-    @objc public var shouldStringifyDatesInCalls: Bool = true
+    public weak var webView: WKWebView?
+    public weak var bridge: CAPBridgeProtocol?
+    public var pluginId: String = ""
+    public var pluginName: String = ""
+    public var shouldStringifyDatesInCalls: Bool = true
 
     // Listeners are added/removed on the bridge's dispatch queue while notifications usually originate from the main thread
     // (or any other), so the storage for both dictionaries is guarded by this lock. The lock is never held while a
@@ -37,34 +37,20 @@ open class CAPPlugin: NSObject {
         super.init()
     }
 
-    @available(*, deprecated, message: "This initializer is deprecated and is not suggested for use. Any data set through this init method will be overridden when it is loaded on the bridge.")
-    public convenience init(bridge: CAPBridgeProtocol, pluginId: String, pluginName: String) {
-        self.init()
-        self.bridge = bridge
-        self.webView = bridge.webView
-        self.pluginId = pluginId
-        self.pluginName = pluginName
-    }
-
     /// Called after init if the plugin wants to do some loading so the plugin author doesn't need to override `init()`.
-    @objc open func load() {}
+    open func load() {}
 
-    @objc open func getId() -> String {
+    open func getId() -> String {
         return pluginName
     }
 
-    @available(*, deprecated, message: "use getConfig() and access config values using the methods available depending on the type.")
-    @objc open func getConfigValue(_ key: String) -> Any? {
-        return bridge?.config.getPluginConfigValue(pluginName, key)
-    }
-
-    @objc open func getConfig() -> PluginConfig {
+    open func getConfig() -> PluginConfig {
         return bridge?.config.getPluginConfig(pluginName) ?? PluginConfig(config: JSObject())
     }
 
     // MARK: - Event Listeners
 
-    @objc open func addEventListener(_ eventName: String, listener: CAPPluginCall) {
+    open func addEventListener(_ eventName: String, listener: CAPPluginCall) {
         let retained: [PluginCallResultData?] = withListenerLock {
             if let listeners = lockedEventListeners[eventName], !listeners.isEmpty {
                 lockedEventListeners[eventName] = listeners + [listener]
@@ -79,7 +65,7 @@ open class CAPPlugin: NSObject {
         }
     }
 
-    @objc open func removeEventListener(_ eventName: String, listener: CAPPluginCall) {
+    open func removeEventListener(_ eventName: String, listener: CAPPluginCall) {
         withListenerLock {
             guard var listeners = lockedEventListeners[eventName], let index = listeners.firstIndex(of: listener) else {
                 return
@@ -89,11 +75,11 @@ open class CAPPlugin: NSObject {
         }
     }
 
-    @objc open func notifyListeners(_ eventName: String, data: PluginCallResultData?) {
+    open func notifyListeners(_ eventName: String, data: PluginCallResultData?) {
         notifyListeners(eventName, data: data, retainUntilConsumed: false)
     }
 
-    @objc open func notifyListeners(_ eventName: String, data: PluginCallResultData?, retainUntilConsumed retain: Bool) {
+    open func notifyListeners(_ eventName: String, data: PluginCallResultData?, retainUntilConsumed retain: Bool) {
         let listeners: [CAPPluginCall] = withListenerLock {
             if let listeners = lockedEventListeners[eventName], !listeners.isEmpty {
                 return listeners
@@ -108,11 +94,11 @@ open class CAPPlugin: NSObject {
         }
     }
 
-    @objc open func getListeners(_ eventName: String) -> [CAPPluginCall]? {
+    open func getListeners(_ eventName: String) -> [CAPPluginCall]? {
         return withListenerLock { lockedEventListeners[eventName] }
     }
 
-    @objc open func hasListeners(_ eventName: String) -> Bool {
+    open func hasListeners(_ eventName: String) -> Bool {
         return withListenerLock { !(lockedEventListeners[eventName]?.isEmpty ?? true) }
     }
 
@@ -162,7 +148,7 @@ open class CAPPlugin: NSObject {
     // MARK: - Popovers
 
     /// Configure popover sourceRect, sourceView and permittedArrowDirections to show it centered
-    @objc open func setCenteredPopover(_ viewController: UIViewController) {
+    open func setCenteredPopover(_ viewController: UIViewController) {
         guard let view = bridge?.viewController?.view else {
             return
         }
@@ -171,7 +157,7 @@ open class CAPPlugin: NSObject {
         viewController.popoverPresentationController?.permittedArrowDirections = []
     }
 
-    @objc open func setCenteredPopover(_ viewController: UIViewController, size: CGSize) {
+    open func setCenteredPopover(_ viewController: UIViewController, size: CGSize) {
         guard let view = bridge?.viewController?.view else {
             return
         }
@@ -181,11 +167,6 @@ open class CAPPlugin: NSObject {
         viewController.popoverPresentationController?.permittedArrowDirections = []
     }
 
-    @available(*, deprecated, message: "All iOS 13+ devices support popover")
-    @objc open func supportsPopover() -> Bool {
-        return true
-    }
-
     // MARK: - WebView Hooks
 
     /// Give the plugins a chance to take control when a URL is about to be loaded in the WebView.
@@ -193,7 +174,7 @@ open class CAPPlugin: NSObject {
     /// Returning true causes the WebView to abort loading the URL.
     /// Returning false causes the WebView to continue loading the URL.
     /// Returning nil will defer to the default Capacitor policy
-    @objc open func shouldOverrideLoad(_ navigationAction: WKNavigationAction) -> NSNumber? {
+    open func shouldOverrideLoad(_ navigationAction: WKNavigationAction) -> Bool? {
         return nil
     }
 
@@ -201,8 +182,8 @@ open class CAPPlugin: NSObject {
     ///
     /// Returning false will defer to the default response of
     /// [.rejectProtectionSpace](https://developer.apple.com/documentation/Foundation/URLSession/AuthChallengeDisposition/rejectProtectionSpace).
-    @objc open func handleWKWebViewURLAuthenticationChallenge(_ challenge: URLAuthenticationChallenge,
-                                                              completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) -> Bool {
+    open func handleWKWebViewURLAuthenticationChallenge(_ challenge: URLAuthenticationChallenge,
+                                                        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) -> Bool {
         return false
     }
 

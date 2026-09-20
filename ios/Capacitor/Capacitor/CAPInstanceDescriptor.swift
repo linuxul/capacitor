@@ -127,9 +127,6 @@ public final class InstanceDescriptor {
     public var warnings: InstanceWarning = []
     /// The type of instance.
     public let instanceType: InstanceType
-    /// The JSON dictionary representing the contents of the configuration file.
-    /// - Warning: Deprecated. Do not use.
-    public var legacyConfig: [AnyHashable: Any] = [:]
 
     /// Initialize the descriptor with the default environment. This assumes that the application was built with the help of
     /// the Capacitor CLI and that that the web app is located inside the application bundle at `public/`.
@@ -213,9 +210,6 @@ internal extension InstanceDescriptor {
 
         // extract our configuration values
         if let config = config {
-            // to be removed
-            legacyConfig = config
-
             if let agentString = (config[keyPath: "ios.appendUserAgent"] as? String) ?? (config[keyPath: "appendUserAgent"] as? String) {
                 appendedUserAgentString = agentString
             }
@@ -331,6 +325,5 @@ extension InstanceDescriptor {
         // if the plugin configuration was programmatically modified, the necessary type information may have been lost.
         // so perform a coercion here to make sure that casting will work as expected
         pluginConfigurations = JSTypes.coerceDictionaryToJSObject(pluginConfigurations) ?? [:]
-        legacyConfig = JSTypes.coerceDictionaryToJSObject(legacyConfig) ?? [:]
     }
 }

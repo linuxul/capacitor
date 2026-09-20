@@ -1,36 +1,27 @@
 import Foundation
 import UIKit
 
-@objc(CAPInstanceConfiguration)
-public final class InstanceConfiguration: NSObject {
-    @objc public let appendedUserAgentString: String?
-    @objc public let overridenUserAgentString: String?
-    @objc public let backgroundColor: UIColor?
-    @objc public let allowedNavigationHostnames: [String]
-    @objc public let localURL: URL
-    @objc public let serverURL: URL
-    @objc public let errorPath: String?
-    @objc public let pluginConfigurations: [AnyHashable: Any]
-    @objc public let loggingEnabled: Bool
-    @objc public let scrollingEnabled: Bool
-    @objc public let zoomingEnabled: Bool
-    @objc public let allowLinkPreviews: Bool
-    @objc public let handleApplicationNotifications: Bool
-    @objc public let isWebDebuggable: Bool
-    @objc public let hasInitialFocus: Bool
-    @objc public let contentInsetAdjustmentBehavior: UIScrollView.ContentInsetAdjustmentBehavior
-    @objc public let appLocation: URL
-    @objc public let appStartPath: String?
-    @objc public let limitsNavigationsToAppBoundDomains: Bool
-    @objc public let preferredContentMode: String?
-
-    @available(*, deprecated, message: "Use direct properties instead")
-    @objc public var legacyConfig: [AnyHashable: Any] {
-        return storedLegacyConfig
-    }
-
-    // backing storage so that the framework itself does not have to touch a deprecated API
-    private let storedLegacyConfig: [AnyHashable: Any]
+public struct InstanceConfiguration {
+    public let appendedUserAgentString: String?
+    public let overridenUserAgentString: String?
+    public let backgroundColor: UIColor?
+    public let allowedNavigationHostnames: [String]
+    public let localURL: URL
+    public let serverURL: URL
+    public let errorPath: String?
+    public let pluginConfigurations: [AnyHashable: Any]
+    public let loggingEnabled: Bool
+    public let scrollingEnabled: Bool
+    public let zoomingEnabled: Bool
+    public let allowLinkPreviews: Bool
+    public let handleApplicationNotifications: Bool
+    public let isWebDebuggable: Bool
+    public let hasInitialFocus: Bool
+    public let contentInsetAdjustmentBehavior: UIScrollView.ContentInsetAdjustmentBehavior
+    public private(set) var appLocation: URL
+    public let appStartPath: String?
+    public let limitsNavigationsToAppBoundDomains: Bool
+    public let preferredContentMode: String?
 
     public init(with descriptor: InstanceDescriptor, isDebug debug: Bool) {
         // first, give the descriptor a chance to make itself internally consistent
@@ -60,7 +51,6 @@ public final class InstanceConfiguration: NSObject {
         pluginConfigurations = descriptor.pluginConfigurations
         isWebDebuggable = descriptor.isWebDebuggable
         hasInitialFocus = descriptor.hasInitialFocus
-        storedLegacyConfig = descriptor.legacyConfig
         // construct the necessary URLs
         let scheme = descriptor.urlScheme ?? InstanceDescriptorDefaults.scheme
         let hostname = descriptor.urlHostname ?? InstanceDescriptorDefaults.hostname
@@ -72,36 +62,12 @@ public final class InstanceConfiguration: NSObject {
             serverURL = local
         }
         errorPath = descriptor.errorPath
-        super.init()
     }
 
-    private init(with configuration: InstanceConfiguration, location: URL) {
-        appendedUserAgentString = configuration.appendedUserAgentString
-        overridenUserAgentString = configuration.overridenUserAgentString
-        backgroundColor = configuration.backgroundColor
-        allowedNavigationHostnames = configuration.allowedNavigationHostnames
-        localURL = configuration.localURL
-        serverURL = configuration.serverURL
-        errorPath = configuration.errorPath
-        pluginConfigurations = configuration.pluginConfigurations
-        loggingEnabled = configuration.loggingEnabled
-        scrollingEnabled = configuration.scrollingEnabled
-        zoomingEnabled = configuration.zoomingEnabled
-        allowLinkPreviews = configuration.allowLinkPreviews
-        handleApplicationNotifications = configuration.handleApplicationNotifications
-        isWebDebuggable = configuration.isWebDebuggable
-        hasInitialFocus = configuration.hasInitialFocus
-        contentInsetAdjustmentBehavior = configuration.contentInsetAdjustmentBehavior
-        limitsNavigationsToAppBoundDomains = configuration.limitsNavigationsToAppBoundDomains
-        preferredContentMode = configuration.preferredContentMode
-        storedLegacyConfig = configuration.storedLegacyConfig
-        appStartPath = configuration.appStartPath
-        appLocation = location
-        super.init()
-    }
-
-    @objc public func updatingAppLocation(_ location: URL) -> InstanceConfiguration {
-        return InstanceConfiguration(with: self, location: location)
+    public func updatingAppLocation(_ location: URL) -> InstanceConfiguration {
+        var copy = self
+        copy.appLocation = location
+        return copy
     }
 
     // swiftlint:disable:next force_unwrapping
@@ -109,21 +75,21 @@ public final class InstanceConfiguration: NSObject {
 }
 
 extension InstanceConfiguration {
-    @objc public var appStartFileURL: URL {
+    public var appStartFileURL: URL {
         if let path = appStartPath {
             return appLocation.appendingPathComponent(path)
         }
         return appLocation
     }
 
-    @objc public var appStartServerURL: URL {
+    public var appStartServerURL: URL {
         if let path = appStartPath {
             return serverURL.appendingPathComponent(path)
         }
         return serverURL
     }
 
-    @objc public var errorPathURL: URL? {
+    public var errorPathURL: URL? {
         guard let errorPath = errorPath else {
             return nil
         }
@@ -131,35 +97,20 @@ extension InstanceConfiguration {
         return localURL.appendingPathComponent(errorPath)
     }
 
-    @available(*, deprecated, message: "Use getPluginConfig")
-    @objc public func getPluginConfigValue(_ pluginId: String, _ configKey: String) -> Any? {
-        return (pluginConfigurations as? JSObject)?[keyPath: KeyPath("\(pluginId).\(configKey)")]
-    }
-
-    @objc public func getPluginConfig(_ pluginId: String) -> PluginConfig {
+    public func getPluginConfig(_ pluginId: String) -> PluginConfig {
         if let cfg = (pluginConfigurations as? JSObject)?[keyPath: KeyPath("\(pluginId)")] as? JSObject {
             return PluginConfig(config: cfg)
         }
         return PluginConfig(config: JSObject())
     }
 
-    @objc public func shouldAllowNavigation(to host: String) -> Bool {
+    public func shouldAllowNavigation(to host: String) -> Bool {
         for hostname in allowedNavigationHostnames {
             if doesHost(host, match: hostname) {
                 return true
             }
         }
         return false
-    }
-
-    @available(*, deprecated, message: "Use direct property accessors")
-    @objc public func getValue(_ key: String) -> Any? {
-        return (storedLegacyConfig as? JSObject)?[keyPath: KeyPath(key)]
-    }
-
-    @available(*, deprecated, message: "Use direct property accessors")
-    @objc public func getString(_ key: String) -> String? {
-        return (storedLegacyConfig as? JSObject)?[keyPath: KeyPath(key)] as? String
     }
 
     // MARK: - Private

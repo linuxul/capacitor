@@ -66,7 +66,6 @@ public enum PluginCallResult {
         }
     }
 
-    @objc(init:)
     public init(_ data: PluginCallResultData?) {
         if let data = data {
             resultData = .dictionary(data)
@@ -92,7 +91,6 @@ public enum PluginCallResult {
         }
     }
 
-    @objc(init:code:error:data:)
     public init(message: String, code: String?, error: Error?, data: PluginCallResultData?) {
         self.message = message
         self.code = code

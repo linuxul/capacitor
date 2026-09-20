@@ -135,21 +135,25 @@ class ConfigurationTests: XCTestCase {
         let url = Bundle.main.url(forResource: "configurations", withExtension: "")!
         let descriptor = InstanceDescriptor.init(at: url, configuration: ConfigurationTests.files[.flat])
         let configuration = InstanceConfiguration(with: descriptor, isDebug: true)
-        let value = configuration.getPluginConfigValue("SplashScreen", "launchShowDuration") as? Int
-        XCTAssertNotNil(value)
-        XCTAssertTrue(value == 1)
+        let pluginConfig = configuration.getPluginConfig("SplashScreen")
+        XCTAssertEqual(pluginConfig.getInt("launchShowDuration", -1), 1)
+        XCTAssertTrue(configuration.getPluginConfig("Missing").getConfigJSON().isEmpty)
     }
     
-    func testLegacyConfig() throws {
+    func testUpdatingAppLocation() throws {
         let url = Bundle.main.url(forResource: "configurations", withExtension: "")!
         let descriptor = InstanceDescriptor.init(at: url, configuration: ConfigurationTests.files[.nested])
         let configuration = InstanceConfiguration(with: descriptor, isDebug: true)
-        var value = configuration.getValue("overrideUserAgent") as? String
-        XCTAssertEqual(value, "level 1 override")
-        value = configuration.getValue("ios.overrideUserAgent") as? String
-        XCTAssertEqual(value, "level 2 override")
+        let location = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        let updated = configuration.updatingAppLocation(location)
+        // the configuration is a value, so the original must be untouched and everything else must carry over
+        XCTAssertEqual(configuration.appLocation, url)
+        XCTAssertEqual(updated.appLocation, location)
+        XCTAssertEqual(updated.overridenUserAgentString, configuration.overridenUserAgentString)
+        XCTAssertEqual(updated.serverURL, configuration.serverURL)
+        XCTAssertEqual(updated.loggingEnabled, configuration.loggingEnabled)
     }
-    
+
     func testNavigationRules() throws {
         let url = Bundle.main.url(forResource: "configurations", withExtension: "")!
         let descriptor = InstanceDescriptor.init(at: url, configuration: ConfigurationTests.files[.server])

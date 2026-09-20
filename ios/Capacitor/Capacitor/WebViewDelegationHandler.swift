@@ -83,18 +83,9 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
         // first, give plugins the chance to handle the decision
         for pluginObject in bridge.plugins {
             let plugin = pluginObject.value
-            let selector = NSSelectorFromString("shouldOverrideLoad:")
-            if plugin.responds(to: selector) {
-                let shouldOverrideLoad = plugin.shouldOverrideLoad(navigationAction)
-                if shouldOverrideLoad != nil {
-                    if shouldOverrideLoad == true {
-                        decisionHandler(.cancel)
-                        return
-                    } else if shouldOverrideLoad == false {
-                        decisionHandler(.allow)
-                        return
-                    }
-                }
+            if let shouldOverrideLoad = plugin.shouldOverrideLoad(navigationAction) {
+                decisionHandler(shouldOverrideLoad ? .cancel : .allow)
+                return
             }
         }
 
@@ -175,11 +166,8 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
 
         for pluginObject in bridge.plugins {
             let plugin = pluginObject.value
-            let selector = NSSelectorFromString("handleWKWebViewURLAuthenticationChallenge:completionHandler:")
-            if plugin.responds(to: selector) {
-                if plugin.handleWKWebViewURLAuthenticationChallenge(challenge, completionHandler: completionHandler) {
-                    return
-                }
+            if plugin.handleWKWebViewURLAuthenticationChallenge(challenge, completionHandler: completionHandler) {
+                return
             }
         }
 

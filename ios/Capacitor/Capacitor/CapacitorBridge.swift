@@ -95,21 +95,19 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     public static let capacitorSite = "https://capacitorjs.com/"
     public static let fileStartIdentifier = "/_capacitor_file_"
     public static let httpInterceptorStartIdentifier = "/_capacitor_http_interceptor_"
-    @available(*, deprecated, message: "`httpsInterceptorStartIdentifier` is no longer required. All proxied requests are handled via `httpInterceptorStartIdentifier` instead")
-    public static let httpsInterceptorStartIdentifier = "/_capacitor_https_interceptor_"
     public static let httpInterceptorUrlParam = "u"
     public static let defaultScheme = "capacitor"
 
     public private(set) var webViewAssetHandler: WebViewAssetHandler
     public private(set) var webViewDelegationHandler: WebViewDelegationHandler
     public private(set) weak var bridgeDelegate: CAPBridgeDelegate?
-    @objc public var viewController: UIViewController? {
+    public var viewController: UIViewController? {
         return bridgeDelegate?.bridgedViewController
     }
 
     var lastPlugin: CAPPlugin?
 
-    @objc public var config: InstanceConfiguration
+    public var config: InstanceConfiguration
     // Map of all loaded and instantiated plugins by pluginId -> instance
     var plugins =  [String: CapacitorPlugin]()
     // Calls we are storing to resolve later
@@ -121,47 +119,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     open private(set) var dispatchQueue = DispatchQueue(label: "bridge")
     // Array of block based observers
     var observers: [NSObjectProtocol] = []
-
-    // MARK: - CAPBridgeProtocol: Deprecated
-
-    public func getWebView() -> WKWebView? {
-        return webView
-    }
-
-    public func isSimulator() -> Bool {
-        return isSimEnvironment
-    }
-
-    public func isDevMode() -> Bool {
-        return isDevEnvironment
-    }
-
-    public func getStatusBarVisible() -> Bool {
-        return statusBarVisible
-    }
-
-    @nonobjc public func setStatusBarVisible(_ visible: Bool) {
-        statusBarVisible = visible
-    }
-
-    public func getStatusBarStyle() -> UIStatusBarStyle {
-        return statusBarStyle
-    }
-    @nonobjc public func setStatusBarStyle(_ style: UIStatusBarStyle) {
-        statusBarStyle = style
-    }
-
-    public func getUserInterfaceStyle() -> UIUserInterfaceStyle {
-        return userInterfaceStyle
-    }
-
-    public func getLocalUrl() -> String {
-        return config.localURL.absoluteString
-    }
-
-    @nonobjc public func setStatusBarAnimation(_ animation: UIStatusBarAnimation) {
-        statusBarAnimation = animation
-    }
 
     public func setServerBasePath(_ path: String) {
         let url = URL(fileURLWithPath: path, isDirectory: true)
@@ -381,36 +338,26 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     // MARK: - CAPBridgeProtocol: Plugin Access
 
-    @objc public func plugin(withName: String) -> CAPPlugin? {
+    public func plugin(withName: String) -> CAPPlugin? {
         return self.plugins[withName]
     }
 
     // MARK: - CAPBridgeProtocol: Call Management
 
-    @objc public func saveCall(_ call: CAPPluginCall) {
+    public func saveCall(_ call: CAPPluginCall) {
         storedCalls[call.callbackId] = call
     }
 
-    @objc public func savedCall(withID: String) -> CAPPluginCall? {
+    public func savedCall(withID: String) -> CAPPluginCall? {
         return storedCalls[withID]
     }
 
-    @objc public func releaseCall(_ call: CAPPluginCall) {
+    public func releaseCall(_ call: CAPPluginCall) {
         releaseCall(withID: call.callbackId)
     }
 
-    @objc public func releaseCall(withID: String) {
+    public func releaseCall(withID: String) {
         _ = storedCalls.withLock { $0.removeValue(forKey: withID) }
-    }
-
-    // MARK: - Deprecated Versions
-
-    @objc public func getSavedCall(_ callbackId: String) -> CAPPluginCall? {
-        return savedCall(withID: callbackId)
-    }
-
-    @objc public func releaseCall(callbackId: String) {
-        releaseCall(withID: callbackId)
     }
 
     // MARK: - Internal
@@ -420,7 +367,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     func reload() {
-        self.getWebView()?.reload()
+        self.webView?.reload()
     }
 
     func docLink(_ url: String) -> String {
@@ -556,7 +503,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
      `js` is a short name but needs to be preserved for backwards compatibility.
      */
     // swiftlint:disable:next identifier_name
-    @objc public func evalWithPlugin(_ plugin: CAPPlugin, js: String) {
+    public func evalWithPlugin(_ plugin: CAPPlugin, js: String) {
         let wrappedJs = """
         window.Capacitor.withPlugin('\(plugin.getId())', function(plugin) {
         if(!plugin) { console.error('Unable to execute JS in plugin, no such plugin found for id \(plugin.getId())'); }
@@ -565,7 +512,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         """
 
         DispatchQueue.main.async {
-            self.getWebView()?.evaluateJavaScript(wrappedJs, completionHandler: { (_, error) in
+            self.webView?.evaluateJavaScript(wrappedJs, completionHandler: { (_, error) in
                 if let error = error {
                     CAPLog.print("⚡️  JS Eval error", error.localizedDescription)
                 }
@@ -579,9 +526,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
      `js` is a short name but needs to be preserved for backwards compatibility.
      */
     // swiftlint:disable:next identifier_name
-    @objc public func eval(js: String) {
+    public func eval(js: String) {
         DispatchQueue.main.async {
-            self.getWebView()?.evaluateJavaScript(js, completionHandler: { (_, error) in
+            self.webView?.evaluateJavaScript(js, completionHandler: { (_, error) in
                 if let error = error {
                     CAPLog.print("⚡️  JS Eval error", error.localizedDescription)
                 }
@@ -589,33 +536,33 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         }
     }
 
-    @objc public func triggerJSEvent(eventName: String, target: String) {
+    public func triggerJSEvent(eventName: String, target: String) {
         self.eval(js: "window.Capacitor.triggerEvent('\(eventName)', '\(target)')")
     }
 
-    @objc public func triggerJSEvent(eventName: String, target: String, data: String) {
+    public func triggerJSEvent(eventName: String, target: String, data: String) {
         self.eval(js: "window.Capacitor.triggerEvent('\(eventName)', '\(target)', \(data))")
     }
 
-    @objc public func triggerWindowJSEvent(eventName: String) {
+    public func triggerWindowJSEvent(eventName: String) {
         self.triggerJSEvent(eventName: eventName, target: "window")
     }
 
-    @objc public func triggerWindowJSEvent(eventName: String, data: String) {
+    public func triggerWindowJSEvent(eventName: String, data: String) {
         self.triggerJSEvent(eventName: eventName, target: "window", data: data)
     }
 
-    @objc public func triggerDocumentJSEvent(eventName: String) {
+    public func triggerDocumentJSEvent(eventName: String) {
         self.triggerJSEvent(eventName: eventName, target: "document")
     }
 
-    @objc public func triggerDocumentJSEvent(eventName: String, data: String) {
+    public func triggerDocumentJSEvent(eventName: String, data: String) {
         self.triggerJSEvent(eventName: eventName, target: "document", data: data)
     }
 
     public func logToJs(_ message: String, _ level: String = "log") {
         DispatchQueue.main.async {
-            self.getWebView()?.evaluateJavaScript("window.Capacitor.logJs('\(message)', '\(level)')") { (result, error) in
+            self.webView?.evaluateJavaScript("window.Capacitor.logJs('\(message)', '\(level)')") { (result, error) in
                 if error != nil, let result = result {
                     CAPLog.print(result)
                 }
@@ -666,17 +613,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     // MARK: - CAPBridgeProtocol: View Presentation
 
-    @objc open func showAlertWith(title: String, message: String, buttonTitle: String) {
+    open func showAlertWith(title: String, message: String, buttonTitle: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: UIAlertController.Style.alert)
         alert.addAction(UIAlertAction(title: buttonTitle, style: UIAlertAction.Style.default, handler: nil))
         self.viewController?.present(alert, animated: true, completion: nil)
-    }
-
-    @objc open func presentVC(_ viewControllerToPresent: UIViewController, animated flag: Bool, completion: (() -> Void)? = nil) {
-        self.viewController?.present(viewControllerToPresent, animated: flag, completion: completion)
-    }
-
-    @objc open func dismissVC(animated flag: Bool, completion: (() -> Void)? = nil) {
-        self.viewController?.dismiss(animated: flag, completion: completion)
     }
 }
