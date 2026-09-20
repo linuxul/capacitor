@@ -11,7 +11,7 @@ import { fatal } from '../errors';
 import { getMajoriOSVersion } from '../ios/common';
 import { logger } from '../log';
 import type { Plugin } from '../plugin';
-import { getPlatformElement, getPluginPlatform, getPluginType, PluginType } from '../plugin';
+import { getPluginType, PluginType } from '../plugin';
 import { convertToUnixPath } from '../util/fs';
 import { runCommand } from '../util/subprocess';
 
@@ -120,40 +120,25 @@ let package = Package(
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "${iosPlatformVersion}")`;
 
   for (const plugin of plugins) {
-    if (getPluginType(plugin, config.ios.name) === PluginType.Cordova) {
-      const platformTag = getPluginPlatform(plugin, config.ios.name);
-      if (platformTag.$?.package) {
-        const relPath = convertToUnixPath(relative(config.ios.nativeXcodeProjDirAbs, plugin.rootPath));
-        packageSwiftText += `,\n        .package(name: "${plugin.id}", path: "${relPath}")`;
-      } else {
-        const sourceFiles = getPlatformElement(plugin, config.ios.name, 'source-file');
-        const headerFiles = getPlatformElement(plugin, config.ios.name, 'header-file');
-        if (sourceFiles.length === 0 && headerFiles.length === 0) {
-          continue;
-        }
-        packageSwiftText += `,\n        .package(name: "${plugin.name}", path: "../../capacitor-cordova-ios-plugins/sources/${plugin.name}")`;
-      }
-    } else {
-      const options = packageOptions[plugin.id];
-      const symlink = options?.symlink;
-      const symlinkFolder = join('symlinks', plugin.name);
-      const relPath = symlink
-        ? symlinkFolder
-        : convertToUnixPath(relative(config.ios.nativeXcodeProjDirAbs, plugin.rootPath));
-      if (symlink) {
-        await ensureSymlink(plugin.rootPath, resolve(config.ios.nativeProjectDirAbs, 'CapApp-SPM', symlinkFolder));
-      }
-      const traits = packageTraits[plugin.id];
-      const traitsSuffix = traits?.length
-        ? `, traits: [${traits
-            .map((t) => {
-              // Any trait is written with quotes, with the exception of .defaults
-              return /^\.?defaults?$/i.test(t) ? '.defaults' : `"${t}"`;
-            })
-            .join(', ')}]`
-        : '';
-      packageSwiftText += `,\n        .package(name: "${plugin.ios?.name}", path: "${relPath}"${traitsSuffix})`;
+    const options = packageOptions[plugin.id];
+    const symlink = options?.symlink;
+    const symlinkFolder = join('symlinks', plugin.name);
+    const relPath = symlink
+      ? symlinkFolder
+      : convertToUnixPath(relative(config.ios.nativeXcodeProjDirAbs, plugin.rootPath));
+    if (symlink) {
+      await ensureSymlink(plugin.rootPath, resolve(config.ios.nativeProjectDirAbs, 'CapApp-SPM', symlinkFolder));
     }
+    const traits = packageTraits[plugin.id];
+    const traitsSuffix = traits?.length
+      ? `, traits: [${traits
+          .map((t) => {
+            // Any trait is written with quotes, with the exception of .defaults
+            return /^\.?defaults?$/i.test(t) ? '.defaults' : `"${t}"`;
+          })
+          .join(', ')}]`
+      : '';
+    packageSwiftText += `,\n        .package(name: "${plugin.ios?.name}", path: "${relPath}"${traitsSuffix})`;
   }
 
   packageSwiftText += `
@@ -162,8 +147,7 @@ let package = Package(
         .target(
             name: "CapApp-SPM",
             dependencies: [
-                .product(name: "Capacitor", package: "capacitor-swift-pm"),
-                .product(name: "Cordova", package: "capacitor-swift-pm")`;
+                .product(name: "Capacitor", package: "capacitor-swift-pm")`;
 
   for (const plugin of plugins) {
     const aliases = Object.entries(packageOptions[plugin.id]?.moduleAliases ?? {});
@@ -174,20 +158,7 @@ let package = Package(
           })
           .join(', ')}]`
       : '';
-    let pluginText = `,\n                .product(name: "${plugin.ios?.name}", package: "${plugin.ios?.name}"${aliasText})`;
-    if (getPluginType(plugin, config.ios.name) === PluginType.Cordova) {
-      const platformTag = getPluginPlatform(plugin, config.ios.name);
-      if (platformTag.$?.package) {
-        pluginText = `,\n                .product(name: "${plugin.id}", package: "${plugin.id}")`;
-      } else {
-        const sourceFiles = getPlatformElement(plugin, config.ios.name, 'source-file');
-        const headerFiles = getPlatformElement(plugin, config.ios.name, 'header-file');
-        if (sourceFiles.length === 0 && headerFiles.length === 0) {
-          pluginText = '';
-        }
-      }
-    }
-    packageSwiftText += pluginText;
+    packageSwiftText += `,\n                .product(name: "${plugin.ios?.name}", package: "${plugin.ios?.name}"${aliasText})`;
   }
 
   packageSwiftText += `

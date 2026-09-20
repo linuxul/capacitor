@@ -340,7 +340,7 @@ export function runProgram(config: Config): void {
 
   program
     .command('ls [platform]')
-    .description('list installed Cordova and Capacitor plugins')
+    .description('list installed Capacitor plugins')
     .action(
       wrapAction(
         telemetryAction(config, async (platform) => {

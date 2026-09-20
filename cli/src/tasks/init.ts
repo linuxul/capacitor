@@ -4,7 +4,6 @@ import { basename, dirname, resolve } from 'path';
 import c from '../colors';
 import { check, checkAppId, checkAppName, runTask } from '../common';
 import { CONFIG_FILE_NAME_JSON, CONFIG_FILE_NAME_TS, writeConfig } from '../config';
-import { getCordovaPreferences } from '../cordova';
 import type { Config, ExternalConfig } from '../definitions';
 import { fatal, isFatal } from '../errors';
 import { detectFramework } from '../framework-configs';
@@ -46,15 +45,12 @@ export async function initCommand(
       await check([() => checkAppName(config, appName), () => checkAppId(config, appId)]);
     }
 
-    const cordova = await getCordovaPreferences(config);
-
     await runMergeConfig(
       config,
       {
         appId,
         appName,
         webDir,
-        cordova,
       },
       isNewConfig && tsInstalled ? 'ts' : 'json',
     );

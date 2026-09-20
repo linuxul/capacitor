@@ -9,13 +9,7 @@ import { root } from './lib/repo.mjs';
 execute(async () => {
   const assetsDir = resolve(root, 'cli', 'assets');
 
-  const templates = [
-    'android-template',
-    'ios-pods-template',
-    'ios-spm-template',
-    'capacitor-cordova-android-plugins',
-    'capacitor-cordova-ios-plugins',
-  ];
+  const templates = ['android-template', 'ios-pods-template', 'ios-spm-template'];
 
   await mkdir(assetsDir, { recursive: true });
 

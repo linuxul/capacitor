@@ -38,8 +38,6 @@ export async function list(config: Config, platform: string): Promise<void> {
 
   const capacitorPlugins = plugins.filter((p) => getPluginType(p, platform) === PluginType.Core);
   printPlugins(capacitorPlugins, platform);
-  const cordovaPlugins = plugins.filter((p) => getPluginType(p, platform) === PluginType.Cordova);
-  printPlugins(cordovaPlugins, platform, 'cordova');
   const incompatibleCordovaPlugins = plugins.filter((p) => getPluginType(p, platform) === PluginType.Incompatible);
   printPlugins(incompatibleCordovaPlugins, platform, 'incompatible');
 }

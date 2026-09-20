@@ -10,7 +10,6 @@ import {
   promptForPlatform,
   getPlatformTargetName,
 } from '../common';
-import { getCordovaPlugins, writeCordovaAndroidManifest } from '../cordova';
 import type { Config } from '../definitions';
 import { fatal, isFatal } from '../errors';
 import { runIOS } from '../ios/run';
@@ -93,21 +92,14 @@ export async function runCommand(
       if (options.sync) {
         await sync(config, platformName, false, true);
       }
-      const cordovaPlugins = await getCordovaPlugins(config, platformName);
       if (options.liveReload) {
         await CapLiveReloadHelper.editCapConfigForLiveReload(config, platformName, options);
-        if (platformName === config.android.name) {
-          await await writeCordovaAndroidManifest(cordovaPlugins, config, platformName, true);
-        }
       }
       await run(config, platformName, options);
       if (options.liveReload) {
         new Promise((resolve) => process.on('SIGINT', resolve))
           .then(async () => {
             await CapLiveReloadHelper.revertCapConfigForLiveReload();
-            if (platformName === config.android.name) {
-              await writeCordovaAndroidManifest(cordovaPlugins, config, platformName, false);
-            }
           })
           .then(() => process.exit());
         logger.info(

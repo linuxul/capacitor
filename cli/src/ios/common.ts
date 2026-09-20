@@ -5,11 +5,10 @@ import { join, resolve } from 'path';
 import c from '../colors';
 import { checkCapacitorPlatform } from '../common';
 import type { CheckFunction } from '../common';
-import { getIncompatibleCordovaPlugins } from '../cordova';
 import { OS } from '../definitions';
 import type { Config } from '../definitions';
 import { logger } from '../log';
-import { PluginType, getPluginPlatform } from '../plugin';
+import { PluginType } from '../plugin';
 import type { Plugin } from '../plugin';
 import { checkPackageTraitsRequirements, checkSwiftToolsVersion } from '../util/spm';
 import { isInstalled, runCommand } from '../util/subprocess';
@@ -83,15 +82,13 @@ export async function resolvePlugin(plugin: Plugin): Promise<Plugin | null> {
       type: PluginType.Core,
       path: plugin.manifest.ios.src ?? platform,
     };
-  } else if (plugin.xml) {
+  } else if (plugin.legacyCordova) {
+    // Cordova plugins are not supported: keep them around only so they can be reported and skipped
     plugin.ios = {
       name: plugin.name,
-      type: PluginType.Cordova,
+      type: PluginType.Incompatible,
       path: 'src/' + platform,
     };
-    if (getIncompatibleCordovaPlugins(platform).includes(plugin.id) || !getPluginPlatform(plugin, platform)) {
-      plugin.ios.type = PluginType.Incompatible;
-    }
   } else {
     return null;
   }

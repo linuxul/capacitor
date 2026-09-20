@@ -1,7 +1,6 @@
 import { readFileSync, readJSONSync, writeJSONSync } from 'fs-extra';
 import { resolve } from 'path';
 
-import { getCordovaPlugins } from '../cordova';
 import type { Config } from '../definitions';
 import type { Plugin } from '../plugin';
 import { getPluginType, PluginType } from '../plugin';
@@ -65,9 +64,5 @@ export async function writePluginJSON(config: Config, classList: string[]): Prom
 export async function generateIOSPackageJSON(config: Config, plugins: Plugin[]): Promise<void> {
   const fileList = await getPluginFiles(plugins);
   const classList = await findPluginClasses(fileList);
-  const cordovaPlugins = await getCordovaPlugins(config, 'ios');
-  if (cordovaPlugins.length > 0) {
-    classList.push('CDVPlugin');
-  }
   writePluginJSON(config, classList);
 }

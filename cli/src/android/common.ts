@@ -2,9 +2,8 @@ import { copy, remove, mkdirp, readFile, pathExists, writeFile } from 'fs-extra'
 import { join, resolve } from 'path';
 
 import { checkCapacitorPlatform } from '../common';
-import { getIncompatibleCordovaPlugins } from '../cordova';
 import type { Config } from '../definitions';
-import { PluginType, getPluginPlatform } from '../plugin';
+import { PluginType } from '../plugin';
 import type { Plugin } from '../plugin';
 import { convertToUnixPath } from '../util/fs';
 
@@ -30,14 +29,12 @@ export async function resolvePlugin(plugin: Plugin): Promise<Plugin | null> {
       type: PluginType.Core,
       path: convertToUnixPath(pluginFilesPath),
     };
-  } else if (plugin.xml) {
+  } else if (plugin.legacyCordova) {
+    // Cordova plugins are not supported: keep them around only so they can be reported and skipped
     plugin.android = {
-      type: PluginType.Cordova,
+      type: PluginType.Incompatible,
       path: 'src/' + platform,
     };
-    if (getIncompatibleCordovaPlugins(platform).includes(plugin.id) || !getPluginPlatform(plugin, platform)) {
-      plugin.android.type = PluginType.Incompatible;
-    }
   } else {
     return null;
   }

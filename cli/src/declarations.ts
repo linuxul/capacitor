@@ -386,14 +386,6 @@ export interface CapacitorConfig {
     scrollEnabled?: boolean;
 
     /**
-     * Configure custom linker flags for compiling Cordova plugins.
-     *
-     * @since 1.0.0
-     * @default []
-     */
-    cordovaLinkerFlags?: string[];
-
-    /**
      * Allow destination previews when pressing on links.
      *
      * This will set the
@@ -669,34 +661,6 @@ export interface CapacitorConfig {
      * @default null
      */
     appStartPath?: string;
-  };
-
-  cordova?: {
-    /**
-     * Populates <access> tags in the config.xml with the origin set to
-     * the values entered here.
-     * If not provided, a single <access origin="*" /> tag gets included.
-     * It only has effect on a few Cordova plugins that respect the whitelist.
-     *
-     * @since 3.3.0
-     */
-    accessOrigins?: string[];
-
-    /**
-     * Configure Cordova preferences.
-     *
-     * @since 1.3.0
-     */
-    preferences?: { [key: string]: string | undefined };
-
-    /**
-     * Fail on cap update/sync if the CLI detects that a cordova plugin
-     * has uninstalled dependencies.
-     *
-     * @default false
-     * @since 7.4.0
-     */
-    failOnUninstalledPlugins?: boolean;
   };
 
   /**

@@ -10,8 +10,8 @@ import {
   runTask,
   isValidPlatform,
   selectPlatforms,
+  writeLegacyCordovaStubs,
 } from '../common';
-import { getCordovaPlugins, handleCordovaPluginsJS, writeCordovaAndroidManifest } from '../cordova';
 import type { Config } from '../definitions';
 import { isFatal } from '../errors';
 import { getIOSPlugins } from '../ios/common';
@@ -101,8 +101,7 @@ export async function copy(config: Config, platformName: string, inline = false)
         );
       }
       await copyCapacitorConfig(config, config.ios.nativeTargetDirAbs);
-      const cordovaPlugins = await getCordovaPlugins(config, platformName);
-      await handleCordovaPluginsJS(cordovaPlugins, config, platformName);
+      await writeLegacyCordovaStubs(await config.ios.webDirAbs);
       const iosPlugins = await getIOSPlugins(allPlugins);
       await generateIOSPackageJSON(config, iosPlugins);
     } else if (platformName === config.android.name) {
@@ -133,9 +132,7 @@ export async function copy(config: Config, platformName: string, inline = false)
         );
       }
       await copyCapacitorConfig(config, config.android.assetsDirAbs);
-      const cordovaPlugins = await getCordovaPlugins(config, platformName);
-      await handleCordovaPluginsJS(cordovaPlugins, config, platformName);
-      await writeCordovaAndroidManifest(cordovaPlugins, config, platformName);
+      await writeLegacyCordovaStubs(config.android.webDirAbs);
     } else if (platformName === config.web.name) {
       if (usesFederatedCapacitor) {
         logger.info('FederatedCapacitor Plugin installed, skipping web bundling...');

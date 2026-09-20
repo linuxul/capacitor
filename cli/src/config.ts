@@ -36,6 +36,12 @@ export async function loadConfig(): Promise<Config> {
   const cliRootDir = dirname(__dirname);
   const conf = await loadExtConfig(appRootDir);
 
+  if ('cordova' in conf.extConfig) {
+    logger.warn(
+      `The ${c.strong('cordova')} option in ${c.strong(conf.extConfigName)} is ignored: Cordova is not supported in this fork.`,
+    );
+  }
+
   const depsForNx = await (async (): Promise<{ devDependencies: any; dependencies: any } | object> => {
     if (isNXMonorepo(appRootDir)) {
       const rootOfNXMonorepo = findNXMonorepoRoot(appRootDir);
@@ -175,9 +181,7 @@ async function loadCLIConfig(rootDir: string): Promise<CLIConfig> {
   const assetsDir = 'assets';
   const assetsDirAbs = join(rootDir, assetsDir);
   const iosPlatformTemplateArchive = 'ios-spm-template.tar.gz';
-  const iosCordovaPluginsTemplateArchive = 'capacitor-cordova-ios-plugins.tar.gz';
   const androidPlatformTemplateArchive = 'android-template.tar.gz';
-  const androidCordovaPluginsTemplateArchive = 'capacitor-cordova-android-plugins.tar.gz';
 
   return {
     rootDir,
@@ -187,14 +191,10 @@ async function loadCLIConfig(rootDir: string): Promise<CLIConfig> {
       ios: {
         platformTemplateArchive: iosPlatformTemplateArchive,
         platformTemplateArchiveAbs: resolve(assetsDirAbs, iosPlatformTemplateArchive),
-        cordovaPluginsTemplateArchive: iosCordovaPluginsTemplateArchive,
-        cordovaPluginsTemplateArchiveAbs: resolve(assetsDirAbs, iosCordovaPluginsTemplateArchive),
       },
       android: {
         platformTemplateArchive: androidPlatformTemplateArchive,
         platformTemplateArchiveAbs: resolve(assetsDirAbs, androidPlatformTemplateArchive),
-        cordovaPluginsTemplateArchive: androidCordovaPluginsTemplateArchive,
-        cordovaPluginsTemplateArchiveAbs: resolve(assetsDirAbs, androidCordovaPluginsTemplateArchive),
       },
     },
     package: await readJSON(resolve(rootDir, 'package.json')),
@@ -223,7 +223,6 @@ async function loadAndroidConfig(
   }
   const apkName = parseApkNameFromFlavor(flavor);
   const buildOutputDir = `${apkPath}/debug`;
-  const cordovaPluginsDir = 'capacitor-cordova-android-plugins';
   const studioPath = lazy(() => determineAndroidStudioPath(cliConfig.os));
   const buildOptions = {
     keystorePath: extConfig.android?.buildOptions?.keystorePath,
@@ -240,8 +239,6 @@ async function loadAndroidConfig(
     studioPath,
     platformDir,
     platformDirAbs,
-    cordovaPluginsDir,
-    cordovaPluginsDirAbs: resolve(platformDirAbs, cordovaPluginsDir),
     appDir,
     appDirAbs: resolve(platformDirAbs, appDir),
     srcDir,
@@ -277,7 +274,6 @@ async function loadIOSConfig(rootDir: string, extConfig: ExternalConfig): Promis
   const podPath = lazy(() => determineCocoapodPath());
   const packageManager = lazy(() => determinePackageManager(rootDir, platformDirAbs, nativeProjectDirAbs));
   const webDirAbs = lazy(() => determineIOSWebDirAbs(nativeProjectDirAbs, nativeTargetDirAbs, nativeXcodeProjDirAbs));
-  const cordovaPluginsDir = 'capacitor-cordova-ios-plugins';
   const buildOptions = {
     exportMethod: extConfig.ios?.buildOptions?.exportMethod as XcodeExportMethod,
     xcodeSigningStyle: extConfig.ios?.buildOptions?.signingStyle,
@@ -290,8 +286,6 @@ async function loadIOSConfig(rootDir: string, extConfig: ExternalConfig): Promis
     platformDir,
     platformDirAbs,
     scheme,
-    cordovaPluginsDir,
-    cordovaPluginsDirAbs: resolve(platformDirAbs, cordovaPluginsDir),
     nativeProjectDir,
     nativeProjectDirAbs,
     nativeTargetDir,

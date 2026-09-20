@@ -38,8 +38,6 @@ export interface PlatformConfig {
 export interface PlatformAssetsConfig {
   readonly platformTemplateArchive: string;
   readonly platformTemplateArchiveAbs: string;
-  readonly cordovaPluginsTemplateArchive: string;
-  readonly cordovaPluginsTemplateArchiveAbs: string;
 }
 
 export interface CLIConfig {
@@ -68,8 +66,6 @@ export interface AppConfig {
 }
 
 export interface AndroidConfig extends PlatformConfig {
-  readonly cordovaPluginsDir: string;
-  readonly cordovaPluginsDirAbs: string;
   readonly studioPath: Promise<string>;
   readonly minVersion: string;
   readonly appDir: string;
@@ -115,8 +111,6 @@ export enum XcodeExportMethod {
 }
 
 export interface IOSConfig extends PlatformConfig {
-  readonly cordovaPluginsDir: string;
-  readonly cordovaPluginsDirAbs: string;
   readonly minVersion: string;
   readonly podPath: Promise<string>;
   readonly packageManager: Promise<PackageManager>;

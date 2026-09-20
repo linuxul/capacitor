@@ -10,7 +10,8 @@ import { runCommand } from '../src/util/subprocess';
 
 const cwd = process.cwd();
 
-export const CORDOVA_PLUGIN_ID = 'cool-cordova-plugin';
+export const CAPACITOR_PLUGIN_ID = 'cool-capacitor-plugin';
+export const LEGACY_CORDOVA_PLUGIN_ID = 'cool-cordova-plugin';
 export const APP_ID = 'com.getcapacitor.cli.test';
 export const APP_NAME = 'Capacitor CLI Test';
 
@@ -76,12 +77,14 @@ export async function makeAppDir(monoRepoLike = false): Promise<void> {
   if (monoRepoLike) {
     await mkdir(rootDir);
   }
-  const cordovaPluginPath = join(tmpDir, CORDOVA_PLUGIN_ID);
+  const capacitorPluginPath = join(tmpDir, CAPACITOR_PLUGIN_ID);
+  const legacyCordovaPluginPath = join(tmpDir, LEGACY_CORDOVA_PLUGIN_ID);
   const APP_PACKAGE_JSON = `
 {
   "name": "test-app",
   "dependencies": {
-    "${CORDOVA_PLUGIN_ID}": "file:${cordovaPluginPath}"
+    "${CAPACITOR_PLUGIN_ID}": "file:${capacitorPluginPath}",
+    "${LEGACY_CORDOVA_PLUGIN_ID}": "file:${legacyCordovaPluginPath}"
   }
 }
 `;
@@ -102,10 +105,11 @@ export async function makeAppDir(monoRepoLike = false): Promise<void> {
     cwd: rootDir,
   });
 
-  // Make a fake cordova plugin
-  await makeCordovaPlugin(cordovaPluginPath);
+  // Make a fake Capacitor plugin, and a fake Cordova plugin that has to be skipped
+  await makeCapacitorPlugin(capacitorPluginPath);
+  await makeLegacyCordovaPlugin(legacyCordovaPluginPath);
 
-  await runCommand('npm', ['install', '--save', cordovaPluginPath], {
+  await runCommand('npm', ['install', '--save', capacitorPluginPath, legacyCordovaPluginPath], {
     cwd: rootDir,
   });
 
@@ -115,73 +119,103 @@ export async function makeAppDir(monoRepoLike = false): Promise<void> {
   };
 }
 
-const CODOVA_PLUGIN_JS = `
-var exec = require('cordova/exec');
-var CoolPlugin = {
-    doSomethingCool: function (doOverlay) {
-        exec(null, null, "CoolPlugin", "doSomethingCool", []);
-    }
-};
-module.exports = CoolPlugin;
-`;
-
-const CORDOVA_PLUGIN_XML = `
-<?xml version="1.0" encoding="UTF-8"?>
-
-<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-    id="${CORDOVA_PLUGIN_ID}"
-    version="1.0.20">
-    <name>Cool Cordova Plugin</name>
-    <js-module src="plugin.js" name="coolplugin">
-        <clobbers target="window.CoolPlugin" />
-    </js-module>
-    <platform name="android">
-        <config-file target="res/xml/config.xml" parent="/*">
-            <feature name="CoolPlugin">
-                <param name="android-package" value="com.getcapacitor.cordova.CoolPlugin"/>
-            </feature>
-        </config-file>
-        <source-file src="android/com/getcapacitor/CoolPlugin.java" target-dir="src/com/getcapacitor/cordova" />
-    </platform>
-    <platform name="ios">
-         <config-file target="config.xml" parent="/*">
-             <feature name="CoolPlugin">
-                 <param name="ios-package" value="CoolPlugin" />
-             </feature>
-         </config-file>
-         <source-file src="src/ios/CoolPlugin.m" />
-    </platform>
-</plugin>
-`;
-
-const CORDOVA_PLUGIN_PACKAGE = `
+const CAPACITOR_PLUGIN_PACKAGE = `
 {
-  "name": "${CORDOVA_PLUGIN_ID}",
-  "version": "0.0.1",
-  "description": "Cool Cordova plugin",
-  "cordova": {
-    "id": "${CORDOVA_PLUGIN_ID}",
-    "platforms": [
-      "android",
-      "ios"
-    ]
+  "name": "${CAPACITOR_PLUGIN_ID}",
+  "version": "1.0.0",
+  "description": "Cool Capacitor plugin",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
   },
-  "author": "Cap tester",
+  "author": "Max",
   "license": "MIT"
 }
 `;
 
-async function makeCordovaPlugin(cordovaPluginPath: string) {
-  const iosPath = join(cordovaPluginPath, 'src', 'ios');
-  const androidPath = join(cordovaPluginPath, 'android/com/getcapacitor');
-  await mkdirp(cordovaPluginPath);
-  await writeFile(join(cordovaPluginPath, 'plugin.js'), CODOVA_PLUGIN_JS);
-  await writeFile(join(cordovaPluginPath, 'plugin.xml'), CORDOVA_PLUGIN_XML);
-  await writeFile(join(cordovaPluginPath, 'package.json'), CORDOVA_PLUGIN_PACKAGE);
+const CAPACITOR_PLUGIN_JAVA = `package com.getcapacitor.cool;
+
+import com.getcapacitor.Plugin;
+import com.getcapacitor.annotation.CapacitorPlugin;
+
+@CapacitorPlugin(name = "Cool")
+public class CoolPlugin extends Plugin {}
+`;
+
+const CAPACITOR_PLUGIN_SWIFT = `import Capacitor
+
+@objc(CoolPlugin)
+public class CoolPlugin: CAPPlugin {}
+`;
+
+const CAPACITOR_PLUGIN_PACKAGE_SWIFT = `// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "CoolCapacitorPlugin",
+    platforms: [.iOS(.v15)],
+    products: [
+        .library(
+            name: "CoolCapacitorPlugin",
+            targets: ["CoolPlugin"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0")
+    ],
+    targets: [
+        .target(
+            name: "CoolPlugin",
+            dependencies: [
+                .product(name: "Capacitor", package: "capacitor-swift-pm")
+            ],
+            path: "ios/Sources/CoolPlugin")
+    ]
+)
+`;
+
+async function makeCapacitorPlugin(pluginPath: string) {
+  const iosPath = join(pluginPath, 'ios/Sources/CoolPlugin');
+  const androidPath = join(pluginPath, 'android/src/main/java/com/getcapacitor/cool');
+  await mkdirp(pluginPath);
+  await writeFile(join(pluginPath, 'package.json'), CAPACITOR_PLUGIN_PACKAGE);
+  await writeFile(join(pluginPath, 'Package.swift'), CAPACITOR_PLUGIN_PACKAGE_SWIFT);
   await mkdirp(iosPath);
   await mkdirp(androidPath);
-  await writeFile(join(iosPath, 'CoolPlugin.m'), '');
-  await writeFile(join(androidPath, 'CoolPlugin.java'), '');
+  await writeFile(join(iosPath, 'CoolPlugin.swift'), CAPACITOR_PLUGIN_SWIFT);
+  await writeFile(join(androidPath, 'CoolPlugin.java'), CAPACITOR_PLUGIN_JAVA);
+}
+
+const LEGACY_CORDOVA_PLUGIN_XML = `
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" id="${LEGACY_CORDOVA_PLUGIN_ID}" version="1.0.0">
+    <name>Cool Cordova Plugin</name>
+    <platform name="android"></platform>
+    <platform name="ios"></platform>
+</plugin>
+`;
+
+const LEGACY_CORDOVA_PLUGIN_PACKAGE = `
+{
+  "name": "${LEGACY_CORDOVA_PLUGIN_ID}",
+  "version": "1.0.0",
+  "description": "Cool Cordova plugin",
+  "author": "Max",
+  "license": "MIT"
+}
+`;
+
+/**
+ * A package that only has a \`plugin.xml\`: Cordova plugins are not supported,
+ * so the CLI has to warn about it and leave it out of the native projects.
+ */
+async function makeLegacyCordovaPlugin(pluginPath: string) {
+  await mkdirp(pluginPath);
+  await writeFile(join(pluginPath, 'plugin.xml'), LEGACY_CORDOVA_PLUGIN_XML);
+  await writeFile(join(pluginPath, 'package.json'), LEGACY_CORDOVA_PLUGIN_PACKAGE);
 }
 
 class MappedFS {
