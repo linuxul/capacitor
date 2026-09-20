@@ -19,7 +19,7 @@ class WebView : Plugin() {
     @PluginMethod
     fun setServerBasePath(call: PluginCall) {
         val path = call.getString("path")
-        bridge.setServerBasePath(path)
+        bridge.serverBasePath = path
         call.resolve()
     }
 

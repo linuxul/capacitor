@@ -226,12 +226,9 @@ class SystemBars : Plugin() {
 
         // Execute JavaScript to inject the CSS
         bridge.executeOnMainThread {
-            val webView = bridge?.webView
-            if (webView != null) {
-                val script = String.format(Locale.US, safeAreaCSSFormat, topPx.toInt(), rightPx.toInt(), bottomPx.toInt(), leftPx.toInt())
+            val script = String.format(Locale.US, safeAreaCSSFormat, topPx.toInt(), rightPx.toInt(), bottomPx.toInt(), leftPx.toInt())
 
-                webView.evaluateJavascript(script, null)
-            }
+            bridge.webView.evaluateJavascript(script, null)
         }
     }
 

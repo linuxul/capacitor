@@ -3,11 +3,11 @@ package com.getcapacitor
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.res.AssetManager
-import com.getcapacitor.Bridge.CAPACITOR_HTTPS_SCHEME
-import com.getcapacitor.Bridge.DEFAULT_ANDROID_WEBVIEW_VERSION
-import com.getcapacitor.Bridge.DEFAULT_HUAWEI_WEBVIEW_VERSION
-import com.getcapacitor.Bridge.MINIMUM_ANDROID_WEBVIEW_VERSION
-import com.getcapacitor.Bridge.MINIMUM_HUAWEI_WEBVIEW_VERSION
+import com.getcapacitor.Bridge.Companion.CAPACITOR_HTTPS_SCHEME
+import com.getcapacitor.Bridge.Companion.DEFAULT_ANDROID_WEBVIEW_VERSION
+import com.getcapacitor.Bridge.Companion.DEFAULT_HUAWEI_WEBVIEW_VERSION
+import com.getcapacitor.Bridge.Companion.MINIMUM_ANDROID_WEBVIEW_VERSION
+import com.getcapacitor.Bridge.Companion.MINIMUM_HUAWEI_WEBVIEW_VERSION
 import com.getcapacitor.util.JSONUtils
 import org.json.JSONException
 import org.json.JSONObject

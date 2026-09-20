@@ -25,8 +25,8 @@ class PluginResult
          */
         fun put(name: String, value: Date): PluginResult {
             val tz = TimeZone.getTimeZone("UTC")
-            // Locale.getDefault() is what the single-argument constructor used implicitly.
-            val df: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'", Locale.getDefault())
+            // The FORMAT default locale is what the single-argument constructor used implicitly.
+            val df: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'", Locale.getDefault(Locale.Category.FORMAT))
             df.timeZone = tz
             return jsonPut(name, df.format(value))
         }
