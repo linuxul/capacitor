@@ -11,6 +11,5 @@
     "SplashScreen": {
       "launchShowDuration": 1
     }
-  },
-  "cordova": {}
+  }
 }

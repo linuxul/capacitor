@@ -46,8 +46,6 @@ public class SceneDelegateProxy: NSObject, UISceneDelegate {
                 "options": options
             ])
 
-            NotificationCenter.default.post(name: NSNotification.Name.CDVPluginHandleOpenURL, object: context.url)
-
             NotificationCenter.default.post(name: .capacitorSceneOpenURL, object: scene, userInfo: [
                 "url": context.url,
                 "options": options

@@ -1,7 +1,6 @@
 import Foundation
 import Dispatch
 import WebKit
-import Cordova
 
 internal typealias CapacitorPlugin = CAPPlugin & CAPBridgedPlugin
 
@@ -113,13 +112,8 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     @objc public var config: InstanceConfiguration
     // Map of all loaded and instantiated plugins by pluginId -> instance
     var plugins =  [String: CapacitorPlugin]()
-    // Manager for getting Cordova plugins
-    var cordovaPluginManager: CDVPluginManager?
     // Calls we are storing to resolve later
     var storedCalls = ConcurrentDictionary<CAPPluginCall>()
-    // Whether to inject the Cordova files
-    private var injectCordovaFiles = false
-    private var cordovaParser: CDVConfigParser?
     private var injectMiscFiles: [String] = []
     private var canInjectJS: Bool = true
 
@@ -201,12 +195,11 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     // MARK: - Initialization
 
-    public init(with configuration: InstanceConfiguration, delegate bridgeDelegate: CAPBridgeDelegate, cordovaConfiguration: CDVConfigParser, assetHandler: WebViewAssetHandler, delegationHandler: WebViewDelegationHandler, autoRegisterPlugins: Bool = true) {
+    public init(with configuration: InstanceConfiguration, delegate bridgeDelegate: CAPBridgeDelegate, assetHandler: WebViewAssetHandler, delegationHandler: WebViewDelegationHandler, autoRegisterPlugins: Bool = true) {
         self.bridgeDelegate = bridgeDelegate
         self.webViewAssetHandler = assetHandler
         self.webViewDelegationHandler = delegationHandler
         self.config = configuration
-        self.cordovaParser = cordovaConfiguration
         self.notificationRouter = NotificationRouter()
         self.notificationRouter.handleApplicationNotifications = configuration.handleApplicationNotifications
         self.autoRegisterPlugins = autoRegisterPlugins
@@ -217,7 +210,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
         exportCoreJS(localUrl: configuration.localURL.absoluteString)
         registerPlugins()
-        setupCordovaCompatibility()
+        setupLifecycleObservers()
         exportMiscJS()
         canInjectJS = false
 
@@ -257,20 +250,15 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     /**
-     Set up our Cordova compat by loading all known Cordova plugins and injecting their JS.
+     Observe scene lifecycle transitions and forward them to the page as `resume` and `pause` document events.
      */
-    func setupCordovaCompatibility() {
-        if injectCordovaFiles {
-            exportCordovaJS()
-            registerCordovaPlugins()
-        } else {
-            observers.append(NotificationCenter.default.addObserver(forName: UIScene.willEnterForegroundNotification, object: nil, queue: OperationQueue.main) { [weak self] notification in
-                self?.triggerSceneLifecycleJSEvent("resume", for: notification)
-            })
-            observers.append(NotificationCenter.default.addObserver(forName: UIScene.didEnterBackgroundNotification, object: nil, queue: OperationQueue.main) { [weak self] notification in
-                self?.triggerSceneLifecycleJSEvent("pause", for: notification)
-            })
-        }
+    func setupLifecycleObservers() {
+        observers.append(NotificationCenter.default.addObserver(forName: UIScene.willEnterForegroundNotification, object: nil, queue: OperationQueue.main) { [weak self] notification in
+            self?.triggerSceneLifecycleJSEvent("resume", for: notification)
+        })
+        observers.append(NotificationCenter.default.addObserver(forName: UIScene.didEnterBackgroundNotification, object: nil, queue: OperationQueue.main) { [weak self] notification in
+            self?.triggerSceneLifecycleJSEvent("pause", for: notification)
+        })
     }
 
     /**
@@ -298,17 +286,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     /**
-     Export the core Cordova JS runtime
-     */
-    func exportCordovaJS() {
-        do {
-            try JSExport.exportCordovaJS(userContentController: webViewDelegationHandler.contentController)
-        } catch {
-            type(of: self).fatalError(error, error)
-        }
-    }
-
-    /**
      Reset the state of the bridge between navigations to avoid
      sending data back to the page from a previous page.
      */
@@ -331,11 +308,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
                     for plugin in registrationList.packageClassList {
                         if let pluginClass = NSClassFromString(plugin) {
-                            if pluginClass == CDVPlugin.self {
-                                injectCordovaFiles = true
-                            } else {
-                                pluginList.append(pluginClass)
-                            }
+                            pluginList.append(pluginClass)
                         }
                     }
                 }
@@ -443,23 +416,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         return self.dispatchQueue
     }
 
-    func registerCordovaPlugins() {
-        guard let cordovaParser = cordovaParser else {
-            return
-        }
-        cordovaPluginManager = CDVPluginManager.init(parser: cordovaParser, viewController: self.viewController, webView: self.getWebView())
-        if cordovaParser.startupPluginNames.count > 0 {
-            for pluginName in cordovaParser.startupPluginNames {
-                _ = cordovaPluginManager?.getCommandInstance(pluginName as? String)
-            }
-        }
-        do {
-            try JSExport.exportCordovaPluginsJS(userContentController: webViewDelegationHandler.contentController)
-        } catch {
-            type(of: self).fatalError(error, error)
-        }
-    }
-
     func reload() {
         self.getWebView()?.reload()
     }
@@ -469,14 +425,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     private func setupWebDebugging(configuration: InstanceConfiguration) {
-        let isWebDebuggable = configuration.isWebDebuggable
-        if isWebDebuggable, #unavailable(iOS 16.4) {
-            CAPLog.print("⚡️ Warning: isWebDebuggable only functions as intended on iOS 16.4 and above.")
-        }
-
-        if #available(iOS 16.4, *) {
-            self.webView?.isInspectable = isWebDebuggable
-        }
+        self.webView?.isInspectable = configuration.isWebDebuggable
     }
 
     /**
@@ -555,34 +504,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
             // let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
             // CAPLog.print("Native call took", timeElapsed)
-        }
-    }
-
-    /**
-     Handle a Cordova call from JavaScript. First, find the corresponding plugin,
-     construct a selector, and perform that selector on the plugin instance.
-     */
-    func handleCordovaJSCall(call: JSCall) {
-        // Create a selector to send to the plugin
-
-        if let plugin = self.cordovaPluginManager?.getCommandInstance(call.pluginId.lowercased()) {
-            let selector = NSSelectorFromString("\(call.method):")
-            if !plugin.responds(to: selector) {
-                CAPLog.print("Error: Plugin \(plugin.className ?? "") does not respond to method call \(selector).")
-                CAPLog.print("Ensure plugin method exists and uses @objc in its declaration")
-                return
-            }
-
-            let arguments: [Any] = call.options["options"] as? [Any] ?? []
-            let pluginCall = CDVInvokedUrlCommand(arguments: arguments,
-                                                  callbackId: call.callbackId,
-                                                  className: plugin.className,
-                                                  methodName: call.method)
-            plugin.perform(selector, with: pluginCall)
-
-        } else {
-            CAPLog.print("Error: Cordova Plugin mapping not found")
-            return
         }
     }
 

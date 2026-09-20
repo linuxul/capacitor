@@ -12,7 +12,15 @@ private class StubNavigationAction: WKNavigationAction {
     private let stubbedTargetFrame: WKFrameInfo?
     init(url: String, subframe: Bool = false) {
         self.stubbedRequest = URLRequest(url: URL(string: url)!)
-        self.stubbedTargetFrame = subframe ? StubFrameInfo() : nil
+        if subframe {
+            // A WKFrameInfo created outside of WebKit has no backing frame, and on newer WebKit
+            // versions its dealloc traps (CFRetain of NULL). Leak the stub so dealloc never runs.
+            let frame = StubFrameInfo()
+            _ = Unmanaged.passRetained(frame)
+            self.stubbedTargetFrame = frame
+        } else {
+            self.stubbedTargetFrame = nil
+        }
         super.init()
     }
     override var request: URLRequest { stubbedRequest }
@@ -32,7 +40,6 @@ class HttpInterceptorNavigationTests: XCTestCase {
         bridge = MockBridge(
             with: InstanceConfiguration(with: descriptor, isDebug: true),
             delegate: MockBridgeViewController(),
-            cordovaConfiguration: descriptor.cordovaConfiguration,
             assetHandler: MockAssetHandler(router: CapacitorRouter()),
             delegationHandler: handler
         )
