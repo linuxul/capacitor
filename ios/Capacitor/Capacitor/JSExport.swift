@@ -25,7 +25,7 @@ internal class JSExport {
     }
 
     static func exportBridgeJS(userContentController: WKUserContentController) throws {
-        let capBundle = Bundle(for: Self.self)
+        let capBundle = Bundle.capacitorResources
         guard let jsUrl = capBundle.url(forResource: "native-bridge", withExtension: "js") else {
             CAPLog.print("ERROR: Required native-bridge.js file in Capacitor not found. Bridge will not function!")
             throw CapacitorBridgeError.errorExportingCoreJS
@@ -172,5 +172,17 @@ internal class JSExport {
         } catch {
             CAPLog.print("Unable to inject js file")
         }
+    }
+}
+
+internal extension Bundle {
+    /// The bundle that contains the resources shipped with Capacitor (e.g. `native-bridge.js`): the generated resource bundle
+    /// when built as a Swift package, the framework bundle otherwise.
+    static var capacitorResources: Bundle {
+        #if SWIFT_PACKAGE
+        return Bundle.module
+        #else
+        return Bundle(for: JSExport.self)
+        #endif
     }
 }

@@ -15,10 +15,12 @@
   "files": [
     "Capacitor/Capacitor/",
     "Capacitor.podspec",
+    "Package.swift",
     "scripts/pods_helpers.rb"
   ],
   "scripts": {
     "verify": "npm run xc:build:Capacitor",
+    "spm:build": "xcodebuild -scheme capacitor-swift-pm -destination 'generic/platform=iOS Simulator' -derivedDataPath \"${TMPDIR:-/tmp}/capacitor-spm-build\" build",
     "xc:build:Capacitor": "cd Capacitor && xcodebuild clean test -workspace Capacitor.xcworkspace -scheme Capacitor -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.0.1' && cd .."
   },
   "peerDependencies": {
