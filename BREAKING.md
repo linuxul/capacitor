@@ -57,6 +57,12 @@ The CLI used to enable `usesCleartextTraffic` through the generated Cordova modu
 </manifest>
 ```
 
+## Bridge callback ids
+
+The `callbackId` that ties a native call to its JavaScript promise is a random version 4 UUID made with `crypto.getRandomValues`, instead of a counter that went up by one from a random start. A pending id can therefore no longer be guessed from an earlier one. Nothing changes for plugins: both runtimes already treated the id as an opaque string, and `"-1"` still marks a call that expects no response. Code that parsed the id as a number, which the runtimes never did, would break.
+
+This is not a defence against script injection. A script that runs in the page can call plugins directly whatever the ids look like; restrict `server.allowNavigation`, set a Content-Security-Policy and do not load remote content to address that.
+
 ## iOS plugins
 
 ### Objective-C plugins are not supported

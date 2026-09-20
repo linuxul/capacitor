@@ -914,10 +914,28 @@ const initBridge = (w: any): void => {
     cap.getServerUrl = () => webviewServerUrl;
     cap.convertFileSrc = (filePath) => convertFileSrcServerUrl(webviewServerUrl, filePath);
 
-    // Counter of callback ids, randomized to avoid
-    // any issues during reloads if a call comes back with
-    // an existing callback id from an old session
-    let callbackIdCount = Math.floor(Math.random() * 134217728);
+    // Callback ids are random UUIDs (v4) so that a pending id cannot be guessed from an earlier one,
+    // and a call that comes back from an old session after a reload never matches a new id.
+    // crypto.getRandomValues is used rather than crypto.randomUUID because the latter only exists in
+    // secure contexts, which a live reload server on plain http is not.
+    const createCallbackId = (): string => {
+      const bytes = win.crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex: string[] = [];
+      bytes.forEach((b) => hex.push((b < 16 ? '0' : '') + b.toString(16)));
+      return (
+        hex.slice(0, 4).join('') +
+        '-' +
+        hex.slice(4, 6).join('') +
+        '-' +
+        hex.slice(6, 8).join('') +
+        '-' +
+        hex.slice(8, 10).join('') +
+        '-' +
+        hex.slice(10).join('')
+      );
+    };
 
     let postToNative: (data: CallData) => void | null = null;
 
@@ -996,7 +1014,7 @@ const initBridge = (w: any): void => {
             (typeof storedCallback.callback === 'function' || typeof storedCallback.resolve === 'function')
           ) {
             // store the call for later lookup
-            callbackId = String(++callbackIdCount);
+            callbackId = createCallbackId();
             callbacks.set(callbackId, storedCallback);
           }
 

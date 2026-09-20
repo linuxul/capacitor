@@ -171,6 +171,7 @@ export interface WindowCapacitor {
     };
   };
   console?: Console;
+  crypto?: Crypto;
   dispatchEvent?: any;
   document?: any;
   navigator?: {

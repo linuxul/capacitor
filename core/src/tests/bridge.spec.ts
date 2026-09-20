@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 
+import { webcrypto } from 'crypto';
+
 import { initBridge } from '../../native-bridge';
 import type { CapacitorInstance, PluginResult, WindowCapacitor } from '../definitions-internal';
 import { createCapacitor } from '../runtime';
@@ -11,12 +13,49 @@ describe('bridge', () => {
   let cap: CapacitorInstance;
 
   beforeEach(() => {
-    win = {};
+    // a WebView always has window.crypto; the bare object used here does not
+    win = { crypto: webcrypto as unknown as Crypto };
     initBridge(win);
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     window.prompt = () => {};
+  });
+
+  it('callback ids are unrelated random v4 UUIDs', async () => {
+    const callbackIds: string[] = [];
+    win.androidBridge = {
+      postMessage: (m) => {
+        const d = JSON.parse(m);
+        callbackIds.push(d.callbackId);
+        Promise.resolve().then(() =>
+          cap.fromNative({ callbackId: d.callbackId, methodName: d.methodName, success: true, data: {} }),
+        );
+      },
+    };
+    initBridge(win);
+    cap = createCapacitor(win);
+
+    for (let i = 0; i < 50; i++) {
+      await cap.nativePromise('id', 'method');
+    }
+
+    expect(callbackIds.length).toBe(50);
+    expect(new Set(callbackIds).size).toBe(50);
+    for (const id of callbackIds) {
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    }
+  });
+
+  it('a call without a callback keeps the dangling id', () => {
+    const callbackIds: string[] = [];
+    win.androidBridge = { postMessage: (m) => callbackIds.push(JSON.parse(m).callbackId) };
+    initBridge(win);
+    cap = createCapacitor(win);
+
+    cap.toNative('id', 'method', {});
+
+    expect(callbackIds).toEqual(['-1']);
   });
 
   it('android nativePromise error', (done) => {
