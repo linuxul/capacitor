@@ -1,4 +1,5 @@
 import XCTest
+import WebKit
 
 @testable import Capacitor
 
@@ -153,5 +154,28 @@ class PluginTests: XCTestCase {
         let installed = method_getImplementation(method)
         _ = CapacitorRuntimeHooks.install
         XCTAssertEqual(installed, method_getImplementation(class_getInstanceMethod(UIStatusBarManager.self, NSSelectorFromString("handleTapAction:"))!))
+    }
+
+    /// The status bar can't be tapped from a unit test, so send the private action to the real status bar manager
+    /// of the host app instead: the installed hook has to post the notification and still reach UIKit's implementation.
+    func testStatusBarTapHookPostsNotification() throws {
+        _ = CapacitorRuntimeHooks.install
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let statusBarManager = try XCTUnwrap(scene?.statusBarManager, "the tests need the host app's window scene")
+        let selector = NSSelectorFromString("handleTapAction:")
+        XCTAssertTrue(statusBarManager.responds(to: selector))
+
+        let tapped = expectation(forNotification: .capacitorStatusBarTapped, object: nil)
+        statusBarManager.perform(selector, with: nil)
+        wait(for: [tapped], timeout: 1)
+    }
+
+    /// The keyboard hook replaces a private WKContentView method, which only exists once WebKit has loaded its view classes.
+    func testKeyboardHookIsInstalledOnWKContentView() throws {
+        _ = WKWebView(frame: .zero)
+        _ = CapacitorRuntimeHooks.install
+        let contentView: AnyClass = try XCTUnwrap(NSClassFromString("WK" + "ContentView"))
+        let selector = sel_getUid("_elementDidFocus:userIsInteracting:blurPreviousNode:activityStateChanges:userObject:")
+        XCTAssertNotNil(class_getInstanceMethod(contentView, selector), "WebKit no longer has the method Capacitor hooks for keyboardShouldRequireUserInteraction")
     }
 }
