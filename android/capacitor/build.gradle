@@ -98,5 +98,6 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     testImplementation 'org.json:json:20250517'
     testImplementation 'org.mockito:mockito-core:5.20.0'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:6.2.3'
 }
 
