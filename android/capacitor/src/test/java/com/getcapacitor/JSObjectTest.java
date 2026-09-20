@@ -3,6 +3,7 @@ package com.getcapacitor;
 import static org.junit.Assert.*;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Test;
 
 public class JSObjectTest {
@@ -207,5 +208,66 @@ public class JSObjectTest {
         String actualValue = jsObject.getString("string");
 
         assertEquals(actualValue, expectedValue);
+    }
+
+    @Test
+    public void putNullString_RemovesKey() {
+        JSObject jsObject = new JSObject();
+        jsObject.put("string", "test");
+        jsObject.put("string", (String) null);
+
+        assertFalse(jsObject.has("string"));
+        assertNull(jsObject.getString("string"));
+    }
+
+    @Test
+    public void putNullObject_RemovesKey() {
+        JSObject jsObject = new JSObject();
+        jsObject.put("object", new JSObject());
+        jsObject.put("object", (Object) null);
+
+        assertFalse(jsObject.has("object"));
+    }
+
+    @Test
+    public void putJSONNull_KeepsKeyAsNull() {
+        JSObject jsObject = new JSObject();
+        jsObject.put("value", JSONObject.NULL);
+
+        assertTrue(jsObject.has("value"));
+        assertTrue(jsObject.isNull("value"));
+        assertEquals("{\"value\":null}", jsObject.toString());
+    }
+
+    @Test
+    public void putBoxedInteger_AddsValueToJSObject_UnderCorrectKey() {
+        JSObject jsObject = new JSObject();
+        Integer boxed = 7;
+        jsObject.put("integer", boxed);
+
+        assertEquals(Integer.valueOf(7), jsObject.getInteger("integer"));
+        assertEquals("{\"integer\":7}", jsObject.toString());
+    }
+
+    @Test
+    public void putNestedJSObject_IsReturnedAsJSObject() {
+        JSObject child = new JSObject().put("name", "child");
+        JSObject jsObject = new JSObject().put("child", child);
+
+        assertEquals("child", jsObject.getJSObject("child").getString("name"));
+        assertEquals("{\"child\":{\"name\":\"child\"}}", jsObject.toString());
+    }
+
+    @Test
+    public void putIsChainable_AcrossOverloads() {
+        JSObject jsObject = new JSObject()
+            .put("a", true)
+            .put("b", 1)
+            .put("c", 2L)
+            .put("d", 1.5d)
+            .put("e", "s")
+            .put("f", (Object) "o");
+
+        assertEquals(6, jsObject.length());
     }
 }
