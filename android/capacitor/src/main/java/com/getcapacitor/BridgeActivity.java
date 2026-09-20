@@ -47,7 +47,6 @@ public class BridgeActivity extends AppCompatActivity {
 
         bridge = bridgeBuilder.addPlugins(initialPlugins).setConfig(config).create();
 
-        this.keepRunning = bridge.shouldKeepRunning();
         this.onNewIntent(getIntent());
     }
 

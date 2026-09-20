@@ -16,40 +16,17 @@ class JSInjector {
     private String globalJS;
     private String bridgeJS;
     private String pluginJS;
-    private String cordovaJS;
-    private String cordovaPluginsJS;
-    private String cordovaPluginsFileJS;
     private String localUrlJS;
     private String miscJS;
 
-    public JSInjector(
-        String globalJS,
-        String bridgeJS,
-        String pluginJS,
-        String cordovaJS,
-        String cordovaPluginsJS,
-        String cordovaPluginsFileJS,
-        String localUrlJS
-    ) {
-        this(globalJS, bridgeJS, pluginJS, cordovaJS, cordovaPluginsJS, cordovaPluginsFileJS, localUrlJS, null);
+    public JSInjector(String globalJS, String bridgeJS, String pluginJS, String localUrlJS) {
+        this(globalJS, bridgeJS, pluginJS, localUrlJS, null);
     }
 
-    public JSInjector(
-        String globalJS,
-        String bridgeJS,
-        String pluginJS,
-        String cordovaJS,
-        String cordovaPluginsJS,
-        String cordovaPluginsFileJS,
-        String localUrlJS,
-        String miscJS
-    ) {
+    public JSInjector(String globalJS, String bridgeJS, String pluginJS, String localUrlJS, String miscJS) {
         this.globalJS = globalJS;
         this.bridgeJS = bridgeJS;
         this.pluginJS = pluginJS;
-        this.cordovaJS = cordovaJS;
-        this.cordovaPluginsJS = cordovaPluginsJS;
-        this.cordovaPluginsFileJS = cordovaPluginsFileJS;
         this.localUrlJS = localUrlJS;
         this.miscJS = miscJS;
     }
@@ -60,20 +37,7 @@ class JSInjector {
      * @return
      */
     public String getScriptString() {
-        String scriptString =
-            globalJS +
-            "\n\n" +
-            localUrlJS +
-            "\n\n" +
-            bridgeJS +
-            "\n\n" +
-            pluginJS +
-            "\n\n" +
-            cordovaJS +
-            "\n\n" +
-            cordovaPluginsFileJS +
-            "\n\n" +
-            cordovaPluginsJS;
+        String scriptString = globalJS + "\n\n" + localUrlJS + "\n\n" + bridgeJS + "\n\n" + pluginJS;
 
         if (miscJS != null) {
             scriptString += "\n\n" + miscJS;

@@ -35,8 +35,6 @@ import androidx.webkit.WebViewFeature;
 import com.getcapacitor.android.R;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
-import com.getcapacitor.cordova.MockCordovaInterfaceImpl;
-import com.getcapacitor.cordova.MockCordovaWebViewImpl;
 import com.getcapacitor.util.HostMask;
 import com.getcapacitor.util.InternalUtils;
 import com.getcapacitor.util.PermissionHelper;
@@ -55,11 +53,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.cordova.ConfigXmlParser;
-import org.apache.cordova.CordovaPreferences;
-import org.apache.cordova.CordovaWebView;
-import org.apache.cordova.PluginEntry;
-import org.apache.cordova.PluginManager;
 import org.json.JSONException;
 
 /**
@@ -125,9 +118,6 @@ public class Bridge {
     private Boolean canInjectJS = true;
     // A reference to the main WebView for the app
     private final WebView webView;
-    public final MockCordovaInterfaceImpl cordovaInterface;
-    private CordovaWebView cordovaWebView;
-    private CordovaPreferences preferences;
     private BridgeWebViewClient webViewClient;
     private App app;
 
@@ -169,26 +159,6 @@ public class Bridge {
     // A pre-determined path to load the bridge
     private ServerPath serverPath;
 
-    /**
-     * Create the Bridge with a reference to the main {@link Activity} for the
-     * app, and a reference to the {@link WebView} our app will use.
-     * @param context
-     * @param webView
-     * @deprecated Use {@link Bridge.Builder} to create Bridge instances
-     */
-    @Deprecated
-    public Bridge(
-        AppCompatActivity context,
-        WebView webView,
-        List<Class<? extends Plugin>> initialPlugins,
-        MockCordovaInterfaceImpl cordovaInterface,
-        PluginManager pluginManager,
-        CordovaPreferences preferences,
-        CapConfig config
-    ) {
-        this(context, null, null, webView, initialPlugins, new ArrayList<>(), cordovaInterface, pluginManager, preferences, config);
-    }
-
     private Bridge(
         AppCompatActivity context,
         ServerPath serverPath,
@@ -196,9 +166,6 @@ public class Bridge {
         WebView webView,
         List<Class<? extends Plugin>> initialPlugins,
         List<Plugin> pluginInstances,
-        MockCordovaInterfaceImpl cordovaInterface,
-        PluginManager pluginManager,
-        CordovaPreferences preferences,
         CapConfig config
     ) {
         this.app = new App();
@@ -209,8 +176,6 @@ public class Bridge {
         this.webViewClient = new BridgeWebViewClient(this);
         this.initialPlugins = initialPlugins;
         this.pluginInstances = pluginInstances;
-        this.cordovaInterface = cordovaInterface;
-        this.preferences = preferences;
 
         // Start our plugin execution threads and handlers
         handlerThread.start();
@@ -222,7 +187,7 @@ public class Bridge {
         // Initialize web view and message handler for it
         this.initWebView();
         this.setAllowedOriginRules();
-        this.msgHandler = new MessageHandler(this, webView, pluginManager);
+        this.msgHandler = new MessageHandler(this, webView);
 
         // Grab any intent info that our app was launched with
         Intent intent = context.getIntent();
@@ -292,7 +257,7 @@ public class Bridge {
             );
         }
 
-        if (!isDeployDisabled() && !isNewBinary()) {
+        if (!isNewBinary()) {
             SharedPreferences prefs = getContext().getSharedPreferences(
                 com.getcapacitor.plugin.WebView.WEBVIEW_PREFS_NAME,
                 Activity.MODE_PRIVATE
@@ -456,14 +421,6 @@ public class Bridge {
         return false;
     }
 
-    public boolean isDeployDisabled() {
-        return preferences.getBoolean("DisableDeploy", false);
-    }
-
-    public boolean shouldKeepRunning() {
-        return preferences.getBoolean("KeepRunning", true);
-    }
-
     public void handleAppUrlLoadError(Exception ex) {
         if (ex instanceof SocketTimeoutException) {
             Logger.error(
@@ -478,10 +435,6 @@ public class Bridge {
 
     public boolean isDevMode() {
         return (getActivity().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-    }
-
-    protected void setCordovaWebView(CordovaWebView cordovaWebView) {
-        this.cordovaWebView = cordovaWebView;
     }
 
     /**
@@ -1025,16 +978,13 @@ public class Bridge {
             String globalJS = JSExport.getGlobalJS(context, config.isLoggingEnabled(), isDevMode());
             String bridgeJS = JSExport.getBridgeJS(context);
             String pluginJS = JSExport.getPluginJS(plugins.values());
-            String cordovaJS = JSExport.getCordovaJS(context);
-            String cordovaPluginsJS = JSExport.getCordovaPluginJS(context);
-            String cordovaPluginsFileJS = JSExport.getCordovaPluginsFileJS(context);
             String localUrlJS = "window.WEBVIEW_SERVER_URL = '" + localUrl + "';";
             String miscJS = JSExport.getMiscFileJS(miscJSFileInjections, context);
 
             miscJSFileInjections = new ArrayList<>();
             canInjectJS = false;
 
-            return new JSInjector(globalJS, bridgeJS, pluginJS, cordovaJS, cordovaPluginsJS, cordovaPluginsFileJS, localUrlJS, miscJS);
+            return new JSInjector(globalJS, bridgeJS, pluginJS, localUrlJS, miscJS);
         } catch (Exception ex) {
             Logger.error("Unable to export Capacitor JS. App will not function!", ex);
         }
@@ -1123,7 +1073,7 @@ public class Bridge {
     }
 
     /**
-     * Check for legacy Capacitor or Cordova plugins that may have registered to handle a permission
+     * Check for legacy Capacitor plugins that may have registered to handle a permission
      * request, and handle them if so. If not handled, false is returned.
      *
      * @param requestCode the code that was requested
@@ -1136,14 +1086,8 @@ public class Bridge {
         PluginHandle plugin = getPluginWithRequestCode(requestCode);
 
         if (plugin == null) {
-            boolean permissionHandled = false;
-            Logger.debug("Unable to find a Capacitor plugin to handle permission requestCode, trying Cordova plugins " + requestCode);
-            try {
-                permissionHandled = cordovaInterface.handlePermissionResult(requestCode, permissions, grantResults);
-            } catch (JSONException e) {
-                Logger.debug("Error on Cordova plugin permissions request " + e.getMessage());
-            }
-            return permissionHandled;
+            Logger.debug("Unable to find a Capacitor plugin to handle permission requestCode " + requestCode);
+            return false;
         }
 
         // Call deprecated method if using deprecated NativePlugin annotation
@@ -1282,8 +1226,8 @@ public class Bridge {
         PluginHandle plugin = getPluginWithRequestCode(requestCode);
 
         if (plugin == null || plugin.getInstance() == null) {
-            Logger.debug("Unable to find a Capacitor plugin to handle requestCode, trying Cordova plugins " + requestCode);
-            return cordovaInterface.onActivityResult(requestCode, resultCode, data);
+            Logger.debug("Unable to find a Capacitor plugin to handle requestCode " + requestCode);
+            return false;
         }
 
         // deprecated, to be removed
@@ -1313,10 +1257,6 @@ public class Bridge {
         for (PluginHandle plugin : plugins.values()) {
             plugin.getInstance().handleOnNewIntent(intent);
         }
-
-        if (cordovaWebView != null) {
-            cordovaWebView.onNewIntent(intent);
-        }
     }
 
     /**
@@ -1345,10 +1285,6 @@ public class Bridge {
         for (PluginHandle plugin : plugins.values()) {
             plugin.getInstance().handleOnStart();
         }
-
-        if (cordovaWebView != null) {
-            cordovaWebView.handleStart();
-        }
     }
 
     /**
@@ -1357,10 +1293,6 @@ public class Bridge {
     public void onResume() {
         for (PluginHandle plugin : plugins.values()) {
             plugin.getInstance().handleOnResume();
-        }
-
-        if (cordovaWebView != null) {
-            cordovaWebView.handleResume(this.shouldKeepRunning());
         }
     }
 
@@ -1371,11 +1303,6 @@ public class Bridge {
         for (PluginHandle plugin : plugins.values()) {
             plugin.getInstance().handleOnPause();
         }
-
-        if (cordovaWebView != null) {
-            boolean keepRunning = this.shouldKeepRunning() || cordovaInterface.getActivityResultCallback() != null;
-            cordovaWebView.handlePause(keepRunning);
-        }
     }
 
     /**
@@ -1384,10 +1311,6 @@ public class Bridge {
     public void onStop() {
         for (PluginHandle plugin : plugins.values()) {
             plugin.getInstance().handleOnStop();
-        }
-
-        if (cordovaWebView != null) {
-            cordovaWebView.handleStop();
         }
     }
 
@@ -1400,10 +1323,6 @@ public class Bridge {
         }
 
         handlerThread.quitSafely();
-
-        if (cordovaWebView != null) {
-            cordovaWebView.handleDestroy();
-        }
     }
 
     /**
@@ -1589,43 +1508,14 @@ public class Bridge {
         }
 
         public Bridge create() {
-            // Cordova initialization
-            ConfigXmlParser parser = new ConfigXmlParser();
-            parser.parse(activity.getApplicationContext());
-            CordovaPreferences preferences = parser.getPreferences();
-            preferences.setPreferencesBundle(activity.getIntent().getExtras());
-            List<PluginEntry> pluginEntries = parser.getPluginEntries();
-
-            MockCordovaInterfaceImpl cordovaInterface = new MockCordovaInterfaceImpl(activity);
-            if (instanceState != null) {
-                cordovaInterface.restoreInstanceState(instanceState);
-            }
-
             WebView webView = this.fragment != null ? fragment.getView().findViewById(R.id.webview) : activity.findViewById(R.id.webview);
-            MockCordovaWebViewImpl mockWebView = new MockCordovaWebViewImpl(activity.getApplicationContext());
-            mockWebView.init(cordovaInterface, pluginEntries, preferences, webView);
-            PluginManager pluginManager = mockWebView.getPluginManager();
-            cordovaInterface.onCordovaInit(pluginManager);
 
-            // Bridge initialization
-            Bridge bridge = new Bridge(
-                activity,
-                serverPath,
-                fragment,
-                webView,
-                plugins,
-                pluginInstances,
-                cordovaInterface,
-                pluginManager,
-                preferences,
-                config
-            );
+            Bridge bridge = new Bridge(activity, serverPath, fragment, webView, plugins, pluginInstances, config);
 
             if (webView instanceof CapacitorWebView capacitorWebView) {
                 capacitorWebView.setBridge(bridge);
             }
 
-            bridge.setCordovaWebView(mockWebView);
             bridge.setWebViewListeners(webViewListeners);
             bridge.setRouteProcessor(routeProcessor);
 

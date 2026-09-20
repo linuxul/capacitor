@@ -18,7 +18,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -53,7 +57,39 @@ public class JSProtocolSnapshotTest {
     @Test
     public void pluginJS() throws Exception {
         PluginHandle handle = new PluginHandle(mock(Bridge.class), new SnapshotPlugin());
-        assertSnapshot("plugin-js.txt", JSExport.getPluginJS(Collections.singletonList(handle)));
+        assertSnapshot("plugin-js.txt", sortMethods(JSExport.getPluginJS(Collections.singletonList(handle))));
+    }
+
+    /**
+     * Plugin methods are indexed in a HashMap from Class.getMethods(), neither of which has a
+     * guaranteed order, so sort the generated method blocks and headers before comparing.
+     */
+    private static String sortMethods(String pluginJS) throws Exception {
+        String trailer = "\n})(window);\n";
+        String headersPrefix = "\nwindow.Capacitor.PluginHeaders = ";
+        int trailerAt = pluginJS.indexOf(trailer);
+        int headersAt = pluginJS.indexOf(headersPrefix);
+
+        String[] blocks = pluginJS.substring(0, trailerAt).split("\n(?=t\\[')");
+        Arrays.sort(blocks, 1, blocks.length);
+
+        JSONArray headers = new JSONArray(pluginJS.substring(headersAt + headersPrefix.length(), pluginJS.length() - 1));
+        List<String> methods = new ArrayList<>();
+        JSONArray methodHeaders = headers.getJSONObject(0).getJSONArray("methods");
+        for (int i = 0; i < methodHeaders.length(); i++) {
+            JSONObject method = methodHeaders.getJSONObject(i);
+            methods.add(method.getString("name") + " -> " + method.optString("rtype", "(none)"));
+        }
+        Collections.sort(methods);
+
+        return (
+            String.join("\n", blocks) +
+            trailer +
+            "\nPluginHeaders for " +
+            headers.getJSONObject(0).getString("name") +
+            ":\n" +
+            String.join("\n", methods)
+        );
     }
 
     @Test
@@ -92,7 +128,7 @@ public class JSProtocolSnapshotTest {
     }
 
     private static JSInjector newInjector(String miscJS) {
-        return new JSInjector("GLOBAL", "BRIDGE", "PLUGINS", "CORDOVA", "CORDOVA_PLUGINS", "CORDOVA_PLUGINS_FILE", "LOCAL_URL", miscJS);
+        return new JSInjector("GLOBAL", "BRIDGE", "PLUGINS", "LOCAL_URL", miscJS);
     }
 
     private static JSONObject sendResponse(boolean keepAlive, PluginResult success, PluginResult error) throws Exception {
@@ -105,7 +141,7 @@ public class JSProtocolSnapshotTest {
         try (MockedStatic<WebViewFeature> feature = mockStatic(WebViewFeature.class)) {
             feature.when(() -> WebViewFeature.isFeatureSupported(anyString())).thenReturn(false);
 
-            MessageHandler handler = new MessageHandler(bridge, webView, null);
+            MessageHandler handler = new MessageHandler(bridge, webView);
             PluginCall call = new PluginCall(handler, "Snapshot", "42", "echo", new JSObject());
             call.setKeepAlive(keepAlive);
             handler.sendResponseMessage(call, success, error);

@@ -36,26 +36,6 @@ public class JSExport {
         return TextUtils.join("\n", lines);
     }
 
-    public static String getCordovaJS(Context context) {
-        String fileContent = "";
-        try {
-            fileContent = readFileFromAssets(context.getAssets(), "public/cordova.js");
-        } catch (IOException ex) {
-            Logger.error("Unable to read public/cordova.js file, Cordova plugins will not work");
-        }
-        return fileContent;
-    }
-
-    public static String getCordovaPluginsFileJS(Context context) {
-        String fileContent = "";
-        try {
-            fileContent = readFileFromAssets(context.getAssets(), "public/cordova_plugins.js");
-        } catch (IOException ex) {
-            Logger.error("Unable to read public/cordova_plugins.js file, Cordova plugins will not work");
-        }
-        return fileContent;
-    }
-
     public static String getPluginJS(Collection<PluginHandle> plugins) {
         List<String> lines = new ArrayList<>();
         JSONArray pluginArray = new JSONArray();
@@ -89,10 +69,6 @@ public class JSExport {
         }
 
         return TextUtils.join("\n", lines) + "\nwindow.Capacitor.PluginHeaders = " + pluginArray.toString() + ";";
-    }
-
-    public static String getCordovaPluginJS(Context context) {
-        return getFilesContent(context, "public/plugins");
     }
 
     public static String getFilesContent(Context context, String path) {

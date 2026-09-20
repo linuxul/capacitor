@@ -411,6 +411,7 @@ public class WebViewLocalServer {
             );
         }
 
+        // Apps may still include a cordova.js script tag; serve it as empty instead of a 404
         if (path.equals("/cordova.js")) {
             return new WebResourceResponse(
                 "application/javascript",
