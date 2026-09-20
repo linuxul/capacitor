@@ -56,7 +56,7 @@ private constructor(public val pluginClass: Class<out Plugin>, private val bridg
             instance = pluginClass.getDeclaredConstructor().newInstance()
             return loadInstance(instance)
         } catch (ex: Exception) {
-            throw PluginLoadException("Unable to load plugin instance. Ensure plugin is publicly accessible")
+            throw PluginLoadException("Unable to load plugin instance. Ensure plugin is publicly accessible", ex)
         }
     }
 
