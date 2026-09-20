@@ -31,7 +31,7 @@ export async function updateIOS(config: Config, deployment: boolean): Promise<vo
   const capacitorPlugins = plugins.filter((p) => getPluginType(p, platform) === PluginType.Core);
   await updatePluginFiles(config, plugins, deployment);
   await checkPlatformVersions(config, platform);
-  generateIOSPackageJSON(config, plugins);
+  await generateIOSPackageJSON(config, plugins);
 
   printPlugins(capacitorPlugins, 'ios');
 }

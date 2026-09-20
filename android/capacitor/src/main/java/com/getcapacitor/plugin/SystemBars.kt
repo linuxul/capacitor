@@ -16,7 +16,6 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.WebViewListener
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.util.Locale
-import java.util.regex.Pattern
 
 @CapacitorPlugin
 public class SystemBars : Plugin() {
@@ -59,6 +58,8 @@ public class SystemBars : Plugin() {
                     override fun onPageCommitVisible(view: WebView?, url: String?) {
                         super.onPageCommitVisible(view, url)
                         bridge.webView.evaluateJavascript(viewportMetaJSFunction) { res: String? ->
+                            // evaluateJavascript reports a JS false/true as the string "false"/"true"; a null reference is
+                            // treated as false instead of throwing inside the callback, unlike the Java original's res.equals.
                             hasViewportCover = res == "true"
 
                             // Request new execution tree of `setOnApplyWindowInsetsListener`
@@ -255,24 +256,15 @@ public class SystemBars : Plugin() {
         val window = activity.window
         val windowInsetsControllerCompat = WindowCompat.getInsetsController(window, window.decorView)
 
-        if (hide) {
-            if (bar.isEmpty()) {
-                windowInsetsControllerCompat.hide(WindowInsetsCompat.Type.systemBars())
-            } else if (bar == BAR_STATUS_BAR) {
-                windowInsetsControllerCompat.hide(WindowInsetsCompat.Type.statusBars())
-            } else if (bar == BAR_GESTURE_BAR) {
-                windowInsetsControllerCompat.hide(WindowInsetsCompat.Type.navigationBars())
+        val types =
+            when (bar) {
+                "" -> WindowInsetsCompat.Type.systemBars()
+                BAR_STATUS_BAR -> WindowInsetsCompat.Type.statusBars()
+                BAR_GESTURE_BAR -> WindowInsetsCompat.Type.navigationBars()
+                else -> return
             }
-            return
-        }
 
-        if (bar.isEmpty()) {
-            windowInsetsControllerCompat.show(WindowInsetsCompat.Type.systemBars())
-        } else if (bar == BAR_STATUS_BAR) {
-            windowInsetsControllerCompat.show(WindowInsetsCompat.Type.statusBars())
-        } else if (bar == BAR_GESTURE_BAR) {
-            windowInsetsControllerCompat.show(WindowInsetsCompat.Type.navigationBars())
-        }
+        if (hide) windowInsetsControllerCompat.hide(types) else windowInsetsControllerCompat.show(types)
     }
 
     private fun getStyleForTheme(): String {
@@ -292,15 +284,11 @@ public class SystemBars : Plugin() {
     }
 
     private fun getWebViewMajorVersion(): Int {
-        val info = WebViewCompat.getCurrentWebViewPackage(context)
-        val versionName = info?.versionName
-        if (versionName != null) {
-            // Pattern.split keeps java.lang.String.split semantics.
-            val versionSegments = DOT.split(versionName)
-            return Integer.parseInt(versionSegments[0])
-        }
+        val versionName = WebViewCompat.getCurrentWebViewPackage(context)?.versionName ?: return 0
 
-        return 0
+        // Same first segment as the Java original's versionName.split("\\.")[0], and the same
+        // NumberFormatException when it is not a number.
+        return versionName.substringBefore('.').toInt()
     }
 
     private fun getBottomInset(systemBarsInsets: Insets, keyboardVisible: Boolean): Int {
@@ -333,8 +321,6 @@ public class SystemBars : Plugin() {
 
         // https://issues.chromium.org/issues/457682720
         const val WEBVIEW_VERSION_WITH_SAFE_AREA_KEYBOARD_FIX = 144
-
-        val DOT: Pattern = Pattern.compile("\\.")
 
         // A Java text block ends with a newline; trimIndent() drops it, hence the explicit "\n".
         val viewportMetaJSFunction =

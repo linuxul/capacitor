@@ -78,7 +78,7 @@ class JSObjectTest {
     }
 
     @Test
-    fun getStringReturnsDefaultValue_WhenJSObject_IsConstructed_WithAValueAsString() {
+    fun getIntegerReturnsDefaultValue_WhenJSObject_IsConstructed_WithAValueAsString() {
         val jsObject = JSObject("{\"thisKeyExists\": \"not an integer\"}")
 
         val expectedValue = jsObject.getInteger("thisKeyExists", 1)

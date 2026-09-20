@@ -9,15 +9,17 @@ import java.net.HttpCookie
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.Locale
-import java.util.Objects
 import java.util.regex.Pattern
 
 /**
- * Create a new cookie manager with specified cookie store and cookie policy.
+ * A [CookieManager] backed by the WebView's cookie store, scoped to the bridge's local and server URLs.
+ *
+ * @constructor Create a new cookie manager with specified cookie store and cookie policy.
  * @param store a `CookieStore` to be used by CookieManager. if `null`, cookie
  * manager will use a default one, which is an in-memory CookieStore implementation.
  * @param policy a `CookiePolicy` instance to be used by cookie manager as policy
  * callback. if `null`, ACCEPT_ORIGINAL_SERVER will be used.
+ * @param bridge the bridge whose local and server URLs the requested domain is resolved against
  */
 public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePolicy?, bridge: Bridge) : CookieManager(store, policy) {
     private val webkitCookieManager: android.webkit.CookieManager = android.webkit.CookieManager.getInstance()
@@ -35,6 +37,14 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
         webkitCookieManager.removeSessionCookies(null)
     }
 
+    /**
+     * Resolves [url] against the bridge's server and local URLs, prefixing `https://` when it has no scheme.
+     *
+     * Unlike the other public functions here this one does not swallow failures: if the result is still not
+     * a valid URI the exception propagates to the caller. The Java original declared
+     * `throws URISyntaxException`; this fork declares no checked exceptions, and a null [url] matching
+     * neither bridge URL throws a `NullPointerException` instead, so no single type is named here.
+     */
     public fun getSanitizedDomain(url: String?): String? {
         var sanitized = url
         if (!serverUrl.isNullOrEmpty() && (sanitized.isNullOrEmpty() || serverUrl.contains(sanitized))) {
@@ -93,16 +103,7 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
      * @return the `HttpCookie` value of the cookie at the key,
      * otherwise it will return null
      */
-    public fun getCookie(url: String?, key: String?): HttpCookie? {
-        val cookies = getCookies(url)
-        for (cookie in cookies) {
-            if (cookie.name == key) {
-                return cookie
-            }
-        }
-
-        return null
-    }
+    public fun getCookie(url: String?, key: String?): HttpCookie? = getCookies(url).firstOrNull { it.name == key }
 
     /**
      * Gets an array of `HttpCookie` given a URL.
@@ -116,9 +117,7 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
             if (cookieString != null) {
                 val singleCookie = SEMICOLON.split(cookieString)
                 for (c in singleCookie) {
-                    val parsed = HttpCookie.parse(c)[0]
-                    parsed.value = parsed.value
-                    cookieList.add(parsed)
+                    cookieList.add(HttpCookie.parse(c)[0])
                 }
             }
             return cookieList.toTypedArray()
@@ -153,6 +152,7 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
      * @param expires optional `expires` attribute; appended together with [path] when either is given
      * @param path optional `path` attribute
      */
+    @JvmOverloads
     public fun setCookie(url: String?, key: String?, value: String?, expires: String? = null, path: String? = null) {
         val cookieValue =
             if (expires == null && path == null) {
@@ -193,7 +193,7 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
             }
 
             // process each of the headers
-            for (headerValue in Objects.requireNonNull(responseHeaders[headerKey])!!) {
+            for (headerValue in responseHeaders[headerKey]!!) {
                 try {
                     // Set at the requested server url
                     setCookie(uri.toString(), headerValue)

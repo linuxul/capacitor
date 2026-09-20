@@ -41,11 +41,6 @@ export async function resolvePlugin(plugin: Plugin): Promise<Plugin | null> {
   return plugin;
 }
 
-/**
- * Update an Android project with the desired app name and appId.
- * This is a little trickier for Android because the appId becomes
- * the package name.
- */
 const MAIN_ACTIVITY = 'MainActivity.kt';
 
 // Hard keywords can't be used as identifiers in a Kotlin package declaration unless they are escaped
@@ -87,6 +82,11 @@ export function toKotlinPackageName(appId: string): string {
     .join('.');
 }
 
+/**
+ * Update an Android project with the desired app name and appId.
+ * This is a little trickier for Android because the appId becomes
+ * the package name.
+ */
 export async function editProjectSettingsAndroid(config: Config): Promise<void> {
   const appId = config.app.appId;
   const appName = config.app.appName

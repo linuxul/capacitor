@@ -134,7 +134,7 @@ public final class InstanceDescriptor {
         instanceType = .fixed
         appLocation = Self.defaultAppLocation
         setAppLocation(Bundle.main.url(forResource: "public", withExtension: nil))
-        _parseConfiguration(at: Bundle.main.url(forResource: "capacitor.config", withExtension: "json"))
+        parseConfiguration(at: Bundle.main.url(forResource: "capacitor.config", withExtension: "json"))
     }
 
     /// Initialize the descriptor for use in other contexts. The app location is the one required parameter.
@@ -144,7 +144,7 @@ public final class InstanceDescriptor {
     public init(at appURL: URL, configuration configURL: URL?) {
         instanceType = .variable
         appLocation = appURL
-        _parseConfiguration(at: configURL)
+        parseConfiguration(at: configURL)
     }
 
     private static var defaultAppLocation: URL {
@@ -181,11 +181,10 @@ private extension InstanceLoggingBehavior {
  The purpose of this function is to hide the messy details of parsing the configuration(s) so
  the complexity is worth it.
  */
-internal extension InstanceDescriptor {
+private extension InstanceDescriptor {
     // swiftlint:disable cyclomatic_complexity
     // swiftlint:disable function_body_length
-    // swiftlint:disable:next identifier_name
-    func _parseConfiguration(at capacitorURL: URL?) {
+    func parseConfiguration(at capacitorURL: URL?) {
         // sanity check that the app directory is valid
         var isDirectory: ObjCBool = ObjCBool(false)
         if warnings.contains(.missingAppDir) == false,
@@ -273,14 +272,8 @@ internal extension InstanceDescriptor {
             if let webContentsDebuggingEnabled = config[keyPath: "ios.webContentsDebuggingEnabled"] as? Bool {
                 isWebDebuggable = webContentsDebuggingEnabled
             } else {
-                #if DEBUG
-                isWebDebuggable = true
-                #else
-                // this is needed for SPM xcframework Capacitor.  Can eventually be removed when the SPM package moves to being source-based.
-                if let debugValue = Bundle.main.object(forInfoDictionaryKey: "CAPACITOR_DEBUG") as? String, debugValue == "true" {
-                    isWebDebuggable = true
-                }
-                #endif
+                // same rule the bridge uses to decide it is a development build
+                isWebDebuggable = CapacitorBridge.isDevEnvironment
             }
             if let initialFocus = (config[keyPath: "ios.initialFocus"] as? Bool) ?? (config[keyPath: "initialFocus"] as? Bool) {
                 hasInitialFocus = initialFocus
@@ -311,11 +304,7 @@ extension InstanceDescriptor {
             urlHostname = InstanceDescriptorDefaults.hostname
         }
         // now validate the server.url
-        var urlValid = false
-        if let server = serverURL, URL(string: server) != nil {
-            urlValid = true
-        }
-        if !urlValid {
+        if let server = serverURL, URL(string: server) == nil {
             serverURL = nil
         }
         // reset the path if it's not valid

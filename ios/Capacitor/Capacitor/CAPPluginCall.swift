@@ -8,11 +8,11 @@ public typealias CAPPluginCallErrorHandler = (_ error: CAPPluginCallError) -> Vo
 open class CAPPluginCall: NSObject {
     /// Whether the call should be retained by the bridge after the plugin method returns so that it can be resolved later or repeatedly.
     @objc public var keepAlive: Bool = false
-    @objc public var callbackId: String
-    @objc public var methodName: String
-    public var options: JSObject
-    @objc public var successHandler: CAPPluginCallSuccessHandler
-    @objc public var errorHandler: CAPPluginCallErrorHandler
+    @objc public let callbackId: String
+    @objc public let methodName: String
+    public let options: JSObject
+    @objc public let successHandler: CAPPluginCallSuccessHandler
+    @objc public let errorHandler: CAPPluginCallErrorHandler
 
     public init(callbackId: String, methodName: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
         self.callbackId = callbackId
@@ -36,11 +36,13 @@ extension CAPPluginCall: JSValueContainer {
 }
 
 @objc public extension CAPPluginCall {
+    /// Resolves the call with no data. JavaScript receives `undefined`; use `resolve([:])` to send `{}`.
     func resolve() {
         successHandler(CAPPluginCallResult(nil), self)
     }
 
-    func resolve(_ data: PluginCallResultData = [:]) {
+    /// Resolves the call with `data`.
+    func resolve(_ data: PluginCallResultData) {
         successHandler(CAPPluginCallResult(data), self)
     }
 

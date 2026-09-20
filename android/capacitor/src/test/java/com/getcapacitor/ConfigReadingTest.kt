@@ -11,7 +11,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -36,61 +35,45 @@ class ConfigReadingTest {
 
     @Test
     fun bad() {
-        try {
-            whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(BAD_TEST))
-            val config = CapConfig.loadDefault(context)
-            assertEquals("not a real domain", config.serverUrl)
-            assertNull(config.backgroundColor)
-            assertFalse(config.isLoggingEnabled)
-        } catch (e: IOException) {
-            fail()
-        }
+        whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(BAD_TEST))
+        val config = CapConfig.loadDefault(context)
+        assertEquals("not a real domain", config.serverUrl)
+        assertNull(config.backgroundColor)
+        assertFalse(config.isLoggingEnabled)
     }
 
     @Test
     fun flat() {
-        try {
-            whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(FLAT_TEST))
-            val config = CapConfig.loadDefault(context)
-            assertEquals("level 1 override", config.overriddenUserAgentString)
-            assertEquals("level 1 append", config.appendedUserAgentString)
-            assertEquals("#ffffff", config.backgroundColor)
-            assertFalse(config.isLoggingEnabled)
-            assertEquals(1, config.getPluginConfiguration("SplashScreen").getInt("launchShowDuration", 0))
-        } catch (e: IOException) {
-            fail()
-        }
+        whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(FLAT_TEST))
+        val config = CapConfig.loadDefault(context)
+        assertEquals("level 1 override", config.overriddenUserAgentString)
+        assertEquals("level 1 append", config.appendedUserAgentString)
+        assertEquals("#ffffff", config.backgroundColor)
+        assertFalse(config.isLoggingEnabled)
+        assertEquals(1, config.getPluginConfiguration("SplashScreen").getInt("launchShowDuration", 0))
     }
 
     @Test
     fun hierarchy() {
-        try {
-            whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(HIERARCHY_TEST))
-            val config = CapConfig.loadDefault(context)
-            assertEquals("level 2 override", config.overriddenUserAgentString)
-            assertEquals("level 2 append", config.appendedUserAgentString)
-            assertEquals("#000000", config.backgroundColor)
-            assertFalse(config.isLoggingEnabled)
-        } catch (e: IOException) {
-            fail()
-        }
+        whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(HIERARCHY_TEST))
+        val config = CapConfig.loadDefault(context)
+        assertEquals("level 2 override", config.overriddenUserAgentString)
+        assertEquals("level 2 append", config.appendedUserAgentString)
+        assertEquals("#000000", config.backgroundColor)
+        assertFalse(config.isLoggingEnabled)
     }
 
     @Test
     fun nonJSON() {
-        try {
-            val errText = "Unable to parse capacitor.config.json. Make sure it's valid json"
-            whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(NONJSON_TEST))
-            CapConfig.loadDefault(context)
+        val errText = "Unable to parse capacitor.config.json. Make sure it's valid json"
+        whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(NONJSON_TEST))
+        CapConfig.loadDefault(context)
 
-            // Logged exactly once, as an error, together with the JSONException that caused it.
-            val logged = logs.entries.filter { it.priority == Log.ERROR && it.message == errText }
-            assertEquals(1, logged.size)
-            assertEquals(Logger.LOG_TAG_CORE, logged[0].tag)
-            assertTrue(logged[0].throwable is JSONException)
-        } catch (e: IOException) {
-            fail()
-        }
+        // Logged exactly once, as an error, together with the JSONException that caused it.
+        val logged = logs.entries.filter { it.priority == Log.ERROR && it.message == errText }
+        assertEquals(1, logged.size)
+        assertEquals(Logger.LOG_TAG_CORE, logged[0].tag)
+        assertTrue(logged[0].throwable is JSONException)
     }
 
     @Test
@@ -137,15 +120,11 @@ class ConfigReadingTest {
 
     @Test
     fun server() {
-        try {
-            whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(SERVER_TEST))
-            val config = CapConfig.loadDefault(context)
-            assertEquals("myhost", config.hostname)
-            assertEquals("http://192.168.100.1:2057", config.serverUrl)
-            assertEquals("override", config.androidScheme)
-        } catch (e: IOException) {
-            fail()
-        }
+        whenever(assetManager.open("capacitor.config.json")).thenReturn(getTestInputStream(SERVER_TEST))
+        val config = CapConfig.loadDefault(context)
+        assertEquals("myhost", config.hostname)
+        assertEquals("http://192.168.100.1:2057", config.serverUrl)
+        assertEquals("override", config.androidScheme)
     }
 
     private companion object {

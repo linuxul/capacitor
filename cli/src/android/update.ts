@@ -79,15 +79,17 @@ async function findAndroidPluginClassesInPlugin(plugin: Plugin): Promise<Plugins
     filter: (entry) => !entry.stats.isDirectory() && ['.java', '.kt'].includes(extname(entry.path)),
   });
 
-  const classRegex = /^@(?:CapacitorPlugin|NativePlugin)[\s\S]+?class ([\w]+)/gm;
-  const packageRegex = /^package ([\w.]+);?$/gm;
+  const classRegex = /^@CapacitorPlugin[\s\S]+?class ([\w]+)/m;
+  // Kotlin escapes a package segment that is a hard keyword with backticks, the way
+  // toKotlinPackageName() writes MainActivity's. They are source syntax only: the JVM
+  // name, and so the classpath PluginManager loads, has none.
+  const packageRegex = /^package\s+([\w.`]+);?$/m;
 
   debug('Searching %O source files in %O by %O regex', srcFiles.length, srcPath, classRegex);
 
   const entries = await Promise.all(
     srcFiles.map(async (srcFile): Promise<PluginsJsonEntry | undefined> => {
       const srcFileContents = await readFile(srcFile, { encoding: 'utf-8' });
-      classRegex.lastIndex = 0;
       const classMatch = classRegex.exec(srcFileContents);
 
       if (classMatch) {
@@ -95,14 +97,13 @@ async function findAndroidPluginClassesInPlugin(plugin: Plugin): Promise<Plugins
 
         debug('Searching %O for package by %O regex', srcFile, packageRegex);
 
-        packageRegex.lastIndex = 0;
         const packageMatch = packageRegex.exec(srcFileContents.substring(0, classMatch.index));
 
         if (!packageMatch) {
           fatal(`Package could not be parsed from Android plugin.\n` + `Location: ${c.strong(srcFile)}`);
         }
 
-        const packageName = packageMatch[1];
+        const packageName = packageMatch[1].replace(/`/g, '');
         const classpath = `${packageName}.${className}`;
 
         debug('%O is a suitable plugin class', classpath);

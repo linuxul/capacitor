@@ -1,8 +1,7 @@
 import Foundation
+import UIKit
 import WebKit
 
-// adopting a public protocol in an internal class is by design
-// swiftlint:disable lower_acl_than_parent
 @objc(CAPWebViewDelegationHandler)
 open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
     public internal(set) weak var bridge: CapacitorBridge?
@@ -81,8 +80,7 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
         }
 
         // first, give plugins the chance to handle the decision
-        for pluginObject in bridge.plugins {
-            let plugin = pluginObject.value
+        for plugin in bridge.plugins.values {
             if let shouldOverrideLoad = plugin.shouldOverrideLoad(navigationAction) {
                 decisionHandler(shouldOverrideLoad ? .cancel : .allow)
                 return
@@ -229,6 +227,7 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
 
     open func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
         guard let viewController = bridge?.viewController else {
+            completionHandler(false)
             return
         }
 
@@ -247,43 +246,38 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
 
     open func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
 
-        // Check if this is synchronous cookie or http call
-        do {
-            if let dataFromString = prompt.data(using: .utf8, allowLossyConversion: false) {
-                if let payload = try JSONSerialization.jsonObject(with: dataFromString, options: .fragmentsAllowed) as? [String: AnyObject] {
-                    let type = payload["type"] as? String
-
-                    if type == "CapacitorCookies.get" {
-                        completionHandler(CapacitorCookieManager(bridge!.config).getCookies())
-                        // Don't present prompt
-                        return
-                    } else if type == "CapacitorCookies.set" {
-                        // swiftlint:disable force_cast
-                        let action = payload["action"] as! String
-                        let domain = payload["domain"] as! String
-                        CapacitorCookieManager(bridge!.config).setCookie(domain, action)
-                        completionHandler("")
-                        // swiftlint:enable force_cast
-                        // Don't present prompt
-                        return
-                    } else if type == "CapacitorCookies.isEnabled" {
-                        let pluginConfig = bridge!.config.getPluginConfig("CapacitorCookies")
-                        completionHandler(String(pluginConfig.getBoolean("enabled", false)))
-                        // Don't present prompt
-                        return
-                    } else if type == "CapacitorHttp" {
-                        let pluginConfig = bridge!.config.getPluginConfig("CapacitorHttp")
-                        completionHandler(String(pluginConfig.getBoolean("enabled", false)))
-                        // Don't present prompt
-                        return
-                    }
+        // Check if this is a synchronous cookie or http call; anything else falls through to a real prompt.
+        if let config = bridge?.config,
+           let dataFromString = prompt.data(using: .utf8, allowLossyConversion: false),
+           let payload = try? JSONSerialization.jsonObject(with: dataFromString, options: .fragmentsAllowed) as? [String: Any],
+           let type = payload["type"] as? String {
+            switch type {
+            case "CapacitorCookies.get":
+                completionHandler(CapacitorCookieManager(config).getCookies())
+                // Don't present prompt
+                return
+            case "CapacitorCookies.set":
+                if let action = payload["action"] as? String, let domain = payload["domain"] as? String {
+                    CapacitorCookieManager(config).setCookie(domain, action)
                 }
+                completionHandler("")
+                // Don't present prompt
+                return
+            case "CapacitorCookies.isEnabled":
+                completionHandler(String(config.getPluginConfig("CapacitorCookies").getBoolean("enabled", false)))
+                // Don't present prompt
+                return
+            case "CapacitorHttp":
+                completionHandler(String(config.getPluginConfig("CapacitorHttp").getBoolean("enabled", false)))
+                // Don't present prompt
+                return
+            default:
+                break
             }
-        } catch {
-            // Continue with regular prompt
         }
 
         guard let viewController = bridge?.viewController else {
+            completionHandler(nil)
             return
         }
 

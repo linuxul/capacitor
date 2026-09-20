@@ -8,7 +8,7 @@ import java.util.LinkedList
  */
 internal class SavedCallStore {
     // Stored plugin calls that we're keeping around to call again someday
-    private var savedCalls: MutableMap<String?, PluginCall> = HashMap()
+    private val savedCalls: MutableMap<String?, PluginCall> = HashMap()
 
     // The call IDs of saved plugin calls with associated plugin id for handling permissions
     private val savedPermissionCallIds: MutableMap<String?, LinkedList<String?>> = HashMap()
@@ -46,34 +46,24 @@ internal class SavedCallStore {
      * Forget every retained call. Permission queues and the last activity call are left alone.
      */
     fun reset() {
-        savedCalls = HashMap()
+        savedCalls.clear()
     }
 
     /**
      * Save a call to be retrieved after requesting permissions. Calls are saved in order.
      */
     fun savePermissionCall(call: PluginCall?) {
-        if (call != null) {
-            val callIds = savedPermissionCallIds.getOrPut(call.pluginId) { LinkedList() }
+        if (call == null) return
 
-            callIds.add(call.callbackId)
-            save(call)
-        }
+        savedPermissionCallIds.getOrPut(call.pluginId) { LinkedList() }.add(call.callbackId)
+        save(call)
     }
 
     /**
      * Removes the earliest saved call prior to a permissions request for a given plugin and
      * returns it.
      */
-    fun takePermissionCall(pluginId: String?): PluginCall? {
-        val permissionCallIds = savedPermissionCallIds[pluginId]
-        var savedCallId: String? = null
-        if (permissionCallIds != null) {
-            savedCallId = permissionCallIds.poll()
-        }
-
-        return get(savedCallId)
-    }
+    fun takePermissionCall(pluginId: String?): PluginCall? = get(savedPermissionCallIds[pluginId]?.poll())
 
     /**
      * The call that launched the last activity, without clearing it.

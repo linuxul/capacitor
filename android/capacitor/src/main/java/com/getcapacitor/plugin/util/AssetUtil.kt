@@ -31,22 +31,14 @@ public class AssetUtil private constructor(private val context: Context) {
      *
      * @param path The given path.
      */
-    public fun parse(path: String?): Uri {
-        if (path == null || path.isEmpty()) {
-            return Uri.EMPTY
-        } else if (path.startsWith("res:")) {
-            return getUriForResourcePath(path)
-        } else if (path.startsWith("file:///")) {
-            return getUriFromPath(path)
-        } else if (path.startsWith("file://")) {
-            return getUriFromAsset(path)
-        } else if (path.startsWith("http")) {
-            return getUriFromRemote(path)
-        } else if (path.startsWith("content://")) {
-            return Uri.parse(path)
-        }
-
-        return Uri.EMPTY
+    public fun parse(path: String?): Uri = when {
+        path.isNullOrEmpty() -> Uri.EMPTY
+        path.startsWith("res:") -> getUriForResourcePath(path)
+        path.startsWith("file:///") -> getUriFromPath(path)
+        path.startsWith("file://") -> getUriFromAsset(path)
+        path.startsWith("http") -> getUriFromRemote(path)
+        path.startsWith("content://") -> Uri.parse(path)
+        else -> Uri.EMPTY
     }
 
     /**
@@ -163,14 +155,8 @@ public class AssetUtil private constructor(private val context: Context) {
      * @param out The output stream.
      */
     private fun copyFile(input: InputStream, out: FileOutputStream) {
-        val buffer = ByteArray(1024)
-
         try {
-            var read = input.read(buffer)
-            while (read != -1) {
-                out.write(buffer, 0, read)
-                read = input.read(buffer)
-            }
+            input.copyTo(out)
             out.flush()
             out.close()
         } catch (e: Exception) {
@@ -243,6 +229,8 @@ public class AssetUtil private constructor(private val context: Context) {
             drawable = drawable.substring(drawable.lastIndexOf('/') + 1)
         }
 
+        // Same as the Java original: the test is on resPath but the slice is on drawable, so a dot in a
+        // parent segment ("img.v2/icon") makes lastIndexOf('.') return -1 and substring throw.
         if (resPath.contains(".")) {
             drawable = drawable.substring(0, drawable.lastIndexOf('.'))
         }
@@ -305,7 +293,7 @@ public class AssetUtil private constructor(private val context: Context) {
         private val QUERY_STRING = Regex("\\?.*$")
 
         /**
-         * Static method to retrieve class instance.
+         * Creates an instance for the given context (`AssetUtil.Companion.getInstance` from Java).
          *
          * @param context Application context.
          */

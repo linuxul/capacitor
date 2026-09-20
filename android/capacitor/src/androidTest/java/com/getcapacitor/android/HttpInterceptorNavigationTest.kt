@@ -6,7 +6,6 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.getcapacitor.Bridge
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,9 +22,7 @@ class HttpInterceptorNavigationTest {
     fun blocksNavigationToInterceptorPath() {
         ActivityScenario.launch(TestHostActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
-                val bridge = activity.getBridge()
-                assertNotNull(bridge)
-                bridge!!
+                val bridge = checkNotNull(activity.getBridge()) { "TestHostActivity did not create a Bridge" }
 
                 assertTrue("interceptor navigation must be blocked", bridge.launchIntent(Uri.parse(INTERCEPTOR_URL)))
                 assertFalse("in-app navigation must stay in the WebView", bridge.launchIntent(Uri.parse(IN_APP_URL)))
@@ -39,9 +36,7 @@ class HttpInterceptorNavigationTest {
     fun refusesProxyForDocumentRequests() {
         ActivityScenario.launch(TestHostActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
-                val bridge = activity.getBridge()
-                assertNotNull(bridge)
-                bridge!!
+                val bridge = checkNotNull(activity.getBridge()) { "TestHostActivity did not create a Bridge" }
 
                 // Without this the proxy refuses everything and the assertions below prove nothing.
                 assertTrue(
@@ -49,9 +44,10 @@ class HttpInterceptorNavigationTest {
                     bridge.config.getPluginConfiguration("CapacitorHttp").getBoolean("enabled", false)
                 )
 
-                val navHeaders = HashMap<String, String>()
-                navHeaders["Accept"] = "text/html,application/xhtml+xml"
-                navHeaders["Upgrade-Insecure-Requests"] = "1"
+                val navHeaders = mapOf(
+                    "Accept" to "text/html,application/xhtml+xml",
+                    "Upgrade-Insecure-Requests" to "1"
+                )
 
                 assertNull(
                     "main frame document must be refused",

@@ -53,7 +53,7 @@ class HostMaskTest {
     @Test
     fun testSimpleExample1() {
         val mask: HostMask = HostMask.Simple.parse("*.example.org")
-        assertFalse("Null host never matches", mask.matches("example.org"))
+        assertFalse("A subdomain mask never matches the bare domain", mask.matches("example.org"))
     }
 
     @Test

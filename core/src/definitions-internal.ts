@@ -39,9 +39,11 @@ export interface CapacitorInstance extends CapacitorGlobal {
   /**
    * Low-level API to send data to the native layer.
    * Prefer using `nativeCallback()` or `nativePromise()` instead.
-   * Returns the Callback Id.
+   * Returns the Callback Id, or `null` if the call could not be posted -
+   * either because there is no native implementation on this platform or
+   * because posting threw.
    */
-  toNative?: (pluginName: string, methodName: string, options: any, storedCallback?: StoredCallback) => string;
+  toNative?: (pluginName: string, methodName: string, options: any, storedCallback?: StoredCallback) => string | null;
 
   /**
    * Sends data over the bridge to the native layer.
@@ -64,8 +66,9 @@ export interface CapacitorInstance extends CapacitorGlobal {
 
   /**
    * Low-level API for backwards compatibility.
+   * Returns `null` when there is no `document` to create the event on.
    */
-  createEvent?: (eventName: string, eventData?: any) => Event;
+  createEvent?: (eventName: string, eventData?: any) => Event | null;
 
   /**
    * Low-level API triggered from native implementations.
@@ -74,7 +77,11 @@ export interface CapacitorInstance extends CapacitorGlobal {
 
   handleError: (err: Error) => void;
 
-  handleWindowError: (msg: string | Event, url: string, lineNo: number, columnNo: number, err: Error) => void;
+  /**
+   * Installed as `window.onerror` when `DEBUG` is set. The return value is
+   * that handler's "suppress default handling" flag; it is always `false`.
+   */
+  handleWindowError: (msg: string | Event, url: string, lineNo: number, columnNo: number, err: Error) => boolean;
 
   /**
    * Low-level API used by the native bridge to log messages.
@@ -142,7 +149,6 @@ export interface CapacitorCustomPlatformInstance {
 
 export interface WindowCapacitor {
   Capacitor?: CapacitorInstance;
-  CapacitorSystemBarsAndroidInterface?: any;
   CapacitorCookiesAndroidInterface?: any;
   CapacitorCookiesDescriptor?: PropertyDescriptor;
   CapacitorHttpAndroidInterface?: any;

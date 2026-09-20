@@ -101,13 +101,11 @@ public object FileUtils {
                 val split = COLON.split(docId)
                 val type = split[0]
 
-                var contentUri: Uri? = null
-                if ("image" == type) {
-                    contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                } else if ("video" == type) {
-                    contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-                } else if ("audio" == type) {
-                    contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                val contentUri = when (type) {
+                    "image" -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                    "video" -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                    "audio" -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                    else -> null
                 }
 
                 val selection = "_id=?"
@@ -173,19 +171,13 @@ public object FileUtils {
      * @return The value of the _data column, which is typically a file path.
      */
     private fun getDataColumn(context: Context, uri: Uri, selection: String?, selectionArgs: Array<String>?): String? {
-        var path: String? = null
         val column = "_data"
-        val projection = arrayOf(column)
-
-        try {
-            context.contentResolver.query(uri, projection, selection, selectionArgs, null).use { cursor ->
-                if (cursor != null && cursor.moveToFirst()) {
-                    val index = cursor.getColumnIndexOrThrow(column)
-                    path = cursor.getString(index)
-                }
+        val path = try {
+            context.contentResolver.query(uri, arrayOf(column), selection, selectionArgs, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(cursor.getColumnIndexOrThrow(column)) else null
             }
         } catch (ex: IllegalArgumentException) {
-            return getCopyFilePath(uri, context)
+            null
         }
         return path ?: getCopyFilePath(uri, context)
     }
@@ -200,19 +192,11 @@ public object FileUtils {
         val file = File(context.filesDir, fileName)
         try {
             val inputStream = context.contentResolver.openInputStream(uri)
-            val outputStream = FileOutputStream(file)
-            // The Java original hit a NullPointerException here, caught below as "return null".
-            if (inputStream == null) return null
-            val maxBufferSize = 1024 * 1024
-            val bufferSize = minOf(inputStream.available(), maxBufferSize)
-            val buffers = ByteArray(bufferSize)
-            var read = inputStream.read(buffers)
-            while (read != -1) {
-                outputStream.write(buffers, 0, read)
-                read = inputStream.read(buffers)
+            FileOutputStream(file).use { output ->
+                // The Java original hit a NullPointerException here, caught below as "return null".
+                if (inputStream == null) return null
+                inputStream.use { it.copyTo(output) }
             }
-            inputStream.close()
-            outputStream.close()
         } catch (e: Exception) {
             return null
         } finally {
@@ -246,18 +230,12 @@ public object FileUtils {
     private fun isGooglePhotosUri(uri: Uri): Boolean = "com.google.android.apps.photos.content" == uri.authority
 
     private fun getPathToNonPrimaryVolume(context: Context, tag: String): String? {
-        val volumes: Array<File?>? = context.externalCacheDirs
-        if (volumes != null) {
-            for (volume in volumes) {
-                if (volume != null) {
-                    val path: String? = volume.absolutePath
-                    if (path != null) {
-                        val index = path.indexOf(tag)
-                        if (index != -1) {
-                            return path.substring(0, index) + tag
-                        }
-                    }
-                }
+        val volumes = context.externalCacheDirs ?: return null
+        for (volume in volumes) {
+            val path = volume?.absolutePath ?: continue
+            val index = path.indexOf(tag)
+            if (index != -1) {
+                return path.substring(0, index) + tag
             }
         }
         return null

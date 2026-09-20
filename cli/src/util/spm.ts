@@ -25,25 +25,6 @@ import { convertToUnixPath } from '../util/fs';
 import { resolveNode } from '../util/node';
 import { runCommand } from '../util/subprocess';
 
-export interface SwiftPlugin {
-  name: string;
-  path: string;
-}
-
-/**
- * @deprecated use config.ios.packageManager
- * @param config
- * @returns 'Cocoapods' | 'SPM'
- */
-export async function checkPackageManager(config: Config): Promise<'Cocoapods' | 'SPM'> {
-  const iosDirectory = config.ios.nativeProjectDirAbs;
-  if (existsSync(resolve(iosDirectory, 'CapApp-SPM'))) {
-    return 'SPM';
-  }
-
-  return 'Cocoapods';
-}
-
 export async function findPackageSwiftFile(config: Config): Promise<string> {
   const packageDirectory = resolve(config.ios.nativeProjectDirAbs, 'CapApp-SPM');
   return resolve(packageDirectory, 'Package.swift');
@@ -51,10 +32,12 @@ export async function findPackageSwiftFile(config: Config): Promise<string> {
 
 export async function generatePackageFile(config: Config, plugins: Plugin[]): Promise<void> {
   const packageSwiftFile = await findPackageSwiftFile(config);
-  try {
-    logger.info('Writing Package.swift');
 
-    const textToWrite = await generatePackageText(config, plugins);
+  logger.info('Writing Package.swift');
+
+  const textToWrite = await generatePackageText(config, plugins);
+
+  try {
     writeFileSync(packageSwiftFile, textToWrite);
   } catch (err) {
     logger.error(`Unable to write to ${packageSwiftFile}. Verify it is not already open. \n Error: ${err}`);

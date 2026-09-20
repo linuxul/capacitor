@@ -61,23 +61,17 @@ public class WebViewLocalServer internal constructor(
      * Methods of this handler will be invoked on a background thread and care must be taken to
      * correctly synchronize access to any shared state.
      *
-     * On Android KitKat and above these methods may be called on more than one thread. This thread
-     * may be different than the thread on which the shouldInterceptRequest method was invoke.
-     * This means that on Android KitKat and above it is possible to block in this method without
-     * blocking other resources from loading. The number of threads used to parallelize loading
-     * is an internal implementation detail of the WebView and may change between updates which
-     * means that the amount of time spend blocking in this method should be kept to an absolute
-     * minimum.
+     * These methods may be called on more than one thread, and on a different thread than the one
+     * shouldInterceptRequest was invoked on, so blocking here does not block other resources from
+     * loading. The number of threads the WebView uses to parallelize loading is an internal
+     * implementation detail, so the time spent blocking here should still be kept to a minimum.
      */
     public abstract class PathHandler(
         public val encoding: String? = null,
-        public val charset: String? = null,
         public val statusCode: Int = 200,
         public val reasonPhrase: String = "OK",
         responseHeaders: MutableMap<String, String>? = null
     ) {
-        protected var mimeType: String? = null
-
         private val responseHeaders: MutableMap<String, String>
 
         init {
@@ -243,17 +237,12 @@ public class WebViewLocalServer internal constructor(
         var encoding: String? = null
         // The status line arrives under a null key and has always been passed through as such.
         val responseHeaders: MutableMap<String?, String> = LinkedHashMap()
-        for (entry in connection.getHeaderFields().entries) {
-            val builder = StringBuilder()
-            for (value in entry.value) {
-                builder.append(value)
-                builder.append(", ")
-            }
-            builder.setLength(builder.length - 2)
+        for ((name, values) in connection.getHeaderFields()) {
+            val value = values.joinToString(", ")
 
-            if ("Content-Type".equals(entry.key, ignoreCase = true)) {
+            if ("Content-Type".equals(name, ignoreCase = true)) {
                 // Pattern.split / trim { it <= ' ' } keep java.lang.String.split / trim semantics.
-                val contentTypeParts = SEMICOLON.split(builder.toString())
+                val contentTypeParts = SEMICOLON.split(value)
                 mimeType = contentTypeParts[0].trim { it <= ' ' }
                 if (contentTypeParts.size > 1) {
                     val encodingParts = EQUALS.split(contentTypeParts[1])
@@ -262,7 +251,7 @@ public class WebViewLocalServer internal constructor(
                     }
                 }
             } else {
-                responseHeaders[entry.key] = builder.toString()
+                responseHeaders[name] = value
             }
         }
 
@@ -286,10 +275,10 @@ public class WebViewLocalServer internal constructor(
         val path: String = request.url.path!!
 
         val requestHeaders = request.requestHeaders
-        val rangeString = if (requestHeaders["Range"] != null) requestHeaders["Range"] else requestHeaders["range"]
+        val rangeString = requestHeaders["Range"] ?: requestHeaders["range"]
 
         if (rangeString != null) {
-            val responseStream: InputStream = LollipopLazyInputStream(handler, request)
+            val responseStream: InputStream = LazyInputStream(handler, request)
             val mimeType = getMimeType(path, responseStream)
             val tempResponseHeaders = handler.buildDefaultResponseHeaders()
             var statusCode = 206
@@ -318,7 +307,7 @@ public class WebViewLocalServer internal constructor(
         }
 
         if (isLocalFile(request.url) || isErrorUrl(request.url)) {
-            val responseStream: InputStream = LollipopLazyInputStream(handler, request)
+            val responseStream: InputStream = LazyInputStream(handler, request)
             val mimeType = getMimeType(request.url.path, responseStream)
             val statusCode = getStatusCode(responseStream, handler.statusCode)
             return WebResourceResponse(
@@ -382,22 +371,16 @@ public class WebViewLocalServer internal constructor(
             )
         }
 
+        // Apps rarely ship a favicon; serve it as empty instead of a 404
         if ("/favicon.ico".equals(path, ignoreCase = true)) {
-            try {
-                return WebResourceResponse("image/png", null, null)
-            } catch (e: Exception) {
-                Logger.error("favicon handling failed", e)
-            }
+            return WebResourceResponse("image/png", null, null)
         }
 
-        val periodIndex = path.lastIndexOf(".")
-        if (periodIndex >= 0) {
-            val ext = path.substring(path.lastIndexOf("."))
-
-            var responseStream: InputStream = LollipopLazyInputStream(handler, request)
+        if ('.' in path) {
+            var responseStream: InputStream = LazyInputStream(handler, request)
 
             // TODO: Conjure up a bit more subtlety than this
-            if (ext == ".html" && jsInjector != null) {
+            if (path.endsWith(".html") && jsInjector != null) {
                 responseStream = jsInjector.getInjectedStream(responseStream)
             }
 
@@ -435,65 +418,58 @@ public class WebViewLocalServer internal constructor(
      * and let an external server handle it.
      */
     private fun handleProxyRequest(request: WebResourceRequest, handler: PathHandler): WebResourceResponse? {
-        if (jsInjector != null) {
-            val method = request.method
-            if (method == "GET") {
-                try {
-                    val url = request.url.toString()
-                    val headers = request.requestHeaders
-                    var isHtmlText = false
-                    for (header in headers.entries) {
-                        // Locale.getDefault() is what the no-argument toLowerCase() used implicitly.
-                        if (header.key.equals("Accept", ignoreCase = true) &&
-                            header.value.lowercase(Locale.getDefault()).contains("text/html")
-                        ) {
-                            isHtmlText = true
-                            break
-                        }
-                    }
-                    if (isHtmlText) {
-                        val conn = URL(url).openConnection() as HttpURLConnection
-                        for (header in headers.entries) {
-                            conn.setRequestProperty(header.key, header.value)
-                        }
-                        val getCookie = CookieManager.getInstance().getCookie(url)
-                        if (getCookie != null) {
-                            conn.setRequestProperty("Cookie", getCookie)
-                        }
-                        conn.requestMethod = method
-                        conn.readTimeout = 30 * 1000
-                        conn.connectTimeout = 30 * 1000
-                        val userInfo = request.url.userInfo
-                        if (userInfo != null) {
-                            val userInfoBytes = userInfo.toByteArray(StandardCharsets.UTF_8)
-                            val base64 = Base64.encodeToString(userInfoBytes, Base64.NO_WRAP)
-                            conn.setRequestProperty("Authorization", "Basic $base64")
-                        }
+        val injector = jsInjector ?: return null
+        val method = request.method
+        if (method != "GET") return null
 
-                        val cookies = conn.headerFields["Set-Cookie"]
-                        if (cookies != null) {
-                            for (cookie in cookies) {
-                                CookieManager.getInstance().setCookie(url, cookie)
-                            }
-                        }
-                        var responseStream = conn.inputStream
-                        responseStream = jsInjector.getInjectedStream(responseStream)
+        return try {
+            val url = request.url.toString()
+            val headers = request.requestHeaders
+            // Locale.getDefault() is what the no-argument toLowerCase() used implicitly.
+            val isHtmlText = headers.any { (key, value) ->
+                key.equals("Accept", ignoreCase = true) &&
+                    value.lowercase(Locale.getDefault()).contains("text/html")
+            }
+            if (!isHtmlText) return null
 
-                        return WebResourceResponse(
-                            "text/html",
-                            handler.encoding,
-                            handler.statusCode,
-                            handler.reasonPhrase,
-                            handler.buildDefaultResponseHeaders(),
-                            responseStream
-                        )
-                    }
-                } catch (ex: Exception) {
-                    bridge.handleAppUrlLoadError(ex)
+            val conn = URL(url).openConnection() as HttpURLConnection
+            for (header in headers.entries) {
+                conn.setRequestProperty(header.key, header.value)
+            }
+            val getCookie = CookieManager.getInstance().getCookie(url)
+            if (getCookie != null) {
+                conn.setRequestProperty("Cookie", getCookie)
+            }
+            conn.requestMethod = method
+            conn.readTimeout = 30 * 1000
+            conn.connectTimeout = 30 * 1000
+            val userInfo = request.url.userInfo
+            if (userInfo != null) {
+                val userInfoBytes = userInfo.toByteArray(StandardCharsets.UTF_8)
+                val base64 = Base64.encodeToString(userInfoBytes, Base64.NO_WRAP)
+                conn.setRequestProperty("Authorization", "Basic $base64")
+            }
+
+            val cookies = conn.headerFields["Set-Cookie"]
+            if (cookies != null) {
+                for (cookie in cookies) {
+                    CookieManager.getInstance().setCookie(url, cookie)
                 }
             }
+            val responseStream = injector.getInjectedStream(conn.inputStream)
+
+            WebResourceResponse(
+                "text/html",
+                handler.encoding,
+                handler.statusCode,
+                handler.reasonPhrase,
+                handler.buildDefaultResponseHeaders(),
+                responseStream
+            )
+        } catch (ex: Exception) {
+            bridge.handleAppUrlLoadError(ex)
+            null
         }
-        return null
     }
 
     private fun getMimeType(path: String?, stream: InputStream?): String? {
@@ -653,52 +629,31 @@ public class WebViewLocalServer internal constructor(
     }
 
     /**
-     * The KitKat WebView reads the InputStream on a separate threadpool. We can use that to
-     * parallelize loading.
+     * The WebView reads the InputStream on a separate threadpool. We can use that to parallelize
+     * loading.
      *
-     * The wrapped stream is opened lazily, on first use, never in the constructor.
+     * The wrapped stream is opened lazily, on first use, never in the constructor. A handler that
+     * yields nothing is retried on the next call, as it was before.
      */
-    private abstract class LazyInputStream(protected val handler: PathHandler) : InputStream() {
+    private class LazyInputStream(private val handler: PathHandler, private val request: WebResourceRequest) : InputStream() {
         private var inputStream: InputStream? = null
 
         private fun getInputStream(): InputStream? {
             if (inputStream == null) {
-                inputStream = handle()
+                inputStream = handler.handle(request)
             }
             return inputStream
         }
 
-        protected abstract fun handle(): InputStream?
+        override fun available(): Int = getInputStream()?.available() ?: -1
 
-        override fun available(): Int {
-            val stream = getInputStream()
-            return stream?.available() ?: -1
-        }
+        override fun read(): Int = getInputStream()?.read() ?: -1
 
-        override fun read(): Int {
-            val stream = getInputStream()
-            return stream?.read() ?: -1
-        }
+        override fun read(b: ByteArray): Int = getInputStream()?.read(b) ?: -1
 
-        override fun read(b: ByteArray): Int {
-            val stream = getInputStream()
-            return stream?.read(b) ?: -1
-        }
+        override fun read(b: ByteArray, off: Int, len: Int): Int = getInputStream()?.read(b, off, len) ?: -1
 
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-            val stream = getInputStream()
-            return stream?.read(b, off, len) ?: -1
-        }
-
-        override fun skip(n: Long): Long {
-            val stream = getInputStream()
-            return stream?.skip(n) ?: 0
-        }
-    }
-
-    // For L and above.
-    private class LollipopLazyInputStream(handler: PathHandler, private val request: WebResourceRequest) : LazyInputStream(handler) {
-        override fun handle(): InputStream? = handler.handle(request)
+        override fun skip(n: Long): Long = getInputStream()?.skip(n) ?: 0
     }
 
     private companion object {

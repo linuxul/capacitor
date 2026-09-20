@@ -31,6 +31,18 @@ var nativeBridge = (function (exports) {
             this.data = data;
         }
     }
+    const getPlatformId = (win) => {
+        var _a, _b;
+        if (win === null || win === void 0 ? void 0 : win.androidBridge) {
+            return 'android';
+        }
+        else if ((_b = (_a = win === null || win === void 0 ? void 0 : win.webkit) === null || _a === void 0 ? void 0 : _a.messageHandlers) === null || _b === void 0 ? void 0 : _b.bridge) {
+            return 'ios';
+        }
+        else {
+            return 'web';
+        }
+    };
 
     // For removing exports for iOS/Android, keep let for reassignment
     // eslint-disable-next-line
@@ -140,6 +152,8 @@ var nativeBridge = (function (exports) {
     };
     const CAPACITOR_HTTP_INTERCEPTOR = '/_capacitor_http_interceptor_';
     const CAPACITOR_HTTP_INTERCEPTOR_URL_PARAM = 'u';
+    // The id a call carries when it expects no response. Mirrors PluginCall.CALLBACK_ID_DANGLING on Android.
+    const CALLBACK_ID_DANGLING = '-1';
     // TODO: export as Cap function
     const isRelativeOrProxyUrl = (url) => !url || !(url.startsWith('http:') || url.startsWith('https:')) || url.indexOf(CAPACITOR_HTTP_INTERCEPTOR) > -1;
     // TODO: export as Cap function
@@ -153,18 +167,6 @@ var nativeBridge = (function (exports) {
         return bridgeUrl.toString();
     };
     const initBridge = (w) => {
-        const getPlatformId = (win) => {
-            var _a, _b;
-            if (win === null || win === void 0 ? void 0 : win.androidBridge) {
-                return 'android';
-            }
-            else if ((_b = (_a = win === null || win === void 0 ? void 0 : win.webkit) === null || _a === void 0 ? void 0 : _a.messageHandlers) === null || _b === void 0 ? void 0 : _b.bridge) {
-                return 'ios';
-            }
-            else {
-                return 'web';
-            }
-        };
         const convertFileSrcServerUrl = (webviewServerUrl, filePath) => {
             if (typeof filePath === 'string') {
                 if (filePath.startsWith('/')) {
@@ -239,6 +241,9 @@ var nativeBridge = (function (exports) {
             };
             win.Capacitor = cap;
         };
+        // Cordova is not supported (see BREAKING.md) and window.cordova is no longer defined, but these
+        // three shims are kept on purpose: navigator.app.exitApp(), the synthetic `deviceready` document
+        // event and the `backbutton` interception. Ionic's hardware back button relies on the last two.
         const initLegacyHandlers = (win, cap) => {
             const doc = win.document;
             const nav = win.navigator;
@@ -257,7 +262,6 @@ var nativeBridge = (function (exports) {
             if (doc) {
                 const docAddEventListener = doc.addEventListener;
                 doc.addEventListener = (...args) => {
-                    var _a;
                     const eventName = args[0];
                     const handler = args[1];
                     if (eventName === 'deviceready' && handler) {
@@ -266,14 +270,9 @@ var nativeBridge = (function (exports) {
                     else if (eventName === 'backbutton' && cap.Plugins.App) {
                         // Add a dummy listener so Capacitor doesn't do the default
                         // back button action
-                        if (!((_a = cap.Plugins) === null || _a === void 0 ? void 0 : _a.App)) {
-                            win.console.warn('App plugin not installed');
-                        }
-                        else {
-                            cap.Plugins.App.addListener('backButton', () => {
-                                // ignore
-                            });
-                        }
+                        cap.Plugins.App.addListener('backButton', () => {
+                            // ignore
+                        });
                     }
                     return docAddEventListener.apply(doc, args);
                 };
@@ -537,8 +536,8 @@ var nativeBridge = (function (exports) {
                                 status: nativeResponse.status,
                             });
                             /*
-                             * copy url to response, `cordova-plugin-ionic` uses this url from the response
-                             * we need `Object.defineProperty` because url is an inherited getter on the Response
+                             * A Response built from native data has an empty `url`, so callers reading `response.url`
+                             * would see ''. `url` is an inherited getter on Response, hence `Object.defineProperty`.
                              * see: https://stackoverflow.com/a/57382543
                              * */
                             Object.defineProperty(response, 'url', {
@@ -826,17 +825,8 @@ var nativeBridge = (function (exports) {
                 const bytes = win.crypto.getRandomValues(new Uint8Array(16));
                 bytes[6] = (bytes[6] & 0x0f) | 0x40;
                 bytes[8] = (bytes[8] & 0x3f) | 0x80;
-                const hex = [];
-                bytes.forEach((b) => hex.push((b < 16 ? '0' : '') + b.toString(16)));
-                return (hex.slice(0, 4).join('') +
-                    '-' +
-                    hex.slice(4, 6).join('') +
-                    '-' +
-                    hex.slice(6, 8).join('') +
-                    '-' +
-                    hex.slice(8, 10).join('') +
-                    '-' +
-                    hex.slice(10).join(''));
+                const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+                return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
             };
             let postToNative = null;
             const isNativePlatform = () => true;
@@ -902,7 +892,7 @@ var nativeBridge = (function (exports) {
                 var _a, _b;
                 try {
                     if (typeof postToNative === 'function') {
-                        let callbackId = '-1';
+                        let callbackId = CALLBACK_ID_DANGLING;
                         if (storedCallback &&
                             (typeof storedCallback.callback === 'function' || typeof storedCallback.resolve === 'function')) {
                             // store the call for later lookup

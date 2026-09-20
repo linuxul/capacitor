@@ -1,9 +1,7 @@
 package com.getcapacitor
 
 import android.content.res.AssetManager
-import java.io.BufferedReader
 import java.io.IOException
-import java.io.InputStreamReader
 import org.json.JSONArray
 import org.json.JSONException
 
@@ -20,30 +18,26 @@ public class PluginManager(private val assetManager: AssetManager) {
                 pluginList.add(c.asSubclass(Plugin::class.java))
             }
         } catch (e: JSONException) {
-            throw PluginLoadException("Could not parse capacitor.plugins.json as JSON")
+            throw PluginLoadException("Could not parse capacitor.plugins.json as JSON", e)
         } catch (e: ClassNotFoundException) {
-            throw PluginLoadException("Could not find class by class path: " + e.message)
+            throw PluginLoadException("Could not find class by class path: " + e.message, e)
         }
 
         return pluginList
     }
 
     private fun parsePluginsJSON(): JSONArray {
-        try {
-            BufferedReader(InputStreamReader(assetManager.open("capacitor.plugins.json"))).use { reader ->
-                val builder = StringBuilder()
-                var line = reader.readLine()
-                while (line != null) {
-                    builder.append(line)
-                    line = reader.readLine()
-                }
-                val jsonString = builder.toString()
-                return JSONArray(jsonString)
+        val jsonString =
+            try {
+                FileUtils.readFileFromAssets(assetManager, "capacitor.plugins.json")
+            } catch (e: IOException) {
+                throw PluginLoadException("Could not load capacitor.plugins.json", e)
             }
-        } catch (e: IOException) {
-            throw PluginLoadException("Could not load capacitor.plugins.json")
+
+        try {
+            return JSONArray(jsonString)
         } catch (e: JSONException) {
-            throw PluginLoadException("Could not parse capacitor.plugins.json as JSON")
+            throw PluginLoadException("Could not parse capacitor.plugins.json as JSON", e)
         }
     }
 }

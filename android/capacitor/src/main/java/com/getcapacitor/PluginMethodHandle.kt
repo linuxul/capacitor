@@ -8,9 +8,8 @@ public class PluginMethodHandle(
     methodDecorator: PluginMethod
 ) {
     // The name of the method
-    // (nullable only because unit tests hand in Mockito mocks whose getters return null)
-    public val name: String? = method.name
+    public val name: String = method.name
 
     // The return type of the method (see PluginMethod for constants)
-    public val returnType: String? = methodDecorator.returnType
+    public val returnType: String = methodDecorator.returnType
 }

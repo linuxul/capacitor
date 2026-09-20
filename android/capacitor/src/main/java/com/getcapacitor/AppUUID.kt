@@ -9,8 +9,9 @@ import java.util.UUID
 
 public object AppUUID {
     private const val KEY = "CapacitorAppUUID"
+    private const val HEX_CHARS = "0123456789ABCDEF"
 
-    public fun getAppUUID(activity: AppCompatActivity): String? {
+    public fun getAppUUID(activity: AppCompatActivity): String {
         assertAppUUID(activity)
         return readUUID(activity)
     }
@@ -20,7 +21,7 @@ public object AppUUID {
             val uuid = generateUUID()
             writeUUID(activity, uuid)
         } catch (ex: NoSuchAlgorithmException) {
-            throw Exception("Capacitor App UUID could not be generated.")
+            throw Exception("Capacitor App UUID could not be generated.", ex)
         }
     }
 
@@ -37,9 +38,9 @@ public object AppUUID {
         return bytesToHex(salt.digest())
     }
 
-    private fun readUUID(activity: AppCompatActivity): String? {
+    private fun readUUID(activity: AppCompatActivity): String {
         val sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
-        return sharedPref.getString(KEY, "")
+        return sharedPref.getString(KEY, "") ?: ""
     }
 
     private fun writeUUID(activity: AppCompatActivity, uuid: String) {
@@ -49,14 +50,11 @@ public object AppUUID {
         editor.apply()
     }
 
-    private fun bytesToHex(bytes: ByteArray): String {
-        val hexArray = "0123456789ABCDEF".toByteArray(StandardCharsets.US_ASCII)
-        val hexChars = ByteArray(bytes.size * 2)
-        for (j in bytes.indices) {
-            val v = bytes[j].toInt() and 0xFF
-            hexChars[j * 2] = hexArray[v ushr 4]
-            hexChars[j * 2 + 1] = hexArray[v and 0x0F]
+    private fun bytesToHex(bytes: ByteArray): String = buildString(bytes.size * 2) {
+        for (b in bytes) {
+            val v = b.toInt() and 0xFF
+            append(HEX_CHARS[v ushr 4])
+            append(HEX_CHARS[v and 0x0F])
         }
-        return String(hexChars, StandardCharsets.UTF_8)
     }
 }

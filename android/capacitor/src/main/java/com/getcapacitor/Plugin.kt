@@ -13,10 +13,7 @@ import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.PermissionCallback
 import com.getcapacitor.util.PermissionHelper
-import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
-import java.util.Locale
-import java.util.concurrent.CopyOnWriteArrayList
 import org.json.JSONException
 
 /**
@@ -109,26 +106,22 @@ public open class Plugin {
             try {
                 method.isAccessible = true
                 method.invoke(this, savedCall)
-            } catch (e: IllegalAccessException) {
-                e.printStackTrace()
-            } catch (e: InvocationTargetException) {
+            } catch (e: ReflectiveOperationException) {
+                // Method.invoke only declares IllegalAccessException and InvocationTargetException here.
                 e.printStackTrace()
             }
         }
     }
 
     private fun triggerActivityCallback(method: Method, result: ActivityResult?) {
-        var savedCall = bridge.getSavedCall(lastPluginCallId)
-        if (savedCall == null) {
-            savedCall = bridge.getPluginCallForLastActivity()
-        }
+        val savedCall = bridge.getSavedCall(lastPluginCallId) ?: bridge.getPluginCallForLastActivity()
+
         // invoke the activity result callback
         try {
             method.isAccessible = true
             method.invoke(this, savedCall, result)
-        } catch (e: IllegalAccessException) {
-            e.printStackTrace()
-        } catch (e: InvocationTargetException) {
+        } catch (e: ReflectiveOperationException) {
+            // Method.invoke only declares IllegalAccessException and InvocationTargetException here.
             e.printStackTrace()
         }
     }
@@ -206,17 +199,14 @@ public open class Plugin {
      * @return true only if all permissions associated with the given alias are declared in the manifest
      */
     public open fun isPermissionDeclared(alias: String): Boolean {
-        val annotation: CapacitorPlugin? = handle.pluginAnnotation
-        if (annotation != null) {
-            for (perm in annotation.permissions) {
-                if (alias.equals(perm.alias, ignoreCase = true)) {
-                    var result = true
-                    for (permString in perm.strings) {
-                        result = result && PermissionHelper.hasDefinedPermission(context, permString)
-                    }
-
-                    return result
+        for (perm in handle.pluginAnnotation.permissions) {
+            if (alias.equals(perm.alias, ignoreCase = true)) {
+                var result = true
+                for (permString in perm.strings) {
+                    result = result && PermissionHelper.hasDefinedPermission(context, permString)
                 }
+
+                return result
             }
         }
 
@@ -236,15 +226,12 @@ public open class Plugin {
      * @param callbackName the name of the callback to run when the permission request is complete
      */
     protected open fun requestAllPermissions(call: PluginCall, callbackName: String) {
-        val annotation: CapacitorPlugin? = handle.pluginAnnotation
-        if (annotation != null) {
-            val perms = HashSet<String>()
-            for (perm in annotation.permissions) {
-                perms.addAll(perm.strings)
-            }
-
-            permissionActivityResult(call, perms.toTypedArray(), callbackName)
+        val perms = HashSet<String>()
+        for (perm in handle.pluginAnnotation.permissions) {
+            perms.addAll(perm.strings)
         }
+
+        permissionActivityResult(call, perms.toTypedArray(), callbackName)
     }
 
     /**
@@ -294,16 +281,11 @@ public open class Plugin {
      * @return Android permission strings associated with the provided aliases, if exists
      */
     private fun getPermissionStringsForAliases(aliases: Array<String>): Array<String> {
-        val annotation: CapacitorPlugin? = handle.pluginAnnotation
         val perms = HashSet<String>()
-        if (annotation != null) {
-            for (perm in annotation.permissions) {
-                if (aliases.contains(perm.alias)) {
-                    perms.addAll(perm.strings)
-                }
+        for (perm in handle.pluginAnnotation.permissions) {
+            if (aliases.contains(perm.alias)) {
+                perms.addAll(perm.strings)
             }
-        } else {
-            Logger.warn(String.format("getPermissionStringsForAliases: missing @CapacitorPlugin annotation for plugin %s", handle.id))
         }
 
         return perms.toTypedArray()
@@ -322,11 +304,10 @@ public open class Plugin {
 
         // if there is no registered launcher, reject the call with an error and return null
         if (activityLauncher == null) {
-            var registerError =
-                "There is no ActivityCallback method registered for the name: %s. " +
+            val registerError =
+                "There is no ActivityCallback method registered for the name: $methodName. " +
                     "Please define a callback method annotated with @ActivityCallback " +
                     "that receives arguments: (PluginCall, ActivityResult)"
-            registerError = String.format(Locale.US, registerError, methodName)
             Logger.error(registerError)
             call.reject(registerError)
             return null
@@ -348,11 +329,10 @@ public open class Plugin {
 
         // if there is no registered launcher, reject the call with an error and return null
         if (permissionLauncher == null) {
-            var registerError =
-                "There is no PermissionCallback method registered for the name: %s. " +
+            val registerError =
+                "There is no PermissionCallback method registered for the name: $methodName. " +
                     "Please define a callback method annotated with @PermissionCallback " +
                     "that receives arguments: (PluginCall)"
-            registerError = String.format(Locale.US, registerError, methodName)
             Logger.error(registerError)
             call.reject(registerError)
             return null
@@ -385,17 +365,13 @@ public open class Plugin {
      * Add a listener for the given event
      */
     private fun addEventListener(eventName: String?, call: PluginCall) {
-        var listeners = eventListeners[eventName]
-        if (listeners == null || listeners.isEmpty()) {
-            listeners = ArrayList()
-            eventListeners[eventName] = listeners
+        val listeners = eventListeners.getOrPut(eventName) { ArrayList() }
 
-            // Must add the call before sending retained arguments
-            listeners.add(call)
+        // Must add the call before sending retained arguments
+        listeners.add(call)
 
+        if (listeners.size == 1) {
             sendRetainedArgumentsForEvent(eventName)
-        } else {
-            listeners.add(call)
         }
     }
 
@@ -403,9 +379,7 @@ public open class Plugin {
      * Remove a listener from the given event
      */
     private fun removeEventListener(eventName: String?, call: PluginCall) {
-        val listeners = eventListeners[eventName] ?: return
-
-        listeners.remove(call)
+        eventListeners[eventName]?.remove(call)
     }
 
     /**
@@ -417,19 +391,16 @@ public open class Plugin {
     protected open fun notifyListeners(eventName: String?, data: JSObject?, retainUntilConsumed: Boolean = false) {
         Logger.verbose(logTag, "Notifying listeners for event $eventName")
         val listeners = eventListeners[eventName]
-        if (listeners == null || listeners.isEmpty()) {
+        if (listeners.isNullOrEmpty()) {
             Logger.debug(logTag, "No listeners found for event $eventName")
             if (retainUntilConsumed) {
-                val argList = retainedEventArguments[eventName] ?: ArrayList()
-
-                argList.add(data)
-                retainedEventArguments[eventName] = argList
+                retainedEventArguments.getOrPut(eventName) { ArrayList() }.add(data)
             }
             return
         }
 
-        val listenersCopy = CopyOnWriteArrayList(listeners)
-        for (call in listenersCopy) {
+        // Iterate over a snapshot: a listener may add or remove listeners while being resolved.
+        for (call in listeners.toList()) {
             call.resolve(data)
         }
     }
@@ -437,20 +408,15 @@ public open class Plugin {
     /**
      * Check if there are any listeners for the given event
      */
-    protected open fun hasListeners(eventName: String?): Boolean {
-        val listeners = eventListeners[eventName] ?: return false
-        return listeners.isNotEmpty()
-    }
+    protected open fun hasListeners(eventName: String?): Boolean = !eventListeners[eventName].isNullOrEmpty()
 
     /**
      * Send retained arguments (if any) for this event. This
      * is called only when the first listener for an event is added
      */
     private fun sendRetainedArgumentsForEvent(eventName: String?) {
-        // copy retained args and null source to prevent potential race conditions
-        val retainedArgs = retainedEventArguments[eventName] ?: return
-
-        retainedEventArguments.remove(eventName)
+        // take the retained args and null the source to prevent potential race conditions
+        val retainedArgs = retainedEventArguments.remove(eventName) ?: return
 
         for (retained in retainedArgs) {
             notifyListeners(eventName, retained)
@@ -530,28 +496,24 @@ public open class Plugin {
      */
     @PluginMethod
     public open fun requestPermissions(call: PluginCall) {
-        val annotation = handle.pluginAnnotation
         // handle permission requests for plugins defined with @CapacitorPlugin (since 3.0.0)
-        var permAliases: Array<String>? = null
+        val permissions = handle.pluginAnnotation.permissions
         val autoGrantPerms = HashSet<String>()
 
         // If call was made with a list of specific permission aliases to request, save them
         // to be requested
-        val providedPerms = call.getArray("permissions")
-        var providedPermsList: List<String>? = null
-
-        if (providedPerms != null) {
+        val providedPermsList: List<String>? =
             try {
-                providedPermsList = providedPerms.toList()
+                call.getArray("permissions")?.toList<String>()
             } catch (ignore: JSONException) {
                 // do nothing
+                null
             }
-        }
 
         // If call was made without any custom permissions, request all from plugin annotation
         val aliasSet = HashSet<String>()
-        if (providedPermsList == null || providedPermsList.isEmpty()) {
-            for (perm in annotation.permissions) {
+        if (providedPermsList.isNullOrEmpty()) {
+            for (perm in permissions) {
                 // If a permission is defined with no permission strings, separate it for auto-granting.
                 // Otherwise, the alias is added to the list to be requested.
                 if (perm.strings.isEmpty() || (perm.strings.size == 1 && perm.strings[0].isEmpty())) {
@@ -562,25 +524,22 @@ public open class Plugin {
                     aliasSet.add(perm.alias)
                 }
             }
-
-            permAliases = aliasSet.toTypedArray()
         } else {
-            for (perm in annotation.permissions) {
+            for (perm in permissions) {
                 if (providedPermsList.contains(perm.alias)) {
                     aliasSet.add(perm.alias)
                 }
             }
 
             if (aliasSet.isEmpty()) {
+                // Same as the Java original: the call is rejected here and resolved again below.
                 call.reject("No valid permission alias was requested of this plugin.")
-            } else {
-                permAliases = aliasSet.toTypedArray()
             }
         }
 
-        if (permAliases != null && permAliases.isNotEmpty()) {
+        if (aliasSet.isNotEmpty()) {
             // request permissions using provided aliases or all defined on the plugin
-            requestPermissionForAliases(permAliases, call, "checkPermissions")
+            requestPermissionForAliases(aliasSet.toTypedArray(), call, "checkPermissions")
         } else if (autoGrantPerms.isNotEmpty()) {
             // if the plugin only has auto-grant permissions, return all as GRANTED
             val permissionsResults = JSObject()
@@ -609,11 +568,7 @@ public open class Plugin {
         val savedCall = bridge.getSavedCall(lastPluginCallId) ?: return null
 
         val ret = Bundle()
-        val callData: JSObject? = savedCall.data
-
-        if (callData != null) {
-            ret.putString(BUNDLE_PERSISTED_OPTIONS_JSON_KEY, callData.toString())
-        }
+        ret.putString(BUNDLE_PERSISTED_OPTIONS_JSON_KEY, savedCall.data.toString())
 
         return ret
     }
@@ -683,7 +638,10 @@ public open class Plugin {
     }
 
     /**
-     * Shortcut for getting the plugin log tag
+     * Shortcut for getting the plugin log tag.
+     *
+     * Java resolves a bare `getLogTag()` to the [logTag] property below; Kotlin resolves it to this
+     * function with an empty vararg, which is the bare "Capacitor" tag. From Kotlin use [logTag].
      */
     protected fun getLogTag(vararg subTags: String): String = Logger.tags(*subTags)
 

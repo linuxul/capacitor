@@ -20,7 +20,7 @@ import android.net.Uri
 import com.getcapacitor.util.HostMask
 import java.util.regex.Pattern
 
-internal class UriMatcher private constructor(private var mCode: Any?, private var mWhich: Int, private var mText: String?) {
+internal class UriMatcher private constructor(private var mCode: Any?, private val mWhich: Int, private val mText: String?) {
     private val mChildren: ArrayList<UriMatcher> = ArrayList()
 
     /**
@@ -29,8 +29,6 @@ internal class UriMatcher private constructor(private var mCode: Any?, private v
      * @param code the code to match for the root URI
      */
     constructor(code: Any?) : this(code, -1, null)
-
-    private constructor() : this(null, -1, null)
 
     /**
      * Add a URI to match, and the code to return when this URI is
@@ -50,41 +48,30 @@ internal class UriMatcher private constructor(private var mCode: Any?, private v
     fun addURI(scheme: String, authority: String, path: String?, code: Any?) {
         requireNotNull(code) { "Code can't be null" }
 
-        var tokens: Array<String>? = null
-        if (path != null) {
-            var newPath: String = path
-            // Strip leading slash if present.
-            if (path.isNotEmpty() && path[0] == '/') {
-                newPath = path.substring(1)
-            }
-            tokens = PATH_SPLIT_PATTERN.split(newPath)
-        }
+        // Strip leading slash if present.
+        val tokens: Array<String> = path?.let { PATH_SPLIT_PATTERN.split(it.removePrefix("/")) } ?: emptyArray()
 
-        val numTokens = tokens?.size ?: 0
         var node = this
-        for (i in -2 until numTokens) {
+        for (i in -2 until tokens.size) {
             val token: String =
                 when (i) {
                     -2 -> scheme
                     -1 -> authority
-                    else -> tokens!![i]
+                    else -> tokens[i]
                 }
             val existing = node.mChildren.firstOrNull { token == it.mText }
             if (existing != null) {
                 node = existing
             } else {
                 // Child not found, create it
-                val child = UriMatcher()
-                if (i == -1 && token.contains("*")) {
-                    child.mWhich = MASK
-                } else if (token == "**") {
-                    child.mWhich = REST
-                } else if (token == "*") {
-                    child.mWhich = TEXT
-                } else {
-                    child.mWhich = EXACT
-                }
-                child.mText = token
+                val which =
+                    when {
+                        i == -1 && token.contains("*") -> MASK
+                        token == "**" -> REST
+                        token == "*" -> TEXT
+                        else -> EXACT
+                    }
+                val child = UriMatcher(null, which, token)
                 node.mChildren.add(child)
                 node = child
             }

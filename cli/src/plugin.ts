@@ -3,7 +3,6 @@ import { dirname, join } from 'path';
 
 import c from './colors';
 import type { Config } from './definitions';
-import { fatal } from './errors';
 import { logger } from './log';
 import { resolveNode } from './util/node';
 
@@ -27,7 +26,6 @@ export interface Plugin {
   version: string;
   rootPath: string;
   manifest?: PluginManifest;
-  repository?: any;
   /**
    * The package looks like a Cordova plugin (it has a `plugin.xml` or a
    * `cordova` key in its package.json) and has no Capacitor manifest.
@@ -67,7 +65,9 @@ export async function resolvePlugin(config: Config, name: string): Promise<Plugi
   try {
     const packagePath = resolveNode(config.app.rootDir, name, 'package.json');
     if (!packagePath) {
-      fatal(`Unable to find ${c.strong(`node_modules/${name}`)}.\n` + `Are you sure ${c.strong(name)} is installed?`);
+      // Candidates are every dependency in package.json (or every `includePlugins`
+      // entry), so a name that does not resolve is simply not a plugin, not an error.
+      return null;
     }
 
     const rootPath = dirname(packagePath);
@@ -81,7 +81,6 @@ export async function resolvePlugin(config: Config, name: string): Promise<Plugi
         name: fixName(name),
         version: meta.version,
         rootPath,
-        repository: meta.repository,
         manifest: meta.capacitor,
       };
     }
@@ -91,7 +90,6 @@ export async function resolvePlugin(config: Config, name: string): Promise<Plugi
         name: fixName(name),
         version: meta.version,
         rootPath,
-        repository: meta.repository,
         legacyCordova: true,
       };
     }

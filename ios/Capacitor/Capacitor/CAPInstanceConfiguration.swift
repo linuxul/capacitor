@@ -9,7 +9,7 @@ public struct InstanceConfiguration {
     public let localURL: URL
     public let serverURL: URL
     public let errorPath: String?
-    public let pluginConfigurations: [AnyHashable: Any]
+    public let pluginConfigurations: JSObject
     public let loggingEnabled: Bool
     public let scrollingEnabled: Bool
     public let zoomingEnabled: Bool
@@ -48,7 +48,9 @@ public struct InstanceConfiguration {
         appStartPath = descriptor.appStartPath
         limitsNavigationsToAppBoundDomains = descriptor.limitsNavigationsToAppBoundDomains
         preferredContentMode = descriptor.preferredContentMode
-        pluginConfigurations = descriptor.pluginConfigurations
+        // normalize() has already coerced this into a JSObject; the fallback is the same empty
+        // config the old per-call cast produced
+        pluginConfigurations = descriptor.pluginConfigurations as? JSObject ?? [:]
         isWebDebuggable = descriptor.isWebDebuggable
         hasInitialFocus = descriptor.hasInitialFocus
         // construct the necessary URLs
@@ -98,10 +100,11 @@ extension InstanceConfiguration {
     }
 
     public func getPluginConfig(_ pluginId: String) -> PluginConfig {
-        if let cfg = (pluginConfigurations as? JSObject)?[keyPath: KeyPath("\(pluginId)")] as? JSObject {
-            return PluginConfig(config: cfg)
+        // the [keyPath:] subscript is kept rather than a plain lookup so a dotted plugin id keeps traversing
+        guard let cfg = pluginConfigurations[keyPath: KeyPath(pluginId)] as? JSObject else {
+            return PluginConfig(config: JSObject())
         }
-        return PluginConfig(config: JSObject())
+        return PluginConfig(config: cfg)
     }
 
     public func shouldAllowNavigation(to host: String) -> Bool {
@@ -121,17 +124,14 @@ extension InstanceConfiguration {
             return true
         }
         // break apart the pieces
-        var hostComponents = host.lowercased().split(separator: ".")
-        var patternComponents = pattern.lowercased().split(separator: ".")
+        let hostComponents = host.lowercased().split(separator: ".")
+        let patternComponents = pattern.lowercased().split(separator: ".")
         guard hostComponents.count == patternComponents.count else {
             return false
         }
-        // remove any wildcard segments
-        for wildcard in patternComponents.enumerated().reversed().filter({ $0.element == "*" }) {
-            hostComponents.remove(at: wildcard.offset)
-            patternComponents.remove(at: wildcard.offset)
+        // every segment has to match, except where the pattern wildcards it
+        return zip(hostComponents, patternComponents).allSatisfy { hostSegment, patternSegment in
+            patternSegment == "*" || hostSegment == patternSegment
         }
-        // match with what's left
-        return hostComponents == patternComponents
     }
 }

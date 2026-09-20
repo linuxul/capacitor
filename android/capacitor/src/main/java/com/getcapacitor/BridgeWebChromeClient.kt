@@ -21,13 +21,11 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.EditText
 import androidx.activity.result.ActivityResult
-import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import com.getcapacitor.util.PermissionHelper
 import java.io.File
-import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -54,19 +52,10 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
     private var activityListener: ActivityResultListener? = null
 
     init {
-        val permissionCallback =
-            ActivityResultCallback<Map<String, Boolean>> { isGranted ->
-                val listener = permissionListener
-                if (listener != null) {
-                    var granted = true
-                    for (permission in isGranted.entries) {
-                        if (!permission.value) granted = false
-                    }
-                    listener.onPermissionSelect(granted)
-                }
+        permissionLauncher =
+            bridge.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+                permissionListener?.onPermissionSelect(results.values.all { it })
             }
-
-        permissionLauncher = bridge.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions(), permissionCallback)
         activityLauncher =
             bridge.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 activityListener?.onActivityResult(result)
@@ -403,20 +392,11 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
     }
 
     private fun getValidTypes(currentTypes: Array<String>): Array<String> {
-        val validTypes = ArrayList<String>()
         val mtm = MimeTypeMap.getSingleton()
-        for (mime in currentTypes) {
-            if (mime.startsWith(".")) {
-                val extension = mime.substring(1)
-                val extensionMime = mtm.getMimeTypeFromExtension(extension)
-                if (extensionMime != null && !validTypes.contains(extensionMime)) {
-                    validTypes.add(extensionMime)
-                }
-            } else if (!validTypes.contains(mime)) {
-                validTypes.add(mime)
-            }
-        }
-        return validTypes.toTypedArray()
+        return currentTypes
+            .mapNotNull { mime -> if (mime.startsWith(".")) mtm.getMimeTypeFromExtension(mime.substring(1)) else mime }
+            .distinct()
+            .toTypedArray()
     }
 
     override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {

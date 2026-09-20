@@ -47,30 +47,26 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
             // A null message throws here (NullPointerException from JSONTokener, as in the Java original) and is logged below.
             val postData = JSObject(jsonStr!!)
 
-            val type = postData.getString("type")
-
-            val typeIsNotNull = type != null
-            val isCordovaPlugin = typeIsNotNull && type == "cordova"
-            val isJavaScriptError = typeIsNotNull && type == "js.error"
-
             val callbackId = postData.getString("callbackId")
 
-            if (isCordovaPlugin) {
-                Logger.warn("Cordova plugins are not supported, ignoring call: $callbackId")
-            } else if (isJavaScriptError) {
-                Logger.error("JavaScript Error: $jsonStr")
-            } else {
-                val pluginId = postData.getString("pluginId")
-                val methodName = postData.getString("methodName")
-                // Never null: the default is non-null.
-                val methodData = postData.getJSObject("options", JSObject()) ?: JSObject()
+            when (postData.getString("type")) {
+                "cordova" -> Logger.warn("Cordova plugins are not supported, ignoring call: $callbackId")
 
-                Logger.verbose(
-                    Logger.tags("Plugin"),
-                    "To native (Capacitor plugin): callbackId: $callbackId, pluginId: $pluginId, methodName: $methodName"
-                )
+                "js.error" -> Logger.error("JavaScript Error: $jsonStr")
 
-                callPluginMethod(callbackId, pluginId, methodName, methodData)
+                else -> {
+                    val pluginId = postData.getString("pluginId")
+                    val methodName = postData.getString("methodName")
+                    // Never null: the default is non-null.
+                    val methodData = postData.getJSObject("options", JSObject()) ?: JSObject()
+
+                    Logger.verbose(
+                        Logger.tags("Plugin"),
+                        "To native (Capacitor plugin): callbackId: $callbackId, pluginId: $pluginId, methodName: $methodName"
+                    )
+
+                    callPluginMethod(callbackId, pluginId, methodName, methodData)
+                }
             }
         } catch (ex: Exception) {
             Logger.error("Post message error:", ex)
@@ -85,8 +81,7 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
             data.put("pluginId", call.pluginId)
             data.put("methodName", call.methodName)
 
-            val pluginResultInError = errorResult != null
-            if (pluginResultInError) {
+            if (errorResult != null) {
                 data.put("success", false)
                 data.put("error", errorResult)
                 Logger.debug("Sending plugin error: $data")

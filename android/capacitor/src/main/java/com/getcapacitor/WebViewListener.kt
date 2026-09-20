@@ -55,7 +55,7 @@ public abstract class WebViewListener {
     }
 
     /**
-     * Callback for page start event.
+     * Callback for onPageCommitVisible event.
      *
      * @param view The WebView for which the navigation occurred.
      * @param url The URL corresponding to the page navigation that triggered this callback.

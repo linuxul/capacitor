@@ -12,7 +12,7 @@ import type {
   WindowCapacitor,
   CapFormDataEntry,
 } from './src/definitions-internal';
-import { CapacitorException } from './src/util';
+import { CapacitorException, getPlatformId } from './src/util';
 
 // For removing exports for iOS/Android, keep let for reassignment
 // eslint-disable-next-line
@@ -125,6 +125,9 @@ const convertBody = async (
 const CAPACITOR_HTTP_INTERCEPTOR = '/_capacitor_http_interceptor_';
 const CAPACITOR_HTTP_INTERCEPTOR_URL_PARAM = 'u';
 
+// The id a call carries when it expects no response. Mirrors PluginCall.CALLBACK_ID_DANGLING on Android.
+const CALLBACK_ID_DANGLING = '-1';
+
 // TODO: export as Cap function
 const isRelativeOrProxyUrl = (url: string | undefined): boolean =>
   !url || !(url.startsWith('http:') || url.startsWith('https:')) || url.indexOf(CAPACITOR_HTTP_INTERCEPTOR) > -1;
@@ -140,16 +143,6 @@ const createProxyUrl = (url: string, win: WindowCapacitor): string => {
 };
 
 const initBridge = (w: any): void => {
-  const getPlatformId = (win: WindowCapacitor): 'android' | 'ios' | 'web' => {
-    if (win?.androidBridge) {
-      return 'android';
-    } else if (win?.webkit?.messageHandlers?.bridge) {
-      return 'ios';
-    } else {
-      return 'web';
-    }
-  };
-
   const convertFileSrcServerUrl = (webviewServerUrl: string, filePath: string): string => {
     if (typeof filePath === 'string') {
       if (filePath.startsWith('/')) {
@@ -236,6 +229,9 @@ const initBridge = (w: any): void => {
     win.Capacitor = cap;
   };
 
+  // Cordova is not supported (see BREAKING.md) and window.cordova is no longer defined, but these
+  // three shims are kept on purpose: navigator.app.exitApp(), the synthetic `deviceready` document
+  // event and the `backbutton` interception. Ionic's hardware back button relies on the last two.
   const initLegacyHandlers = (win: WindowCapacitor, cap: CapacitorInstance) => {
     const doc = win.document;
     const nav = win.navigator;
@@ -261,13 +257,9 @@ const initBridge = (w: any): void => {
         } else if (eventName === 'backbutton' && cap.Plugins.App) {
           // Add a dummy listener so Capacitor doesn't do the default
           // back button action
-          if (!cap.Plugins?.App) {
-            win.console.warn('App plugin not installed');
-          } else {
-            cap.Plugins.App.addListener('backButton', () => {
-              // ignore
-            });
-          }
+          cap.Plugins.App.addListener('backButton', () => {
+            // ignore
+          });
         }
         return docAddEventListener.apply(doc, args);
       };
@@ -582,8 +574,8 @@ const initBridge = (w: any): void => {
             });
 
             /*
-             * copy url to response, `cordova-plugin-ionic` uses this url from the response
-             * we need `Object.defineProperty` because url is an inherited getter on the Response
+             * A Response built from native data has an empty `url`, so callers reading `response.url`
+             * would see ''. `url` is an inherited getter on Response, hence `Object.defineProperty`.
              * see: https://stackoverflow.com/a/57382543
              * */
             Object.defineProperty(response, 'url', {
@@ -923,22 +915,11 @@ const initBridge = (w: any): void => {
       const bytes = win.crypto.getRandomValues(new Uint8Array(16));
       bytes[6] = (bytes[6] & 0x0f) | 0x40;
       bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      const hex: string[] = [];
-      bytes.forEach((b) => hex.push((b < 16 ? '0' : '') + b.toString(16)));
-      return (
-        hex.slice(0, 4).join('') +
-        '-' +
-        hex.slice(4, 6).join('') +
-        '-' +
-        hex.slice(6, 8).join('') +
-        '-' +
-        hex.slice(8, 10).join('') +
-        '-' +
-        hex.slice(10).join('')
-      );
+      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
     };
 
-    let postToNative: (data: CallData) => void | null = null;
+    let postToNative: ((data: CallData) => void) | null = null;
 
     const isNativePlatform = () => true;
     const getPlatform = () => getPlatformId(win);
@@ -1008,7 +989,7 @@ const initBridge = (w: any): void => {
     cap.toNative = (pluginName, methodName, options, storedCallback) => {
       try {
         if (typeof postToNative === 'function') {
-          let callbackId = '-1';
+          let callbackId = CALLBACK_ID_DANGLING;
 
           if (
             storedCallback &&

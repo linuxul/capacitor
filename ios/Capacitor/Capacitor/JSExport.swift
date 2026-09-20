@@ -93,7 +93,7 @@ internal class JSExport {
         userContentController.addUserScript(userScript)
     }
 
-    private static func createPluginHeader(for plugin: CapacitorPlugin) -> PluginHeader? {
+    private static func createPluginHeader(for plugin: CapacitorPlugin) -> PluginHeader {
         let methods = [
             PluginHeaderMethod(name: "addListener", rtype: nil),
             PluginHeaderMethod(name: "removeListener", rtype: nil),
@@ -106,7 +106,6 @@ internal class JSExport {
             name: plugin.jsName,
             methods: methods + plugin.pluginMethods.map(createPluginHeaderMethod)
         )
-
     }
 
     private static func createPluginHeaderMethod(method: CAPPluginMethod) -> PluginHeaderMethod {
@@ -165,6 +164,8 @@ internal class JSExport {
     }
 
     static func injectFile(fileURL: URL, userContentController: WKUserContentController) throws {
+        // Same as the Obj-C original: a file that resolves but cannot be read is logged and skipped. Letting it
+        // throw would turn a missing script into CapacitorBridge.fatalError by way of exportBridgeJS.
         do {
             let data = try String(contentsOf: fileURL, encoding: .utf8)
             let userScript = WKUserScript(source: data, injectionTime: .atDocumentStart, forMainFrameOnly: true)

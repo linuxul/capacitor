@@ -37,7 +37,6 @@ import com.getcapacitor.util.WebColor
 import java.io.File
 import java.net.SocketTimeoutException
 import java.net.URL
-import java.util.regex.Pattern
 import org.json.JSONException
 
 /**
@@ -50,9 +49,8 @@ import org.json.JSONException
  * to get a WebView instance and proxy native events automatically.
  *
  * If you want to use this Bridge in an existing Android app, please
- * see the source for BridgeActivity for the methods you'll need to
- * pass through to Bridge:
- * [BridgeActivity](https://github.com/ionic-team/capacitor/blob/HEAD/android/capacitor/src/main/java/com/getcapacitor/BridgeActivity.java)
+ * see the source for [BridgeActivity] for the methods you'll need to
+ * pass through to Bridge.
  */
 public class Bridge private constructor(
     /**
@@ -83,7 +81,6 @@ public class Bridge private constructor(
         private set
     public var appUrl: String? = null
         private set
-    private var appUrlConfig: String? = null
     public lateinit var appAllowNavigationMask: HostMask
         private set
     public val allowedOriginRules: MutableSet<String> = HashSet()
@@ -110,6 +107,9 @@ public class Bridge private constructor(
 
     // Our Handler for posting plugin calls. Created from the ThreadHandler
     private val taskHandler: Handler
+
+    // Our Handler for posting to the main thread
+    private val mainHandler: Handler = Handler(activity.mainLooper)
 
     // A map of Plugin Id's to PluginHandle's
     private val plugins: MutableMap<String, PluginHandle> = HashMap()
@@ -238,19 +238,13 @@ public class Bridge private constructor(
 
     public fun isMinimumWebViewInstalled(): Boolean {
         val info = WebView.getCurrentWebViewPackage() ?: return false
-        val pattern = Pattern.compile("(\\d+)")
         // The Java original threw on a WebView package without a version name; it now counts as unsupported.
-        val matcher = pattern.matcher(info.versionName ?: return false)
-        if (matcher.find()) {
-            // Never null once find() has succeeded.
-            val majorVersionStr = matcher.group(0) ?: return false
-            val majorVersion = Integer.parseInt(majorVersionStr)
-            if (info.packageName == "com.huawei.webview") {
-                return majorVersion >= config.minHuaweiWebViewVersion
-            }
-            return majorVersion >= config.minWebViewVersion
+        val majorVersion = WEBVIEW_MAJOR_VERSION.find(info.versionName ?: return false)?.value?.toInt() ?: return false
+        return if (info.packageName == "com.huawei.webview") {
+            majorVersion >= config.minHuaweiWebViewVersion
+        } else {
+            majorVersion >= config.minWebViewVersion
         }
-        return false
     }
 
     public fun launchIntent(url: Uri): Boolean {
@@ -362,12 +356,9 @@ public class Bridge private constructor(
 
             // trim { it <= ' ' } is java.lang.String.trim().
             if (errorPath != null && errorPath.trim { it <= ' ' }.isNotEmpty()) {
-                val authority = host
-                val scheme = scheme
-
-                val localUrl = "$scheme://$authority"
-
-                return "$localUrl/$errorPath"
+                // The error page is always served from the Capacitor origin, not the localUrl property,
+                // which follows server.url.
+                return "$scheme://$host/$errorPath"
             }
 
             return null
@@ -421,14 +412,13 @@ public class Bridge private constructor(
 
         WebView.setWebContentsDebuggingEnabled(config.isWebContentsDebuggingEnabled)
 
-        appUrlConfig = serverUrl
+        val appUrlConfig = serverUrl
         val authority = host
         authorities.add(authority)
         val scheme = scheme
 
         localUrl = "$scheme://$authority"
 
-        val appUrlConfig = appUrlConfig
         if (appUrlConfig != null) {
             try {
                 val appUrlObject = URL(appUrlConfig)
@@ -515,13 +505,8 @@ public class Bridge private constructor(
     }
 
     private fun pluginId(clazz: Class<out Plugin>): String? {
-        val pluginName = pluginName(clazz)
-        var pluginId = clazz.simpleName
-        if (pluginName == null) return null
-
-        if (pluginName != "") {
-            pluginId = pluginName
-        }
+        val pluginName = pluginName(clazz) ?: return null
+        val pluginId = pluginName.ifEmpty { clazz.simpleName }
         Logger.debug("Registering plugin instance: $pluginId")
         return pluginId
     }
@@ -619,10 +604,10 @@ public class Bridge private constructor(
      * after calling the JS
      */
     public fun eval(js: String, callback: ValueCallback<String>?) {
-        val mainHandler = Handler(activity.mainLooper)
-        mainHandler.post { webView.evaluateJavascript(js, callback) }
+        executeOnMainThread { webView.evaluateJavascript(js, callback) }
     }
 
+    @JvmOverloads
     public fun logToJs(message: String?, level: String? = "log") {
         eval("window.Capacitor.logJs(\"$message\", \"$level\")", null)
     }
@@ -656,8 +641,6 @@ public class Bridge private constructor(
     }
 
     public fun executeOnMainThread(runnable: Runnable) {
-        val mainHandler = Handler(activity.mainLooper)
-
         mainHandler.post(runnable)
     }
 
@@ -829,10 +812,7 @@ public class Bridge private constructor(
     internal fun validatePermissions(plugin: Plugin, savedCall: PluginCall?, permissions: Map<String, Boolean>): Boolean {
         val prefs = context.getSharedPreferences(PERMISSION_PREFS_NAME, Activity.MODE_PRIVATE)
 
-        for (permission in permissions.entries) {
-            val permString = permission.key
-            val isGranted = permission.value
-
+        for ((permString, isGranted) in permissions) {
             if (isGranted) {
                 // Permission granted. If previously denied, remove cached state
                 val state = prefs.getString(permString, null)
@@ -860,14 +840,13 @@ public class Bridge private constructor(
         val permStrings = permissions.keys.toTypedArray()
 
         if (!PermissionHelper.hasDefinedPermissions(context, permStrings)) {
-            val builder = StringBuilder()
-            builder.append("Missing the following permissions in AndroidManifest.xml:\n")
-            val missing = PermissionHelper.getUndefinedPermissions(context, permStrings)
-            for (perm in missing) {
-                builder.append(perm + "\n")
-            }
+            val message =
+                buildString {
+                    appendLine("Missing the following permissions in AndroidManifest.xml:")
+                    PermissionHelper.getUndefinedPermissions(context, permStrings).forEach { appendLine(it) }
+                }
             // The Java original threw when no call had been saved for the request; there is nothing to reject then.
-            savedCall?.reject(builder.toString())
+            savedCall?.reject(message)
             return false
         }
 
@@ -882,50 +861,46 @@ public class Bridge private constructor(
      */
     internal fun getPermissionStates(plugin: Plugin): Map<String, PermissionState> {
         val permissionsResults = HashMap<String, PermissionState>()
-        val annotation: CapacitorPlugin? = plugin.pluginHandle.pluginAnnotation
-        if (annotation != null) {
-            for (perm in annotation.permissions) {
-                // If a permission is defined with no permission constants, return GRANTED for it.
-                // Otherwise, get its true state.
-                if (perm.strings.isEmpty() || (perm.strings.size == 1 && perm.strings[0].isEmpty())) {
-                    val key = perm.alias
-                    if (key.isNotEmpty()) {
-                        val existingResult = permissionsResults[key]
+        // PluginHandle's init throws InvalidPluginException when the annotation is missing, so it is always present here.
+        for (perm in plugin.pluginHandle.pluginAnnotation.permissions) {
+            // If a permission is defined with no permission constants, return GRANTED for it.
+            // Otherwise, get its true state.
+            if (perm.strings.isEmpty() || (perm.strings.size == 1 && perm.strings[0].isEmpty())) {
+                val key = perm.alias
+                if (key.isNotEmpty()) {
+                    val existingResult = permissionsResults[key]
 
-                        // auto set permission state to GRANTED if the alias is empty.
-                        if (existingResult == null) {
-                            permissionsResults[key] = PermissionState.GRANTED
+                    // auto set permission state to GRANTED if the alias is empty.
+                    if (existingResult == null) {
+                        permissionsResults[key] = PermissionState.GRANTED
+                    }
+                }
+            } else {
+                for (permString in perm.strings) {
+                    val key = if (perm.alias.isEmpty()) permString else perm.alias
+                    var permissionStatus: PermissionState
+                    if (ActivityCompat.checkSelfPermission(context, permString) == PackageManager.PERMISSION_GRANTED) {
+                        permissionStatus = PermissionState.GRANTED
+                    } else {
+                        permissionStatus = PermissionState.PROMPT
+
+                        // Check if there is a cached permission state for the "Never ask again" state
+                        val prefs = context.getSharedPreferences(PERMISSION_PREFS_NAME, Activity.MODE_PRIVATE)
+                        val state = prefs.getString(permString, null)
+
+                        if (state != null) {
+                            permissionStatus = PermissionState.byState(state)
                         }
                     }
-                } else {
-                    for (permString in perm.strings) {
-                        val key = if (perm.alias.isEmpty()) permString else perm.alias
-                        var permissionStatus: PermissionState
-                        if (ActivityCompat.checkSelfPermission(context, permString) == PackageManager.PERMISSION_GRANTED) {
-                            permissionStatus = PermissionState.GRANTED
-                        } else {
-                            permissionStatus = PermissionState.PROMPT
 
-                            // Check if there is a cached permission state for the "Never ask again" state
-                            val prefs = context.getSharedPreferences(PERMISSION_PREFS_NAME, Activity.MODE_PRIVATE)
-                            val state = prefs.getString(permString, null)
+                    val existingResult = permissionsResults[key]
 
-                            if (state != null) {
-                                permissionStatus = PermissionState.byState(state)
-                            }
-                        }
-
-                        val existingResult = permissionsResults[key]
-
-                        // multiple permissions with the same alias must all be true, otherwise all false.
-                        if (existingResult == null || existingResult == PermissionState.GRANTED) {
-                            permissionsResults[key] = permissionStatus
-                        }
+                    // multiple permissions with the same alias must all be true, otherwise all false.
+                    if (existingResult == null || existingResult == PermissionState.GRANTED) {
+                        permissionsResults[key] = permissionStatus
                     }
                 }
             }
-        } else {
-            Logger.warn(String.format("getPermissionStates: missing @CapacitorPlugin annotation for plugin %s", plugin.pluginHandle.id))
         }
 
         return permissionsResults
@@ -1075,8 +1050,8 @@ public class Bridge private constructor(
             return this
         }
 
-        public fun setPlugins(plugins: MutableList<Class<out Plugin>>): Builder {
-            this.plugins = plugins
+        public fun setPlugins(plugins: List<Class<out Plugin>>): Builder {
+            this.plugins = plugins.toMutableList()
             return this
         }
 
@@ -1160,6 +1135,9 @@ public class Bridge private constructor(
         private const val LAST_BINARY_VERSION_CODE = "lastBinaryVersionCode"
         private const val LAST_BINARY_VERSION_NAME = "lastBinaryVersionName"
         private const val MINIMUM_ANDROID_WEBVIEW_ERROR = "System WebView is not supported"
+
+        // The major version at the front of a WebView package's version name
+        private val WEBVIEW_MAJOR_VERSION: Regex = Regex("\\d+")
 
         // The name of the directory we use to look for index.html and the rest of our web assets
         public const val DEFAULT_WEB_ASSET_DIR: String = "public"

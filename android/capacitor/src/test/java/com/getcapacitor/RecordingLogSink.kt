@@ -13,7 +13,7 @@ class RecordingLogSink :
 
     val entries: MutableList<Entry> = ArrayList()
 
-    private var previousSink: LogSink? = null
+    private lateinit var previousSink: LogSink
     private var previousLoggingEnabled = true
 
     override fun log(priority: Int, tag: String, message: String, throwable: Throwable?) {
@@ -30,7 +30,7 @@ class RecordingLogSink :
     }
 
     override fun after() {
-        Logger.sink = previousSink ?: AndroidLogSink
+        Logger.sink = previousSink
         Logger.loggingEnabled = previousLoggingEnabled
     }
 }

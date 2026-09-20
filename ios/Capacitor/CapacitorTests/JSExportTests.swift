@@ -15,11 +15,10 @@ class JSExportTests: XCTestCase {
     
     func testBridgeBundle() throws {
         let contentController = WKUserContentController()
-        do {
-            try Capacitor.JSExport.exportBridgeJS(userContentController: contentController)
-        }
-        catch {
-            XCTFail()
-        }
+        try Capacitor.JSExport.exportBridgeJS(userContentController: contentController)
+        // A clean return only proves the resource URL resolved and was read; an empty or truncated
+        // resource would inject just as quietly. Check the bridge JS actually landed, with content.
+        let script = try XCTUnwrap(contentController.userScripts.first)
+        XCTAssertFalse(script.source.isEmpty)
     }
 }

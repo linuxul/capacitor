@@ -4,8 +4,6 @@ import android.webkit.WebView
 import androidx.webkit.WebViewFeature
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.io.File
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -65,27 +63,21 @@ class JSProtocolSnapshotTest {
         val trailerAt = pluginJS.indexOf(trailer)
         val headersAt = pluginJS.indexOf(headersPrefix)
 
-        // Same split as java.lang.String.split: a lookahead regex, trailing empty parts dropped.
-        val blocks = Regex("\n(?=t\\[')").toPattern().split(pluginJS.substring(0, trailerAt))
-        blocks.sort(1, blocks.size)
+        // The first block is the plugin preamble; only the t['name'] blocks after it are unordered.
+        val blocks = pluginJS.substring(0, trailerAt).split(Regex("\n(?=t\\[')"))
+        val sortedBlocks = blocks.take(1) + blocks.drop(1).sorted()
 
-        val headers = JSONArray(pluginJS.substring(headersAt + headersPrefix.length, pluginJS.length - 1))
-        val methods = ArrayList<String>()
-        val methodHeaders = headers.getJSONObject(0).getJSONArray("methods")
-        for (i in 0 until methodHeaders.length()) {
-            val method = methodHeaders.getJSONObject(i)
-            methods.add(method.getString("name") + " -> " + method.optString("rtype", "(none)"))
-        }
-        methods.sort()
+        val header = JSONArray(pluginJS.substring(headersAt + headersPrefix.length, pluginJS.length - 1)).getJSONObject(0)
+        val methodHeaders = header.getJSONArray("methods")
+        val methods =
+            (0 until methodHeaders.length())
+                .map { methodHeaders.getJSONObject(it) }
+                .map { "${it.getString("name")} -> ${it.optString("rtype", "(none)")}" }
+                .sorted()
 
-        return (
-            blocks.joinToString("\n") +
-                trailer +
-                "\nPluginHeaders for " +
-                headers.getJSONObject(0).getString("name") +
-                ":\n" +
-                methods.joinToString("\n")
-            )
+        return sortedBlocks.joinToString("\n") + trailer +
+            "\nPluginHeaders for ${header.getString("name")}:\n" +
+            methods.joinToString("\n")
     }
 
     @Test
@@ -157,13 +149,13 @@ class JSProtocolSnapshotTest {
     private fun assertSnapshot(name: String, actual: String) {
         val file = File("src/test/resources/snapshots", name)
         if (System.getenv("UPDATE_SNAPSHOTS") != null) {
-            file.parentFile!!.mkdirs()
-            Files.write(file.toPath(), actual.toByteArray(StandardCharsets.UTF_8))
+            file.parentFile?.mkdirs()
+            file.writeText(actual)
             return
         }
         if (!file.exists()) {
-            fail("Missing snapshot $file. Run the tests with UPDATE_SNAPSHOTS=1 to create it.")
+            fail("Missing snapshot ${file.absolutePath}. Run the tests with UPDATE_SNAPSHOTS=1 to create it.")
         }
-        assertEquals(String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8), actual)
+        assertEquals(file.readText(), actual)
     }
 }

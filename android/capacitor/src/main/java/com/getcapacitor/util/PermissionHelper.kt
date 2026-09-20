@@ -17,14 +17,8 @@ public object PermissionHelper {
      * @param permissions Permissions to check.
      * @return True if all permissions are granted, false if at least one is not.
      */
-    public fun hasPermissions(context: Context, permissions: Array<String>): Boolean {
-        for (perm in permissions) {
-            if (ActivityCompat.checkSelfPermission(context, perm) != PackageManager.PERMISSION_GRANTED) {
-                return false
-            }
-        }
-        return true
-    }
+    public fun hasPermissions(context: Context, permissions: Array<String>): Boolean =
+        permissions.all { ActivityCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
 
     /**
      * Check whether the given permission has been defined in the AndroidManifest.xml
@@ -44,15 +38,8 @@ public object PermissionHelper {
      * @param permissions a list of permissions
      * @return true only if all permissions are defined in the AndroidManifest.xml
      */
-    public fun hasDefinedPermissions(context: Context, permissions: Array<String>): Boolean {
-        for (permission in permissions) {
-            if (!hasDefinedPermission(context, permission)) {
-                return false
-            }
-        }
-
-        return true
-    }
+    public fun hasDefinedPermissions(context: Context, permissions: Array<String>): Boolean =
+        getUndefinedPermissions(context, permissions).isEmpty()
 
     /**
      * Get the permissions defined in AndroidManifest.xml
@@ -60,18 +47,12 @@ public object PermissionHelper {
      * @since 3.0.0
      * @return The permissions defined in AndroidManifest.xml
      */
-    public fun getManifestPermissions(context: Context): Array<String>? {
-        var requestedPermissions: Array<String>? = null
-        try {
-            val pm = context.packageManager
-            val packageInfo = InternalUtils.getPackageInfo(pm, context.packageName, PackageManager.GET_PERMISSIONS.toLong())
-
-            if (packageInfo != null) {
-                requestedPermissions = packageInfo.requestedPermissions
-            }
-        } catch (ex: Exception) {
-        }
-        return requestedPermissions
+    public fun getManifestPermissions(context: Context): Array<String>? = try {
+        InternalUtils
+            .getPackageInfo(context.packageManager, context.packageName, PackageManager.GET_PERMISSIONS.toLong())
+            ?.requestedPermissions
+    } catch (ex: Exception) {
+        null
     }
 
     /**
@@ -83,15 +64,9 @@ public object PermissionHelper {
      */
     public fun getUndefinedPermissions(context: Context, neededPermissions: Array<String>): Array<String> {
         val requestedPermissions = getManifestPermissions(context)
-        if (!requestedPermissions.isNullOrEmpty()) {
-            val undefinedPermissions = ArrayList<String>()
-            for (permission in neededPermissions) {
-                if (!requestedPermissions.contains(permission)) {
-                    undefinedPermissions.add(permission)
-                }
-            }
-            return undefinedPermissions.toTypedArray()
+        if (requestedPermissions.isNullOrEmpty()) {
+            return neededPermissions
         }
-        return neededPermissions
+        return neededPermissions.filterNot { it in requestedPermissions }.toTypedArray()
     }
 }

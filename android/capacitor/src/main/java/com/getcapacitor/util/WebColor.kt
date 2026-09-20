@@ -10,6 +10,8 @@ public object WebColor {
      */
     public fun parseColor(colorString: String): Int {
         var formattedColor = colorString
+        // Same as the Java original: an empty string throws StringIndexOutOfBoundsException here rather than
+        // the documented IllegalArgumentException, so this is deliberately an index read and not startsWith.
         if (colorString[0] != '#') {
             formattedColor = "#$formattedColor"
         }

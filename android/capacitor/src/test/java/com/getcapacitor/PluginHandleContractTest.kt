@@ -61,6 +61,12 @@ class PluginHandleContractTest {
         fun noArguments() {}
     }
 
+    @CapacitorPlugin(name = "Suspending")
+    class SuspendingPlugin : Plugin() {
+        @PluginMethod
+        suspend fun later(call: PluginCall) {}
+    }
+
     class UnannotatedPlugin : Plugin()
 
     private val ownMethods = setOf("echo", "watch")
@@ -152,6 +158,12 @@ class PluginHandleContractTest {
     @Test
     fun pluginMethodWithoutArgumentsIsRejected() {
         assertInvalidPlugin(NoArgumentPlugin(), "noArguments")
+    }
+
+    @Test
+    fun suspendPluginMethodIsRejected() {
+        // suspend adds a Continuation parameter, so the JVM signature is no longer (PluginCall).
+        assertInvalidPlugin(SuspendingPlugin(), "later")
     }
 
     @Test

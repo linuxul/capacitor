@@ -39,14 +39,14 @@ public interface HostMask {
         }
 
         public companion object {
-            public fun parse(mask: String?): Simple {
+            internal fun parse(mask: String?): Simple {
                 val parts = Util.splitAndReverse(mask)
                 return Simple(parts)
             }
         }
     }
 
-    public class Any(private val masks: List<HostMask>) : HostMask {
+    public class Any internal constructor(private val masks: List<HostMask>) : HostMask {
         override fun matches(host: String?): Boolean {
             for (mask in masks) {
                 if (mask.matches(host)) {
@@ -57,7 +57,7 @@ public interface HostMask {
         }
 
         public companion object {
-            public fun parse(vararg rawMasks: String?): Any {
+            internal fun parse(vararg rawMasks: String?): Any {
                 val masks = ArrayList<Simple>()
                 for (raw in rawMasks) {
                     masks.add(Simple.parse(raw))
@@ -74,7 +74,7 @@ public interface HostMask {
     public object Util {
         private val DOT: Pattern = Pattern.compile("\\.")
 
-        public fun matches(mask: String?, string: String?): Boolean = if (mask == null) {
+        internal fun matches(mask: String?, string: String?): Boolean = if (mask == null) {
             false
         } else if ("*" == mask) {
             true
@@ -85,7 +85,7 @@ public interface HostMask {
             mask.uppercase(Locale.getDefault()) == string.uppercase(Locale.getDefault())
         }
 
-        public fun splitAndReverse(string: String?): List<String> {
+        internal fun splitAndReverse(string: String?): List<String> {
             requireNotNull(string) { "Can not split null argument" }
             // Pattern.split keeps java.lang.String.split semantics (trailing empty parts dropped).
             return DOT.split(string).reversed()

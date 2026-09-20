@@ -45,15 +45,8 @@ public class PluginCall(
     }
 
     public fun errorCallback(msg: String?) {
-        val errorResult = PluginResult()
-
-        try {
-            errorResult.put("message", msg)
-        } catch (jsonEx: Exception) {
-            Logger.error(Logger.tags("Plugin"), jsonEx.toString(), null)
-        }
-
-        msgHandler.sendResponseMessage(this, null, errorResult)
+        // PluginResult.put logs and swallows any JSON failure, so there is nothing to catch here.
+        msgHandler.sendResponseMessage(this, null, PluginResult().put("message", msg))
     }
 
     /**
@@ -61,21 +54,13 @@ public class PluginCall(
      */
     @JvmOverloads
     public fun reject(msg: String?, code: String? = null, ex: Exception? = null, data: JSObject? = null) {
-        val errorResult = PluginResult()
-
         if (ex != null) {
             Logger.error(Logger.tags("Plugin"), msg, ex)
         }
 
-        try {
-            errorResult.put("message", msg)
-            errorResult.put("code", code)
-            if (null != data) {
-                errorResult.put("data", data)
-            }
-        } catch (jsonEx: Exception) {
-            Logger.error(Logger.tags("Plugin"), jsonEx.message, jsonEx)
-        }
+        // A null code removes the key, which is what JSObject.put does with a null value.
+        val errorResult = PluginResult().put("message", msg).put("code", code)
+        data?.let { errorResult.put("data", it) }
 
         msgHandler.sendResponseMessage(this, null, errorResult)
     }
@@ -91,89 +76,42 @@ public class PluginCall(
     }
 
     @JvmOverloads
-    public fun getString(name: String, defaultValue: String? = null): String? {
-        val value = data.opt(name) ?: return defaultValue
+    public fun getString(name: String, defaultValue: String? = null): String? = data.opt(name) as? String ?: defaultValue
 
-        if (value is String) {
-            return value
-        }
-        return defaultValue
+    @JvmOverloads
+    public fun getInt(name: String, defaultValue: Int? = null): Int? = data.opt(name) as? Int ?: defaultValue
+
+    @JvmOverloads
+    public fun getLong(name: String, defaultValue: Long? = null): Long? = data.opt(name) as? Long ?: defaultValue
+
+    @JvmOverloads
+    public fun getFloat(name: String, defaultValue: Float? = null): Float? = when (val value = data.opt(name)) {
+        is Float -> value
+        is Double -> value.toFloat()
+        is Int -> value.toFloat()
+        else -> defaultValue
     }
 
     @JvmOverloads
-    public fun getInt(name: String, defaultValue: Int? = null): Int? {
-        val value = data.opt(name) ?: return defaultValue
-
-        if (value is Int) {
-            return value
-        }
-        return defaultValue
+    public fun getDouble(name: String, defaultValue: Double? = null): Double? = when (val value = data.opt(name)) {
+        is Double -> value
+        is Float -> value.toDouble()
+        is Int -> value.toDouble()
+        else -> defaultValue
     }
 
     @JvmOverloads
-    public fun getLong(name: String, defaultValue: Long? = null): Long? {
-        val value = data.opt(name) ?: return defaultValue
-
-        if (value is Long) {
-            return value
-        }
-        return defaultValue
-    }
-
-    @JvmOverloads
-    public fun getFloat(name: String, defaultValue: Float? = null): Float? {
-        val value = data.opt(name) ?: return defaultValue
-
-        if (value is Float) {
-            return value
-        }
-        if (value is Double) {
-            return value.toFloat()
-        }
-        if (value is Int) {
-            return value.toFloat()
-        }
-        return defaultValue
-    }
-
-    @JvmOverloads
-    public fun getDouble(name: String, defaultValue: Double? = null): Double? {
-        val value = data.opt(name) ?: return defaultValue
-
-        if (value is Double) {
-            return value
-        }
-        if (value is Float) {
-            return value.toDouble()
-        }
-        if (value is Int) {
-            return value.toDouble()
-        }
-        return defaultValue
-    }
-
-    @JvmOverloads
-    public fun getBoolean(name: String, defaultValue: Boolean? = null): Boolean? {
-        val value = data.opt(name) ?: return defaultValue
-
-        if (value is Boolean) {
-            return value
-        }
-        return defaultValue
-    }
+    public fun getBoolean(name: String, defaultValue: Boolean? = null): Boolean? = data.opt(name) as? Boolean ?: defaultValue
 
     @JvmOverloads
     public fun getObject(name: String, defaultValue: JSObject? = null): JSObject? {
-        val value = data.opt(name) ?: return defaultValue
+        val value = data.opt(name) as? JSONObject ?: return defaultValue
 
-        if (value is JSONObject) {
-            try {
-                return JSObject.fromJSONObject(value)
-            } catch (ex: JSONException) {
-                return defaultValue
-            }
+        return try {
+            JSObject.fromJSONObject(value)
+        } catch (ex: JSONException) {
+            defaultValue
         }
-        return defaultValue
     }
 
     /**
@@ -181,29 +119,19 @@ public class PluginCall(
      */
     @JvmOverloads
     public fun getArray(name: String, defaultValue: JSArray? = null): JSArray? {
-        val value = data.opt(name) ?: return defaultValue
+        val value = data.opt(name) as? JSONArray ?: return defaultValue
 
-        if (value is JSONArray) {
-            try {
-                val items = ArrayList<Any?>()
-                for (i in 0 until value.length()) {
-                    items.add(value.get(i))
-                }
-                val array: Any = items.toTypedArray()
-                return JSArray(array)
-            } catch (ex: JSONException) {
-                return defaultValue
-            }
+        return try {
+            JSArray((0 until value.length()).map { value.get(it) })
+        } catch (ex: JSONException) {
+            defaultValue
         }
-        return defaultValue
     }
 
     public fun release(bridge: Bridge) {
         keepAlive = false
         bridge.releaseCall(this)
     }
-
-    internal inner class PluginCallDataTypeException(m: String?) : Exception(m)
 
     public companion object {
         /**

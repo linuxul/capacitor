@@ -29,9 +29,12 @@ private class StubNavigationAction: WKNavigationAction {
 
 // The proxy path shares the app's origin, so the origin guard alone would allow it.
 class HttpInterceptorNavigationTests: XCTestCase {
+    // WebViewDelegationHandler holds the bridge weakly and decidePolicyFor allows everything when
+    // it is nil, so this strong reference is what makes the tests below reach the interceptor guard.
     private var bridge: MockBridge!
     private var handler: WebViewDelegationHandler!
     private let webView = WKWebView()
+    private let interceptorURL = "capacitor://localhost\(CapacitorBridge.httpInterceptorStartIdentifier)?u=https://example.com/payload.html"
 
     override func setUp() {
         super.setUp()
@@ -45,23 +48,19 @@ class HttpInterceptorNavigationTests: XCTestCase {
         )
     }
 
-    private func policy(for url: String) -> WKNavigationActionPolicy {
+    private func policy(for url: String, subframe: Bool = false) -> WKNavigationActionPolicy {
         var decision: WKNavigationActionPolicy?
-        handler.webView(webView, decidePolicyFor: StubNavigationAction(url: url)) { decision = $0 }
+        handler.webView(webView, decidePolicyFor: StubNavigationAction(url: url, subframe: subframe)) { decision = $0 }
         return decision!
     }
 
     func testBlocksNavigationToInterceptorPath() {
-        let interceptorURL = "capacitor://localhost\(CapacitorBridge.httpInterceptorStartIdentifier)?u=https://example.com/payload.html"
         XCTAssertEqual(policy(for: interceptorURL), .cancel)
     }
 
     // decidePolicyFor also fires for subframes, and a same-origin iframe gets the bridge too.
     func testBlocksSubframeNavigationToInterceptorPath() {
-        let interceptorURL = "capacitor://localhost\(CapacitorBridge.httpInterceptorStartIdentifier)?u=https://example.com/payload.html"
-        var decision: WKNavigationActionPolicy?
-        handler.webView(webView, decidePolicyFor: StubNavigationAction(url: interceptorURL, subframe: true)) { decision = $0 }
-        XCTAssertEqual(decision, .cancel)
+        XCTAssertEqual(policy(for: interceptorURL, subframe: true), .cancel)
     }
 
     func testAllowsInAppNavigation() {

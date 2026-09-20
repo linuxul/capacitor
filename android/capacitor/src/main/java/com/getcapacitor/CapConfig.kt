@@ -107,9 +107,7 @@ public class CapConfig internal constructor(
          */
         public fun create(): CapConfig {
             // Unless set explicitly, web contents debugging follows the debuggable flag of the app (off without a context).
-            val debuggingEnabled =
-                webContentsDebuggingEnabled
-                    ?: isDebuggable(context).also { webContentsDebuggingEnabled = it }
+            val debuggingEnabled = webContentsDebuggingEnabled ?: isDebuggable(context)
 
             return CapConfig(
                 isHTML5Mode = html5mode,

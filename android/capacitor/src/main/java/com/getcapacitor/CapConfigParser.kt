@@ -19,40 +19,34 @@ internal class CapConfigParser(private val context: Context) {
     /**
      * @param path optional sub directory of the assets to look for the config in
      */
-    fun fromAssets(path: String?): CapConfig {
-        val dir = normalizeDirectory(path)
-        var configJSON = JSONObject()
-
-        try {
-            val jsonString = FileUtils.readFileFromAssets(context.assets, dir + CONFIG_FILE_NAME)
-            configJSON = JSONObject(jsonString)
-        } catch (ex: IOException) {
-            Logger.error("Unable to load capacitor.config.json. Run npx cap copy first", ex)
-        } catch (ex: JSONException) {
-            Logger.error("Unable to parse capacitor.config.json. Make sure it's valid json", ex)
+    fun fromAssets(path: String?): CapConfig = parse(
+        readConfig("Unable to load capacitor.config.json. Run npx cap copy first") {
+            FileUtils.readFileFromAssets(context.assets, normalizeDirectory(path) + CONFIG_FILE_NAME)
         }
-
-        return parse(configJSON)
-    }
+    )
 
     /**
      * @param path optional directory of the app file-space to look for the config in
      */
-    fun fromFile(path: String?): CapConfig {
-        val dir = normalizeDirectory(path)
-        var configJSON = JSONObject()
-
-        try {
-            val configFile = File(dir + CONFIG_FILE_NAME)
-            val jsonString = FileUtils.readFileFromDisk(configFile)
-            configJSON = JSONObject(jsonString)
-        } catch (ex: JSONException) {
-            Logger.error("Unable to parse capacitor.config.json. Make sure it's valid json", ex)
-        } catch (ex: IOException) {
-            Logger.error("Unable to load capacitor.config.json.", ex)
+    fun fromFile(path: String?): CapConfig = parse(
+        readConfig("Unable to load capacitor.config.json.") {
+            FileUtils.readFileFromDisk(File(normalizeDirectory(path) + CONFIG_FILE_NAME))
         }
+    )
 
-        return parse(configJSON)
+    /**
+     * Reads the config file and parses it. An unreadable or invalid file is logged and treated as an empty one.
+     *
+     * @param ioMessage logged when the file cannot be read
+     */
+    private fun readConfig(ioMessage: String, read: () -> String): JSONObject = try {
+        JSONObject(read())
+    } catch (ex: IOException) {
+        Logger.error(ioMessage, ex)
+        JSONObject()
+    } catch (ex: JSONException) {
+        Logger.error("Unable to parse capacitor.config.json. Make sure it's valid json", ex)
+        JSONObject()
     }
 
     private fun parse(configJSON: JSONObject): CapConfig {

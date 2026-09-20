@@ -12,9 +12,6 @@ public open class BridgeActivity : AppCompatActivity() {
     protected var bridge: Bridge? = null
 
     @JvmField
-    protected var keepRunning: Boolean = true
-
-    @JvmField
     protected var config: CapConfig? = null
 
     @JvmField

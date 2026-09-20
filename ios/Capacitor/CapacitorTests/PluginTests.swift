@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 import WebKit
 
 @testable import Capacitor
@@ -126,6 +127,7 @@ class PluginTests: XCTestCase {
         // the bridge removes listeners without a call
         plugin.removeAllListeners()
         XCTAssertFalse(plugin.hasListeners("ping"))
+        XCTAssertFalse(plugin.hasListeners("pong"))
 
         plugin.addEventListener("ping", listener: makeCall())
         var resolved = false
@@ -149,11 +151,12 @@ class PluginTests: XCTestCase {
     }
 
     func testRuntimeHooksInstallOnlyOnce() throws {
-        let method = try XCTUnwrap(class_getInstanceMethod(UIStatusBarManager.self, NSSelectorFromString("handleTapAction:")))
+        let selector = NSSelectorFromString("handleTapAction:")
         _ = CapacitorRuntimeHooks.install
-        let installed = method_getImplementation(method)
+        let installed = method_getImplementation(try XCTUnwrap(class_getInstanceMethod(UIStatusBarManager.self, selector)))
         _ = CapacitorRuntimeHooks.install
-        XCTAssertEqual(installed, method_getImplementation(class_getInstanceMethod(UIStatusBarManager.self, NSSelectorFromString("handleTapAction:"))!))
+        // look the method up again after installing: a hook added with class_addMethod is a different Method than the inherited one
+        XCTAssertEqual(installed, method_getImplementation(try XCTUnwrap(class_getInstanceMethod(UIStatusBarManager.self, selector))))
     }
 
     /// The status bar can't be tapped from a unit test, so send the private action to the real status bar manager
@@ -165,9 +168,12 @@ class PluginTests: XCTestCase {
         let selector = NSSelectorFromString("handleTapAction:")
         XCTAssertTrue(statusBarManager.responds(to: selector))
 
-        let tapped = expectation(forNotification: .capacitorStatusBarTapped, object: nil)
+        var posts = 0
+        let token = NotificationCenter.default.addObserver(forName: .capacitorStatusBarTapped, object: nil, queue: nil) { _ in posts += 1 }
+        defer { NotificationCenter.default.removeObserver(token) }
+        // the hook posts synchronously before forwarding to UIKit, so no wait is needed
         statusBarManager.perform(selector, with: nil)
-        wait(for: [tapped], timeout: 1)
+        XCTAssertEqual(posts, 1, "a hook installed twice would chain and post twice")
     }
 
     /// The keyboard hook replaces a private WKContentView method, which only exists once WebKit has loaded its view classes.
@@ -176,6 +182,8 @@ class PluginTests: XCTestCase {
         _ = CapacitorRuntimeHooks.install
         let contentView: AnyClass = try XCTUnwrap(NSClassFromString("WK" + "ContentView"))
         let selector = sel_getUid("_elementDidFocus:userIsInteracting:blurPreviousNode:activityStateChanges:userObject:")
-        XCTAssertNotNil(class_getInstanceMethod(contentView, selector), "WebKit no longer has the method Capacitor hooks for keyboardShouldRequireUserInteraction")
+        let method = try XCTUnwrap(class_getInstanceMethod(contentView, selector), "WebKit no longer has the method Capacitor hooks for keyboardShouldRequireUserInteraction")
+        // the hook replaces the IMP with one made by imp_implementationWithBlock; WebKit's own IMP is not a block
+        XCTAssertNotNil(imp_getBlock(method_getImplementation(method)), "the keyboardShouldRequireUserInteraction hook is not installed")
     }
 }

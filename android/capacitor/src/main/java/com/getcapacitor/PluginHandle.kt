@@ -1,7 +1,6 @@
 package com.getcapacitor
 
 import com.getcapacitor.annotation.CapacitorPlugin
-import java.lang.reflect.InvocationTargetException
 
 /**
  * PluginHandle is an instance of a plugin that has been registered

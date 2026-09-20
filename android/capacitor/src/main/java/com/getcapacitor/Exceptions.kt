@@ -5,20 +5,12 @@ package com.getcapacitor
 /**
  * Thrown when a plugin fails to instantiate
  */
-public class PluginLoadException(message: String?, cause: Throwable? = null) : Exception(message, cause) {
+public class PluginLoadException @JvmOverloads public constructor(message: String?, cause: Throwable? = null) : Exception(message, cause) {
     public constructor(cause: Throwable?) : this(cause?.toString(), cause)
 }
 
 internal class InvalidPluginException(message: String?) : Exception(message)
 
 internal class InvalidPluginMethodException(message: String?, cause: Throwable? = null) : Exception(message, cause) {
-    public constructor(cause: Throwable?) : this(cause?.toString(), cause)
-}
-
-internal class PluginInvocationException(message: String?, cause: Throwable? = null) : Exception(message, cause) {
-    public constructor(cause: Throwable?) : this(cause?.toString(), cause)
-}
-
-public class JSExportException(message: String?, cause: Throwable? = null) : Exception(message, cause) {
     public constructor(cause: Throwable?) : this(cause?.toString(), cause)
 }

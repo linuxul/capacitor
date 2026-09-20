@@ -1,41 +1,23 @@
 package com.getcapacitor
 
-import java.lang.reflect.Method
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Test
-import org.mockito.BDDMockito.given
-import org.mockito.kotlin.mock
 
 class PluginMethodHandleTest {
-    @Test
-    fun getNameReturnsMethodName() {
-        val pluginMethod = mock<PluginMethod>()
-        val mockMethod = mock<Method>()
-
-        given(mockMethod.name).willReturn("methodName")
-        val pluginMethodHandle = PluginMethodHandle(mockMethod, pluginMethod)
-
-        assertEquals(pluginMethodHandle.name, "methodName")
+    class Methods {
+        @PluginMethod(returnType = PluginMethod.RETURN_CALLBACK)
+        fun watch(call: PluginCall) {}
     }
 
     @Test
-    fun getMethodHandleReturnsMethodHandle() {
-        val pluginMethod = mock<PluginMethod>()
-        val mockMethod = mock<Method>()
+    fun exposesTheReflectedMethodItsNameAndItsReturnType() {
+        val method = Methods::class.java.getMethod("watch", PluginCall::class.java)
 
-        given(pluginMethod.returnType).willReturn("returnType")
-        val pluginMethodHandle = PluginMethodHandle(mockMethod, pluginMethod)
+        val handle = PluginMethodHandle(method, method.getAnnotation(PluginMethod::class.java)!!)
 
-        assertEquals(pluginMethodHandle.returnType, "returnType")
-    }
-
-    @Test
-    fun getMethodReturnsMethod() {
-        val pluginMethod = mock<PluginMethod>()
-        val mockMethod = mock<Method>()
-
-        val pluginMethodHandle = PluginMethodHandle(mockMethod, pluginMethod)
-
-        assertEquals(pluginMethodHandle.method, mockMethod)
+        assertSame(method, handle.method)
+        assertEquals("watch", handle.name)
+        assertEquals(PluginMethod.RETURN_CALLBACK, handle.returnType)
     }
 }

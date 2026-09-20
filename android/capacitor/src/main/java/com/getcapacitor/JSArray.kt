@@ -12,16 +12,17 @@ public open class JSArray : JSONArray {
 
     public constructor(array: Any?) : super(array)
 
+    /**
+     * Returns the entries as a list, casting each one to [E].
+     *
+     * The cast is unchecked: [E] is erased, so a wrong element type surfaces as a
+     * ClassCastException at the call site, not here.
+     */
     @Suppress("UNCHECKED_CAST")
-    public fun <E> toList(): MutableList<E> {
+    public fun <E> toList(): List<E> {
         val items = ArrayList<E>()
         for (i in 0 until length()) {
-            val o = get(i)
-            try {
-                items.add(o as E)
-            } catch (ex: Exception) {
-                throw JSONException("Not all items are instances of the given type")
-            }
+            items.add(get(i) as E)
         }
         return items
     }

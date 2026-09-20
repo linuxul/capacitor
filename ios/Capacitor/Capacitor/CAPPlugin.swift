@@ -11,8 +11,13 @@ import WebKit
 open class CAPPlugin: NSObject {
     public weak var webView: WKWebView?
     public weak var bridge: CAPBridgeProtocol?
+    /// The Obj-C runtime name of the plugin class, copied from ``CAPBridgedPlugin/identifier``.
     public var pluginId: String = ""
+    /// The name the plugin is exposed under in JavaScript, copied from ``CAPBridgedPlugin/jsName``.
     public var pluginName: String = ""
+    /// When true (the default), `Date` values in a call's options are converted to ISO-8601 strings before the
+    /// plugin sees them. Set it from ``load()``, not from an initializer: the bridge resets it to true while
+    /// wiring the plugin up, which happens before ``load()`` is called.
     public var shouldStringifyDatesInCalls: Bool = true
 
     // Listeners are added/removed on the bridge's dispatch queue while notifications usually originate from the main thread
@@ -40,6 +45,7 @@ open class CAPPlugin: NSObject {
     /// Called after init if the plugin wants to do some loading so the plugin author doesn't need to override `init()`.
     open func load() {}
 
+    /// The plugin's JavaScript name. This is ``pluginName``, not ``pluginId``.
     open func getId() -> String {
         return pluginName
     }
@@ -130,6 +136,12 @@ open class CAPPlugin: NSObject {
     }
 
     /// Removes every listener without needing a call to resolve. Used by the bridge when the web view is reset.
+    ///
+    /// The reset path calls this directly instead of dispatching `removeAllListeners:` with a nil call the way the
+    /// Obj-C bridge did, so an override of ``removeAllListeners(_:)`` runs for the JavaScript call only.
+    ///
+    /// Same as the Obj-C original: retained event arguments are *not* dropped here, so a payload retained with
+    /// `retainUntilConsumed` before a navigation is still delivered to the first listener the next page adds.
     internal func removeAllListeners() {
         withListenerLock { lockedEventListeners.removeAll() }
     }
@@ -149,22 +161,11 @@ open class CAPPlugin: NSObject {
 
     /// Configure popover sourceRect, sourceView and permittedArrowDirections to show it centered
     open func setCenteredPopover(_ viewController: UIViewController) {
-        guard let view = bridge?.viewController?.view else {
-            return
-        }
-        viewController.popoverPresentationController?.sourceRect = CGRect(x: view.center.x, y: view.center.y, width: 0, height: 0)
-        viewController.popoverPresentationController?.sourceView = view
-        viewController.popoverPresentationController?.permittedArrowDirections = []
+        centerPopover(viewController, size: nil)
     }
 
     open func setCenteredPopover(_ viewController: UIViewController, size: CGSize) {
-        guard let view = bridge?.viewController?.view else {
-            return
-        }
-        viewController.popoverPresentationController?.sourceRect = CGRect(x: view.center.x, y: view.center.y, width: 0, height: 0)
-        viewController.preferredContentSize = size
-        viewController.popoverPresentationController?.sourceView = view
-        viewController.popoverPresentationController?.permittedArrowDirections = []
+        centerPopover(viewController, size: size)
     }
 
     // MARK: - WebView Hooks
@@ -188,6 +189,18 @@ open class CAPPlugin: NSObject {
     }
 
     // MARK: - Private
+
+    private func centerPopover(_ viewController: UIViewController, size: CGSize?) {
+        guard let view = bridge?.viewController?.view else {
+            return
+        }
+        viewController.popoverPresentationController?.sourceRect = CGRect(x: view.center.x, y: view.center.y, width: 0, height: 0)
+        if let size {
+            viewController.preferredContentSize = size
+        }
+        viewController.popoverPresentationController?.sourceView = view
+        viewController.popoverPresentationController?.permittedArrowDirections = []
+    }
 
     private func withListenerLock<T>(_ body: () -> T) -> T {
         listenerLock.lock()

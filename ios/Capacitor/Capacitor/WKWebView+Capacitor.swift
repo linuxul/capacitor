@@ -33,7 +33,12 @@ internal enum CapacitorRuntimeHooks {
     private typealias FiveArgClosureType = @convention(c) (Any, Selector, UnsafeRawPointer, Bool, Bool, Bool, Any?) -> Void
     private typealias TapActionClosureType = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
 
+    /// Hooks the private `WKContentView._elementDidFocus:userIsInteracting:...` so a web view that has
+    /// `keyboardShouldRequireUserInteraction` set passes `!flag` as `userIsInteracting`; a web view that
+    /// never set it keeps WebKit's own value.
     private static func swizzleKeyboardMethods() {
+        // The private class name is assembled at runtime so it never appears in the binary as a single
+        // literal. `testKeyboardHookIsInstalledOnWKContentView` mirrors the same split. Do not fold these.
         let frameworkName = "WK"
         let className = "ContentView"
         guard let targetClass = NSClassFromString(frameworkName + className) else {

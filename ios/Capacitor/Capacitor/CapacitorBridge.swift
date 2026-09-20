@@ -1,5 +1,6 @@
 import Foundation
 import Dispatch
+import UIKit
 import WebKit
 
 internal typealias CapacitorPlugin = CAPPlugin & CAPBridgedPlugin
@@ -105,9 +106,16 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         return bridgeDelegate?.bridgedViewController
     }
 
-    var lastPlugin: CAPPlugin?
-
-    public var config: InstanceConfiguration
+    // `InstanceConfiguration` is a struct, so assigning it is not a single store the way the
+    // Obj-C `CAPInstanceConfiguration` pointer was. `setServerBasePath` runs on the bridge's
+    // dispatch queue while the view controller and the delegation handler read `config` on the
+    // main thread, so both sides go through the lock and readers get a whole value.
+    private let configLock = NSLock()
+    private var lockedConfig: InstanceConfiguration
+    public var config: InstanceConfiguration {
+        get { configLock.withLock { lockedConfig } }
+        set { configLock.withLock { lockedConfig = newValue } }
+    }
     // Map of all loaded and instantiated plugins by pluginId -> instance
     var plugins =  [String: CapacitorPlugin]()
     // Calls we are storing to resolve later
@@ -133,16 +141,13 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
      Print a hopefully informative error message to the log when something
      particularly dreadful happens.
      */
-    static func fatalError(_ error: Error, _ originalError: Error) {
+    static func fatalError(_ error: Error) {
         CAPLog.print("⚡️ ❌  Capacitor: FATAL ERROR")
-        CAPLog.print("⚡️ ❌  Error was: ", originalError.localizedDescription)
+        CAPLog.print("⚡️ ❌  Error was: ", error.localizedDescription)
         switch error {
         case CapacitorBridgeError.errorExportingCoreJS:
             CAPLog.print("⚡️ ❌  Unable to export required Bridge JavaScript. Bridge will not function.")
             CAPLog.print("⚡️ ❌  You should run \"npx capacitor copy\" to ensure the Bridge JS is added to your project.")
-            if let wke = originalError as? WKError {
-                CAPLog.print("⚡️ ❌ ", wke.userInfo)
-            }
         default:
             CAPLog.print("⚡️ ❌  Unknown error")
         }
@@ -156,7 +161,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         self.bridgeDelegate = bridgeDelegate
         self.webViewAssetHandler = assetHandler
         self.webViewDelegationHandler = delegationHandler
-        self.config = configuration
+        self.lockedConfig = configuration
         self.notificationRouter = NotificationRouter()
         self.notificationRouter.handleApplicationNotifications = configuration.handleApplicationNotifications
         self.autoRegisterPlugins = autoRegisterPlugins
@@ -197,7 +202,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
                                                  localUrl: localUrl)
             try JSExport.exportBridgeJS(userContentController: webViewDelegationHandler.contentController)
         } catch {
-            type(of: self).fatalError(error, error)
+            type(of: self).fatalError(error)
         }
     }
 
@@ -362,14 +367,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     // MARK: - Internal
 
-    func getDispatchQueue() -> DispatchQueue {
-        return self.dispatchQueue
-    }
-
-    func reload() {
-        self.webView?.reload()
-    }
-
     func docLink(_ url: String) -> String {
         return "\(type(of: self).capacitorSite)docs/\(url)"
     }
@@ -419,8 +416,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
         // Create a plugin call object and handle the success/error callbacks
         dispatchQueue.async { [weak self] in
-            // let startTime = CFAbsoluteTimeGetCurrent()
-
             let pluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: call.method,
                                            options: JSTypes.coerceDictionaryToJSObject(call.options,
                                                                                        formattingDatesAsStrings: plugin.shouldStringifyDatesInCalls) ?? [:],
@@ -434,9 +429,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
             if pluginCall.keepAlive {
                 self?.saveCall(pluginCall)
             }
-
-            // let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
-            // CAPLog.print("Native call took", timeElapsed)
         }
     }
 
@@ -504,20 +496,12 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
      */
     // swiftlint:disable:next identifier_name
     public func evalWithPlugin(_ plugin: CAPPlugin, js: String) {
-        let wrappedJs = """
+        eval(js: """
         window.Capacitor.withPlugin('\(plugin.getId())', function(plugin) {
         if(!plugin) { console.error('Unable to execute JS in plugin, no such plugin found for id \(plugin.getId())'); }
         \(js)
         });
-        """
-
-        DispatchQueue.main.async {
-            self.webView?.evaluateJavaScript(wrappedJs, completionHandler: { (_, error) in
-                if let error = error {
-                    CAPLog.print("⚡️  JS Eval error", error.localizedDescription)
-                }
-            })
-        }
+        """)
     }
 
     /**

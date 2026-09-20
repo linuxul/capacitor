@@ -7,16 +7,14 @@ import com.getcapacitor.JSObject
 import com.getcapacitor.JSValue
 import com.getcapacitor.PluginCall
 import java.io.BufferedReader
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
-import java.io.UnsupportedEncodingException
 import java.net.HttpURLConnection
-import java.net.MalformedURLException
 import java.net.URISyntaxException
 import java.net.URL
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.regex.Pattern
 import org.json.JSONException
@@ -120,6 +118,7 @@ public object HttpRequestHandler {
             return this
         }
 
+        @JvmOverloads
         public fun setUrlParams(params: JSObject, shouldEncode: Boolean = true): HttpURLConnectionBuilder {
             // Same as the Java original: a missing url throws here.
             val url = this.url!!
@@ -135,34 +134,26 @@ public object HttpRequestHandler {
             val urlQueryBuilder = StringBuilder(initialQueryBuilderStr)
 
             // Build the new query string
-            while (keys.hasNext()) {
-                val key = keys.next()
-
+            for (key in keys) {
                 // Attempt as JSONArray and fallback to string if it fails
-                try {
-                    val value = StringBuilder()
-                    val arr = params.getJSONArray(key)
-                    for (x in 0 until arr.length()) {
-                        addUrlParam(value, key, arr.getString(x), shouldEncode)
-                        if (x != arr.length() - 1) {
-                            value.append("&")
-                        }
+                val param =
+                    try {
+                        val arr = params.getJSONArray(key)
+                        (0 until arr.length()).joinToString("&") { urlParam(key, arr.getString(it), shouldEncode) }
+                    } catch (e: JSONException) {
+                        urlParam(key, params.getString(key), shouldEncode)
                     }
-                    if (urlQueryBuilder.isNotEmpty()) {
-                        urlQueryBuilder.append("&")
-                    }
-                    urlQueryBuilder.append(value)
-                } catch (e: JSONException) {
-                    if (urlQueryBuilder.isNotEmpty()) {
-                        urlQueryBuilder.append("&")
-                    }
-                    addUrlParam(urlQueryBuilder, key, params.getString(key), shouldEncode)
+                if (urlQueryBuilder.isNotEmpty()) {
+                    urlQueryBuilder.append("&")
                 }
+                urlQueryBuilder.append(param)
             }
 
             val urlQuery = urlQueryBuilder.toString()
 
             val uri = url.toURI()
+            // Same as the Java original: URI.getFragment() has no leading "#", so a fragment is
+            // appended straight onto the query rather than separated from it.
             val unEncodedUrlString =
                 uri.scheme +
                     "://" +
@@ -178,18 +169,10 @@ public object HttpRequestHandler {
         public fun build(): CapacitorHttpUrlConnection? = connection
 
         private companion object {
-            fun addUrlParam(sb: StringBuilder, key: String?, value: String?, shouldEncode: Boolean) {
-                var encodedKey = key
-                var encodedValue = value
-                if (shouldEncode) {
-                    try {
-                        encodedKey = URLEncoder.encode(key, "UTF-8")
-                        encodedValue = URLEncoder.encode(value, "UTF-8")
-                    } catch (ex: UnsupportedEncodingException) {
-                        throw RuntimeException(ex.cause)
-                    }
-                }
-                sb.append(encodedKey).append("=").append(encodedValue)
+            fun urlParam(key: String?, value: String?, shouldEncode: Boolean): String = if (shouldEncode) {
+                URLEncoder.encode(key, StandardCharsets.UTF_8) + "=" + URLEncoder.encode(value, StandardCharsets.UTF_8)
+            } else {
+                "$key=$value"
             }
         }
     }
@@ -202,6 +185,7 @@ public object HttpRequestHandler {
      * @throws IOException Thrown if the InputStream is unable to be parsed correctly
      * @throws JSONException Thrown if the JSON is unable to be parsed
      */
+    @JvmOverloads
     public fun buildResponse(connection: CapacitorHttpUrlConnection, responseType: ResponseType = ResponseType.DEFAULT): JSObject {
         val statusCode = connection.getResponseCode()
 
@@ -237,7 +221,7 @@ public object HttpRequestHandler {
             } else {
                 readStreamAsString(errorStream)
             }
-        } else if (contentType != null && contentType.contains(MimeType.APPLICATION_JSON.value)) {
+        } else if (isOneOf(contentType, MimeType.APPLICATION_JSON)) {
             // backward compatibility
             return parseJSON(readStreamAsString(connection.getInputStream()))
         } else {
@@ -295,52 +279,42 @@ public object HttpRequestHandler {
     public fun parseJSON(input: String): Any {
         // trim { it <= ' ' } is java.lang.String.trim(); Kotlin's trim() strips Unicode whitespace instead.
         val trimmed = input.trim { it <= ' ' }
-        try {
-            if ("null" == trimmed) {
-                return JSONObject.NULL
-            } else if ("true" == trimmed) {
-                return true
-            } else if ("false" == trimmed) {
-                return false
-            } else if (trimmed.isEmpty()) {
-                return ""
-            } else if (QUOTED_STRING.matcher(trimmed).matches()) {
+        return try {
+            when {
+                trimmed == "null" -> JSONObject.NULL
+
+                trimmed == "true" -> true
+
+                trimmed == "false" -> false
+
+                trimmed.isEmpty() -> ""
+
                 // a string enclosed in " " is a json value, return the string without the quotes
-                return trimmed.substring(1, trimmed.length - 1)
-            } else if (INTEGER.matcher(trimmed).matches()) {
-                return Integer.parseInt(trimmed)
-            } else if (DECIMAL.matcher(trimmed).matches()) {
-                return java.lang.Double.parseDouble(trimmed)
-            } else {
-                try {
-                    return JSObject(input)
-                } catch (e: JSONException) {
-                    return JSArray(input)
-                }
+                QUOTED_STRING.matcher(trimmed).matches() -> trimmed.substring(1, trimmed.length - 1)
+
+                INTEGER.matcher(trimmed).matches() -> trimmed.toInt()
+
+                DECIMAL.matcher(trimmed).matches() -> trimmed.toDouble()
+
+                else ->
+                    try {
+                        JSObject(input)
+                    } catch (e: JSONException) {
+                        JSArray(input)
+                    }
             }
         } catch (e: JSONException) {
-            return input
+            input
         }
     }
 
     /**
-     * Returns a string based on a base64 InputStream
-     * @param in The base64 InputStream to convert to a String
-     * @return String value of InputStream
-     * @throws IOException thrown if the InputStream is unable to be read as base64
+     * Base64-encodes everything the stream yields
+     * @param in The InputStream to read and encode
+     * @return the stream's bytes as a base64 string
+     * @throws IOException thrown if the InputStream is unable to be read
      */
-    public fun readStreamAsBase64(`in`: InputStream): String {
-        ByteArrayOutputStream().use { out ->
-            val buffer = ByteArray(1024)
-            var readBytes = `in`.read(buffer)
-            while (readBytes != -1) {
-                out.write(buffer, 0, readBytes)
-                readBytes = `in`.read(buffer)
-            }
-            val result = out.toByteArray()
-            return Base64.encodeToString(result, 0, result.size, Base64.DEFAULT)
-        }
-    }
+    public fun readStreamAsBase64(`in`: InputStream): String = Base64.encodeToString(`in`.readBytes(), Base64.DEFAULT)
 
     /**
      * Returns a string based on an InputStream
@@ -348,20 +322,8 @@ public object HttpRequestHandler {
      * @return String value of InputStream
      * @throws IOException thrown if the InputStream is unable to be read
      */
-    public fun readStreamAsString(`in`: InputStream): String {
-        BufferedReader(InputStreamReader(`in`)).use { reader ->
-            val builder = StringBuilder()
-            var line = reader.readLine()
-            while (line != null) {
-                builder.append(line)
-                line = reader.readLine()
-                if (line != null) {
-                    builder.append(System.getProperty("line.separator"))
-                }
-            }
-            return builder.toString()
-        }
-    }
+    public fun readStreamAsString(`in`: InputStream): String =
+        BufferedReader(InputStreamReader(`in`)).use { reader -> reader.lineSequence().joinToString(System.lineSeparator()) }
 
     /**
      * Makes an Http Request based on the PluginCall parameters
@@ -443,7 +405,8 @@ public object HttpRequestHandler {
     public fun isDomainExcludedFromSSL(bridge: Bridge?, url: URL?): Boolean = try {
         val sslPinningImpl = Class.forName("io.ionic.sslpinning.SSLPinning")
         val method = sslPinningImpl.getDeclaredMethod("isDomainExcluded", Bridge::class.java, URL::class.java)
-        method.invoke(sslPinningImpl.getDeclaredConstructor().newInstance(), bridge, url) as Boolean
+        // A null or non-Boolean result counts as "not excluded", like any other failure below.
+        method.invoke(sslPinningImpl.getDeclaredConstructor().newInstance(), bridge, url) as? Boolean ?: false
     } catch (ignored: Exception) {
         false
     }

@@ -4,8 +4,9 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.mockito.ArgumentCaptor
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
@@ -28,12 +29,12 @@ class PluginPermissionStatesTest {
 
         plugin.checkPermissions(PluginCall(handler, "Adjusted", "1", "checkPermissions", JSObject()))
 
-        val result = ArgumentCaptor.forClass(PluginResult::class.java)
-        verify(handler).sendResponseMessage(any(), result.capture(), org.mockito.kotlin.isNull())
+        val result = argumentCaptor<PluginResult>()
+        verify(handler).sendResponseMessage(any(), result.capture(), isNull())
         // The state is stored as the enum itself. Android's org.json writes it with toString() ("granted"), while
         // the reference implementation used by unit tests writes name(), so compare the state, not its spelling.
-        val reported = JSObject(result.value.toString()).getString("camera")
-        assertEquals(PermissionState.GRANTED, PermissionState.valueOf(reported!!.uppercase()))
+        val reported = JSObject(result.firstValue.toString()).getString("camera")
+        assertEquals(PermissionState.GRANTED, PermissionState.byState(reported!!))
     }
 
     @Test

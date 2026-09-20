@@ -18,11 +18,11 @@ public class ApplicationDelegateProxy: NSObject, UIApplicationDelegate {
 
     public func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         // TODO: Support other types, emit to rest of plugins
-        if userActivity.activityType != NSUserActivityTypeBrowsingWeb || userActivity.webpageURL == nil {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL else {
             return false
         }
 
-        let url = userActivity.webpageURL
         lastURL = url
         NotificationCenter.default.post(name: .capacitorOpenUniversalLink, object: [
             "url": url

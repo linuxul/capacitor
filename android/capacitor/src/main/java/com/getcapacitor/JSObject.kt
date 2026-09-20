@@ -30,6 +30,7 @@ public open class JSObject : JSONObject {
         return defaultValue
     }
 
+    @JvmOverloads
     public fun getInteger(key: String, defaultValue: Int? = null): Int? {
         try {
             return super.getInt(key)
@@ -51,6 +52,7 @@ public open class JSObject : JSONObject {
      */
     public fun getBool(key: String): Boolean? = getBoolean(key, null)
 
+    @JvmOverloads
     public fun getJSObject(name: String, defaultValue: JSObject? = null): JSObject? {
         try {
             val obj = get(name)

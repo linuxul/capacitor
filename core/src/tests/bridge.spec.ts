@@ -15,7 +15,6 @@ describe('bridge', () => {
   beforeEach(() => {
     // a WebView always has window.crypto; the bare object used here does not
     win = { crypto: webcrypto as unknown as Crypto };
-    initBridge(win);
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     // eslint-disable-next-line @typescript-eslint/no-empty-function

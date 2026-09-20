@@ -13,7 +13,7 @@ internal object JSExport {
     fun getGlobalJS(context: Context?, loggingEnabled: Boolean, isDebug: Boolean): String =
         "window.Capacitor = { DEBUG: $isDebug, isLoggingEnabled: $loggingEnabled, Plugins: {} };"
 
-    fun getMiscFileJS(paths: ArrayList<String>, context: Context): String {
+    fun getMiscFileJS(paths: List<String>, context: Context): String {
         val lines = ArrayList<String>()
 
         for (path in paths) {
@@ -63,7 +63,7 @@ internal object JSExport {
         return lines.joinToString("\n") + "\nwindow.Capacitor.PluginHeaders = " + pluginArray.toString() + ";"
     }
 
-    fun getFilesContent(context: Context, path: String): String {
+    private fun getFilesContent(context: Context, path: String): String {
         val builder = StringBuilder()
         try {
             // Same as the Java original: AssetManager.list returning null throws here.
@@ -132,36 +132,17 @@ internal object JSExport {
         }
 
         // Create the method function declaration
-        lines.add("t['" + method.name + "'] = function(" + args.joinToString(", ") + ") {")
+        val argList = args.joinToString(", ")
+        lines.add("t['" + method.name + "'] = function(" + argList + ") {")
 
         when (returnType) {
-            PluginMethod.RETURN_NONE ->
-                lines.add(
-                    "return w.Capacitor.nativeCallback('" +
-                        plugin.id +
-                        "', '" +
-                        method.name +
-                        "', " +
-                        CATCHALL_OPTIONS_PARAM +
-                        ")"
-                )
+            // _callback is already in args when the method returns one, so the same line serves both.
+            PluginMethod.RETURN_NONE, PluginMethod.RETURN_CALLBACK ->
+                lines.add("return w.Capacitor.nativeCallback('" + plugin.id + "', '" + method.name + "', " + argList + ")")
 
             PluginMethod.RETURN_PROMISE ->
                 lines.add(
                     "return w.Capacitor.nativePromise('" + plugin.id + "', '" + method.name + "', " + CATCHALL_OPTIONS_PARAM + ")"
-                )
-
-            PluginMethod.RETURN_CALLBACK ->
-                lines.add(
-                    "return w.Capacitor.nativeCallback('" +
-                        plugin.id +
-                        "', '" +
-                        method.name +
-                        "', " +
-                        CATCHALL_OPTIONS_PARAM +
-                        ", " +
-                        CALLBACK_PARAM +
-                        ")"
                 )
 
             else -> {

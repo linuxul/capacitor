@@ -11,5 +11,6 @@ public interface ICapacitorHttpUrlConnection {
 
     public fun getHeaderField(name: String?): String?
 
+    @Throws(IOException::class)
     public fun getInputStream(): InputStream
 }

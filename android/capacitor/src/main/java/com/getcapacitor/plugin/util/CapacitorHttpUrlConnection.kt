@@ -18,14 +18,13 @@ import java.util.Base64
 import java.util.UUID
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLSocketFactory
-import org.json.JSONException
 import org.json.JSONObject
 
 /**
  * Make a new CapacitorHttpUrlConnection instance, which wraps around HttpUrlConnection
  * and provides some helper functions for setting request headers and the request body
  * @param connection the base HttpUrlConnection. You can pass the value from
- * `(HttpUrlConnection) URL.openConnection()`
+ * `url.openConnection() as HttpURLConnection`
  */
 public class CapacitorHttpUrlConnection(private val connection: HttpURLConnection) : ICapacitorHttpUrlConnection {
     init {
@@ -159,31 +158,20 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
         connection.doOutput = shouldDoOutput
     }
 
+    @JvmOverloads
     public fun setRequestBody(call: PluginCall, body: JSValue?, bodyType: String? = null) {
         val contentType = connection.getRequestProperty("Content-Type")
-        var dataString: String? = ""
-
-        if (contentType == null || contentType.isEmpty()) return
+        if (contentType.isNullOrEmpty()) return
 
         if (contentType.contains("application/json")) {
-            var jsArray: JSArray? = null
-            if (body != null) {
-                dataString = body.toString()
-            } else {
-                jsArray = call.getArray("data", null)
-            }
-            if (jsArray != null) {
-                dataString = jsArray.toString()
-            } else if (body == null) {
-                dataString = call.getString("data")
-            }
+            val dataString = body?.toString() ?: call.getArray("data", null)?.toString() ?: call.getString("data")
             writeRequestBody(dataString ?: "")
             return
         }
 
         // Same as the Java original: every remaining branch dereferences the body.
         val requestBody = body!!
-        if (bodyType != null && bodyType == "file") {
+        if (bodyType == "file") {
             DataOutputStream(connection.outputStream).use { os ->
                 os.write(Base64.getDecoder().decode(requestBody.toString()))
                 os.flush()
@@ -196,7 +184,7 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
                 // Body is not a valid JSON, treat it as an already formatted string
                 writeRequestBody(requestBody.toString())
             }
-        } else if (bodyType != null && bodyType == "formData") {
+        } else if (bodyType == "formData") {
             var boundary = extractBoundaryFromContentType(contentType)
             if (boundary == null) {
                 // If no boundary is provided, generate a random one and set the Content-Type header accordingly
@@ -404,18 +392,13 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
      */
     private fun buildDefaultAcceptLanguageProperty(): String {
         val locale = LocaleList.getDefault().get(0)
-        var result = ""
         val lang = locale.language
         val country = locale.country
-        if (!lang.isNullOrEmpty()) {
-            result =
-                if (!country.isNullOrEmpty()) {
-                    String.format("%s-%s,%s;q=0.5", lang, country, lang)
-                } else {
-                    String.format("%s;q=0.5", lang)
-                }
+        return when {
+            lang.isNullOrEmpty() -> ""
+            country.isNullOrEmpty() -> "$lang;q=0.5"
+            else -> "$lang-$country,$lang;q=0.5"
         }
-        return result
     }
 
     public fun setSSLSocketFactory(bridge: Bridge?) {
@@ -447,23 +430,22 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
                 return null
             }
 
-            // Extract the substring starting right after "boundary="
-            var boundary = contentType.substring(boundaryIndex + boundaryPrefix.length)
-
-            // Find the end of the boundary value by looking for the next ";"
-            val endIndex = boundary.indexOf(";")
-            if (endIndex != -1) {
-                boundary = boundary.substring(0, endIndex)
-            }
-
-            // Remove surrounding double quotes if present
+            // The boundary value is everything after "boundary=" up to the next ";".
             // (trim { it <= ' ' } is java.lang.String.trim(); Kotlin's trim() strips Unicode whitespace instead)
-            boundary = boundary.trim { it <= ' ' }
-            if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
-                boundary = boundary.substring(1, boundary.length - 1)
-            }
+            val boundary =
+                contentType
+                    .substring(boundaryIndex + boundaryPrefix.length)
+                    .substringBefore(';')
+                    .trim { it <= ' ' }
 
-            return boundary
+            // Remove surrounding double quotes if present.
+            // Same as the Java original: a lone `"` throws StringIndexOutOfBoundsException here,
+            // so this is deliberately not removeSurrounding("\""), which would return it unchanged.
+            return if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
+                boundary.substring(1, boundary.length - 1)
+            } else {
+                boundary
+            }
         }
     }
 }
