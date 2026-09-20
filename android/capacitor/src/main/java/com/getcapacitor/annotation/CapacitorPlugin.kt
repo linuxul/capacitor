@@ -15,5 +15,5 @@ public annotation class CapacitorPlugin(
      * Permissions this plugin needs, in order to make permission requests
      * easy if the plugin only needs basic permission prompting
      */
-    val permissions: Array<Permission> = [],
+    val permissions: Array<Permission> = []
 )

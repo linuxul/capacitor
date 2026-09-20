@@ -19,7 +19,7 @@
     "capacitor/src/main/"
   ],
   "scripts": {
-    "verify": "./gradlew clean lint build test -b capacitor/build.gradle"
+    "verify": "./gradlew clean lint build test assembleAndroidTest -b capacitor/build.gradle"
   },
   "peerDependencies": {
     "@capacitor/core": "^8.5.0"

@@ -13,11 +13,11 @@ import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.PermissionCallback
 import com.getcapacitor.util.PermissionHelper
-import org.json.JSONException
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
+import org.json.JSONException
 
 /**
  * Plugin is the base class for all plugins, containing a number of

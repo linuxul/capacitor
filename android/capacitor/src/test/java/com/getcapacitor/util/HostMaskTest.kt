@@ -11,7 +11,7 @@ class HostMaskTest {
     fun testParser() {
         assertEquals(
             HostMask.Any::class.java,
-            HostMask.Parser.parse("*,example.org,*.example.org".split(",").toTypedArray()).javaClass,
+            HostMask.Parser.parse("*,example.org,*.example.org".split(",").toTypedArray()).javaClass
         )
         assertEquals(HostMask.Simple::class.java, HostMask.Parser.parse("*").javaClass)
         assertEquals(HostMask.Nothing::class.java, HostMask.Parser.parse(null as String?).javaClass)

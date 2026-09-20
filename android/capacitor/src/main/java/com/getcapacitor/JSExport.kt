@@ -1,10 +1,10 @@
 package com.getcapacitor
 
 import android.content.Context
+import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.IOException
 
 internal object JSExport {
     private const val CATCHALL_OPTIONS_PARAM = "_options"
@@ -45,7 +45,7 @@ internal object JSExport {
                     "  return w.Capacitor.addListener('" +
                     plugin.id +
                     "', eventName, callback);\n" +
-                    "}",
+                    "}"
             )
             val methods = plugin.methods
             for (method in methods) {
@@ -143,12 +143,14 @@ internal object JSExport {
                         method.name +
                         "', " +
                         CATCHALL_OPTIONS_PARAM +
-                        ")",
+                        ")"
                 )
+
             PluginMethod.RETURN_PROMISE ->
                 lines.add(
-                    "return w.Capacitor.nativePromise('" + plugin.id + "', '" + method.name + "', " + CATCHALL_OPTIONS_PARAM + ")",
+                    "return w.Capacitor.nativePromise('" + plugin.id + "', '" + method.name + "', " + CATCHALL_OPTIONS_PARAM + ")"
                 )
+
             PluginMethod.RETURN_CALLBACK ->
                 lines.add(
                     "return w.Capacitor.nativeCallback('" +
@@ -159,8 +161,9 @@ internal object JSExport {
                         CATCHALL_OPTIONS_PARAM +
                         ", " +
                         CALLBACK_PARAM +
-                        ")",
+                        ")"
                 )
+
             else -> {
                 // TODO: Do something here?
             }

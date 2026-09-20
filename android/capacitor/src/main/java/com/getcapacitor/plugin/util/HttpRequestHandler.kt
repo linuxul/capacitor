@@ -6,8 +6,6 @@ import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.JSValue
 import com.getcapacitor.PluginCall
-import org.json.JSONException
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -21,6 +19,8 @@ import java.net.URL
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.regex.Pattern
+import org.json.JSONException
+import org.json.JSONObject
 
 public object HttpRequestHandler {
     /**
@@ -32,7 +32,7 @@ public object HttpRequestHandler {
         BLOB("blob"),
         DOCUMENT("document"),
         JSON("json"),
-        TEXT("text"),
+        TEXT("text")
         ;
 
         public companion object {
@@ -440,14 +440,13 @@ public object HttpRequestHandler {
         return response
     }
 
-    public fun isDomainExcludedFromSSL(bridge: Bridge?, url: URL?): Boolean =
-        try {
-            val sslPinningImpl = Class.forName("io.ionic.sslpinning.SSLPinning")
-            val method = sslPinningImpl.getDeclaredMethod("isDomainExcluded", Bridge::class.java, URL::class.java)
-            method.invoke(sslPinningImpl.getDeclaredConstructor().newInstance(), bridge, url) as Boolean
-        } catch (ignored: Exception) {
-            false
-        }
+    public fun isDomainExcludedFromSSL(bridge: Bridge?, url: URL?): Boolean = try {
+        val sslPinningImpl = Class.forName("io.ionic.sslpinning.SSLPinning")
+        val method = sslPinningImpl.getDeclaredMethod("isDomainExcluded", Bridge::class.java, URL::class.java)
+        method.invoke(sslPinningImpl.getDeclaredConstructor().newInstance(), bridge, url) as Boolean
+    } catch (ignored: Exception) {
+        false
+    }
 
     public fun interface ProgressEmitter {
         public fun emit(bytes: Int?, contentLength: Int?)

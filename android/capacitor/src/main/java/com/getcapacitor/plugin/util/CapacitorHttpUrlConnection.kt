@@ -6,8 +6,6 @@ import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.JSValue
 import com.getcapacitor.PluginCall
-import org.json.JSONException
-import org.json.JSONObject
 import java.io.DataOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -20,6 +18,8 @@ import java.util.Base64
 import java.util.UUID
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLSocketFactory
+import org.json.JSONException
+import org.json.JSONObject
 
 /**
  * Make a new CapacitorHttpUrlConnection instance, which wraps around HttpUrlConnection
@@ -46,7 +46,7 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
      * Set the value of the `allowUserInteraction` field of
      * this `URLConnection`.
      *
-     * @param   isAllowedInteraction   the new value.
+     * @param isAllowedInteraction   the new value.
      * @throws IllegalStateException if already connected
      */
     public fun setAllowUserInteraction(isAllowedInteraction: Boolean) {
@@ -152,7 +152,7 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
      * flag to true if you intend to use the URL connection for output,
      * false if not.  The default is false.
      *
-     * @param  shouldDoOutput   the new value.
+     * @param shouldDoOutput   the new value.
      * @throws IllegalStateException if already connected
      */
     public fun setDoOutput(shouldDoOutput: Boolean) {
@@ -297,7 +297,7 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
      *
      * @throws SocketTimeoutException if the timeout expires before
      *               the connection can be established
-     * @throws  IOException  if an I/O error occurs while opening the
+     * @throws IOException  if an I/O error occurs while opening the
      *               connection.
      */
     public fun connect() {
@@ -323,7 +323,7 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
      * Returns the value of this `URLConnection`'s `URL`
      * field.
      *
-     * @return  the value of this `URLConnection`'s `URL`
+     * @return the value of this `URLConnection`'s `URL`
      *          field.
      */
     public fun getURL(): URL? = connection.url
@@ -355,8 +355,8 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
      * with possibly different values, only the last value is returned.
      *
      *
-     * @param   name   the name of a header field.
-     * @return  the value of the named header field, or `null`
+     * @param name   the name of a header field.
+     * @return the value of the named header field, or `null`
      *          if there is no such field in the header.
      */
     override fun getHeaderField(name: String?): String? = connection.getHeaderField(name)
@@ -368,8 +368,8 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
      * returned input stream if the read timeout expires before data
      * is available for read.
      *
-     * @return     an input stream that reads from this open connection.
-     * @throws  IOException              if an I/O error occurs while
+     * @return an input stream that reads from this open connection.
+     * @throws IOException              if an I/O error occurs while
      *               creating the input stream.
      * @throws UnknownServiceException  if the protocol does not support
      *               input.

@@ -46,7 +46,7 @@ class HttpInterceptorNavigationTest {
                 // Without this the proxy refuses everything and the assertions below prove nothing.
                 assertTrue(
                     "CapacitorHttp must be enabled for this test to mean anything",
-                    bridge.config.getPluginConfiguration("CapacitorHttp").getBoolean("enabled", false),
+                    bridge.config.getPluginConfiguration("CapacitorHttp").getBoolean("enabled", false)
                 )
 
                 val navHeaders = HashMap<String, String>()
@@ -55,11 +55,11 @@ class HttpInterceptorNavigationTest {
 
                 assertNull(
                     "main frame document must be refused",
-                    bridge.localServer.shouldInterceptRequest(FakeRequest(INTERCEPTOR_URL, true, navHeaders)),
+                    bridge.localServer.shouldInterceptRequest(FakeRequest(INTERCEPTOR_URL, true, navHeaders))
                 )
                 assertNull(
                     "iframe document must be refused",
-                    bridge.localServer.shouldInterceptRequest(FakeRequest(INTERCEPTOR_URL, false, navHeaders)),
+                    bridge.localServer.shouldInterceptRequest(FakeRequest(INTERCEPTOR_URL, false, navHeaders))
                 )
             }
         }

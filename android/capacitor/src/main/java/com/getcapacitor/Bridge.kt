@@ -34,11 +34,11 @@ import com.getcapacitor.util.HostMask
 import com.getcapacitor.util.InternalUtils
 import com.getcapacitor.util.PermissionHelper
 import com.getcapacitor.util.WebColor
-import org.json.JSONException
 import java.io.File
 import java.net.SocketTimeoutException
 import java.net.URL
 import java.util.regex.Pattern
+import org.json.JSONException
 
 /**
  * The Bridge class is the main engine of Capacitor. It manages
@@ -72,7 +72,7 @@ public class Bridge private constructor(
     public val webView: WebView,
     private val initialPlugins: List<Class<out Plugin>>,
     private val pluginInstances: List<Plugin>,
-    config: CapConfig?,
+    config: CapConfig?
 ) {
     // Loaded Capacitor config
     public val config: CapConfig
@@ -201,7 +201,7 @@ public class Bridge private constructor(
                         if (request == null) return null
                         return localServer.shouldInterceptRequest(request)
                     }
-                },
+                }
             )
         }
 
@@ -324,7 +324,7 @@ public class Bridge private constructor(
                     appUrl +
                     ", or modify the " +
                     "appUrl setting in capacitor.config.json (make sure to npx cap copy after to commit changes).",
-                ex,
+                ex
             )
         }
     }
@@ -541,7 +541,7 @@ public class Bridge private constructor(
             "Plugin " +
                 clazz.name +
                 " is invalid. Ensure the @CapacitorPlugin annotation exists on the plugin class and" +
-                " the class extends Plugin",
+                " the class extends Plugin"
         )
     }
 
@@ -582,7 +582,7 @@ public class Bridge private constructor(
                         ", methodName: " +
                         methodName +
                         ", methodData: " +
-                        call.data.toString(),
+                        call.data.toString()
                 )
             }
 
@@ -723,12 +723,14 @@ public class Bridge private constructor(
      * @param callback The callback run on Activity Result.
      * @return A registered Activity Result Launcher.
      */
-    public fun <I, O> registerForActivityResult(contract: ActivityResultContract<I, O>, callback: ActivityResultCallback<O>): ActivityResultLauncher<I> =
-        if (fragment != null) {
-            fragment.registerForActivityResult(contract, callback)
-        } else {
-            activity.registerForActivityResult(contract, callback)
-        }
+    public fun <I, O> registerForActivityResult(
+        contract: ActivityResultContract<I, O>,
+        callback: ActivityResultCallback<O>
+    ): ActivityResultLauncher<I> = if (fragment != null) {
+        fragment.registerForActivityResult(contract, callback)
+    } else {
+        activity.registerForActivityResult(contract, callback)
+    }
 
     /**
      * Build the JSInjector that will be used to inject JS into files served to the app,
@@ -777,7 +779,7 @@ public class Bridge private constructor(
                     val options = JSObject(lastOptionsJson)
 
                     savedCallStore.setLastActivityCall(
-                        PluginCall(msgHandler, lastPluginId, PluginCall.CALLBACK_ID_DANGLING, lastPluginCallMethod, options),
+                        PluginCall(msgHandler, lastPluginId, PluginCall.CALLBACK_ID_DANGLING, lastPluginCallMethod, options)
                     )
                 } catch (ex: JSONException) {
                     Logger.error("Unable to restore plugin call, unable to parse persisted JSON object", ex)

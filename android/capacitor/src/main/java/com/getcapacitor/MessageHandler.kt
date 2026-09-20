@@ -67,7 +67,7 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
 
                 Logger.verbose(
                     Logger.tags("Plugin"),
-                    "To native (Capacitor plugin): callbackId: $callbackId, pluginId: $pluginId, methodName: $methodName",
+                    "To native (Capacitor plugin): callbackId: $callbackId, pluginId: $pluginId, methodName: $methodName"
                 )
 
                 callPluginMethod(callbackId, pluginId, methodName, methodData)

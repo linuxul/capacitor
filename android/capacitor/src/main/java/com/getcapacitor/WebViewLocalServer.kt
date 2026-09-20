@@ -46,7 +46,7 @@ public class WebViewLocalServer internal constructor(
     private val jsInjector: JSInjector?,
     private val authorities: ArrayList<String?>,
     // Whether to route all requests to paths without extensions back to `index.html`
-    private val html5mode: Boolean,
+    private val html5mode: Boolean
 ) {
     public var basePath: String? = null
         private set
@@ -74,7 +74,7 @@ public class WebViewLocalServer internal constructor(
         public val charset: String? = null,
         public val statusCode: Int = 200,
         public val reasonPhrase: String = "OK",
-        responseHeaders: MutableMap<String, String>? = null,
+        responseHeaders: MutableMap<String, String>? = null
     ) {
         protected var mimeType: String? = null
 
@@ -170,40 +170,39 @@ public class WebViewLocalServer internal constructor(
     private fun isAllowedUrl(loadingUrl: Uri): Boolean =
         !(bridge.serverUrl == null && !bridge.appAllowNavigationMask.matches(loadingUrl.host))
 
-    private fun getReasonPhraseFromResponseCode(code: Int): String =
-        when (code) {
-            100 -> "Continue"
-            101 -> "Switching Protocols"
-            200 -> "OK"
-            201 -> "Created"
-            202 -> "Accepted"
-            203 -> "Non-Authoritative Information"
-            204 -> "No Content"
-            205 -> "Reset Content"
-            206 -> "Partial Content"
-            300 -> "Multiple Choices"
-            301 -> "Moved Permanently"
-            302 -> "Found"
-            303 -> "See Other"
-            304 -> "Not Modified"
-            400 -> "Bad Request"
-            401 -> "Unauthorized"
-            403 -> "Forbidden"
-            404 -> "Not Found"
-            405 -> "Method Not Allowed"
-            406 -> "Not Acceptable"
-            407 -> "Proxy Authentication Required"
-            408 -> "Request Timeout"
-            409 -> "Conflict"
-            410 -> "Gone"
-            500 -> "Internal Server Error"
-            501 -> "Not Implemented"
-            502 -> "Bad Gateway"
-            503 -> "Service Unavailable"
-            504 -> "Gateway Timeout"
-            505 -> "HTTP Version Not Supported"
-            else -> "Unknown"
-        }
+    private fun getReasonPhraseFromResponseCode(code: Int): String = when (code) {
+        100 -> "Continue"
+        101 -> "Switching Protocols"
+        200 -> "OK"
+        201 -> "Created"
+        202 -> "Accepted"
+        203 -> "Non-Authoritative Information"
+        204 -> "No Content"
+        205 -> "Reset Content"
+        206 -> "Partial Content"
+        300 -> "Multiple Choices"
+        301 -> "Moved Permanently"
+        302 -> "Found"
+        303 -> "See Other"
+        304 -> "Not Modified"
+        400 -> "Bad Request"
+        401 -> "Unauthorized"
+        403 -> "Forbidden"
+        404 -> "Not Found"
+        405 -> "Method Not Allowed"
+        406 -> "Not Acceptable"
+        407 -> "Proxy Authentication Required"
+        408 -> "Request Timeout"
+        409 -> "Conflict"
+        410 -> "Gone"
+        500 -> "Internal Server Error"
+        501 -> "Not Implemented"
+        502 -> "Bad Gateway"
+        503 -> "Service Unavailable"
+        504 -> "Gateway Timeout"
+        505 -> "HTTP Version Not Supported"
+        else -> "Unknown"
+    }
 
     // Every failure in here (including the NullPointerExceptions of the Java original) is caught by the caller.
     private fun handleCapacitorHttpRequest(request: WebResourceRequest): WebResourceResponse {
@@ -314,7 +313,7 @@ public class WebViewLocalServer internal constructor(
                 statusCode,
                 handler.reasonPhrase,
                 tempResponseHeaders,
-                responseStream,
+                responseStream
             )
         }
 
@@ -328,7 +327,7 @@ public class WebViewLocalServer internal constructor(
                 statusCode,
                 handler.reasonPhrase,
                 handler.buildDefaultResponseHeaders(),
-                responseStream,
+                responseStream
             )
         }
 
@@ -340,7 +339,7 @@ public class WebViewLocalServer internal constructor(
                 handler.statusCode,
                 handler.reasonPhrase,
                 handler.buildDefaultResponseHeaders(),
-                null,
+                null
             )
         }
 
@@ -379,7 +378,7 @@ public class WebViewLocalServer internal constructor(
                 statusCode,
                 handler.reasonPhrase,
                 handler.buildDefaultResponseHeaders(),
-                responseStream,
+                responseStream
             )
         }
 
@@ -410,7 +409,7 @@ public class WebViewLocalServer internal constructor(
                 statusCode,
                 handler.reasonPhrase,
                 handler.buildDefaultResponseHeaders(),
-                responseStream,
+                responseStream
             )
         }
 
@@ -486,7 +485,7 @@ public class WebViewLocalServer internal constructor(
                             handler.statusCode,
                             handler.reasonPhrase,
                             handler.buildDefaultResponseHeaders(),
-                            responseStream,
+                            responseStream
                         )
                     }
                 } catch (ex: Exception) {

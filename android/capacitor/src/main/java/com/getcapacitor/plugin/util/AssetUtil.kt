@@ -279,14 +279,13 @@ public class AssetUtil private constructor(private val context: Context) {
      *
      * @return content://...
      */
-    private fun getUriFromFile(file: File): Uri =
-        try {
-            val authority = context.packageName + ".provider"
-            FileProvider.getUriForFile(context, authority, file)
-        } catch (e: IllegalArgumentException) {
-            Logger.error("File not supported by provider", e)
-            Uri.EMPTY
-        }
+    private fun getUriFromFile(file: File): Uri = try {
+        val authority = context.packageName + ".provider"
+        FileProvider.getUriForFile(context, authority, file)
+    } catch (e: IllegalArgumentException) {
+        Logger.error("File not supported by provider", e)
+        Uri.EMPTY
+    }
 
     /**
      * Package name specified by the resource bundle.

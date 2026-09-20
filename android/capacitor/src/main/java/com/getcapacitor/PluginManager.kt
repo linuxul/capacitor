@@ -1,11 +1,11 @@
 package com.getcapacitor
 
 import android.content.res.AssetManager
-import org.json.JSONArray
-import org.json.JSONException
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
+import org.json.JSONArray
+import org.json.JSONException
 
 public class PluginManager(private val assetManager: AssetManager) {
     public fun loadPluginClasses(): List<Class<out Plugin>> {

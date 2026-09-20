@@ -4,11 +4,11 @@ import android.content.Context
 import com.getcapacitor.Bridge.Companion.DEFAULT_ANDROID_WEBVIEW_VERSION
 import com.getcapacitor.Bridge.Companion.DEFAULT_HUAWEI_WEBVIEW_VERSION
 import com.getcapacitor.util.JSONUtils
-import org.json.JSONException
-import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.util.Locale
+import org.json.JSONException
+import org.json.JSONObject
 
 /**
  * Reads capacitor.config.json into a [CapConfig]. An unreadable or invalid file is logged and treated as an empty one.
@@ -66,7 +66,7 @@ internal class CapConfigParser(private val context: Context) {
             JSONUtils.getString(
                 configJSON,
                 "android.loggingBehavior",
-                JSONUtils.getString(configJSON, "loggingBehavior", LOG_BEHAVIOR_DEBUG),
+                JSONUtils.getString(configJSON, "loggingBehavior", LOG_BEHAVIOR_DEBUG)
             )
 
         return CapConfig(
@@ -83,25 +83,25 @@ internal class CapConfigParser(private val context: Context) {
                 JSONUtils.getString(
                     configJSON,
                     "android.overrideUserAgent",
-                    JSONUtils.getString(configJSON, "overrideUserAgent", null),
+                    JSONUtils.getString(configJSON, "overrideUserAgent", null)
                 ),
             appendedUserAgentString =
                 JSONUtils.getString(
                     configJSON,
                     "android.appendUserAgent",
-                    JSONUtils.getString(configJSON, "appendUserAgent", null),
+                    JSONUtils.getString(configJSON, "appendUserAgent", null)
                 ),
             backgroundColor =
                 JSONUtils.getString(
                     configJSON,
                     "android.backgroundColor",
-                    JSONUtils.getString(configJSON, "backgroundColor", null),
+                    JSONUtils.getString(configJSON, "backgroundColor", null)
                 ),
             isMixedContentAllowed =
                 JSONUtils.getBoolean(
                     configJSON,
                     "android.allowMixedContent",
-                    JSONUtils.getBoolean(configJSON, "allowMixedContent", defaults.isMixedContentAllowed),
+                    JSONUtils.getBoolean(configJSON, "allowMixedContent", defaults.isMixedContentAllowed)
                 ),
             configuredMinWebViewVersion = JSONUtils.getInt(configJSON, "android.minWebViewVersion", DEFAULT_ANDROID_WEBVIEW_VERSION),
             configuredMinHuaweiWebViewVersion =
@@ -122,10 +122,10 @@ internal class CapConfigParser(private val context: Context) {
                 JSONUtils.getBoolean(
                     configJSON,
                     "android.initialFocus",
-                    JSONUtils.getBoolean(configJSON, "initialFocus", defaults.isInitialFocus),
+                    JSONUtils.getBoolean(configJSON, "initialFocus", defaults.isInitialFocus)
                 ),
             // Plugins
-            pluginsConfiguration = parsePluginsConfig(JSONUtils.getObject(configJSON, "plugins")),
+            pluginsConfiguration = parsePluginsConfig(JSONUtils.getObject(configJSON, "plugins"))
         )
     }
 
@@ -140,14 +140,13 @@ internal class CapConfigParser(private val context: Context) {
          * Null becomes the root; anything else gets a trailing slash so it forms a proper
          * file path when going deeper in the directory.
          */
-        private fun normalizeDirectory(path: String?): String =
-            if (path == null) {
-                ""
-            } else if (path[path.length - 1] != '/') {
-                "$path/"
-            } else {
-                path
-            }
+        private fun normalizeDirectory(path: String?): String = if (path == null) {
+            ""
+        } else if (path[path.length - 1] != '/') {
+            "$path/"
+        } else {
+            path
+        }
 
         /**
          * Maps plugin ids to their config. Entries that are not JSON objects are skipped.

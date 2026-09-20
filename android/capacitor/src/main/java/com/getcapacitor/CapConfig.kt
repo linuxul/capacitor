@@ -40,7 +40,7 @@ public class CapConfig internal constructor(
     // Embedded
     public val startPath: String? = null,
     // Plugins
-    private val pluginsConfiguration: Map<String, PluginConfig> = emptyMap(),
+    private val pluginsConfiguration: Map<String, PluginConfig> = emptyMap()
 ) {
     public val minWebViewVersion: Int
         get() {
@@ -130,7 +130,7 @@ public class CapConfig internal constructor(
                 isZoomableWebView = zoomableWebView,
                 isResolveServiceWorkerRequests = resolveServiceWorkerRequests,
                 startPath = startPath,
-                pluginsConfiguration = pluginsConfiguration,
+                pluginsConfiguration = pluginsConfiguration
             )
         }
 

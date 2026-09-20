@@ -1,4 +1,4 @@
-/**
+/*
  * Portions adopted from react-native-image-crop-picker
  *
  * MIT License
@@ -47,7 +47,7 @@ import java.util.regex.Pattern
  */
 public object FileUtils {
     public enum class Type(private val type: String) {
-        IMAGE("image"),
+        IMAGE("image")
     }
 
     // Pattern.split keeps java.lang.String.split semantics (trailing empty parts dropped).

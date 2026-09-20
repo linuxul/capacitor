@@ -35,7 +35,7 @@ public class SystemBars : Plugin() {
         if (INSETS_HANDLING_DISABLE != insetsHandling && keyboardResizeOnFullScreen) {
             Logger.warn(
                 "SystemBars",
-                "You should omit `Keyboard.resizeOnFullScreen` in your `capacitor.config.json`. Other values can lead to unexpected behavior.",
+                "You should omit `Keyboard.resizeOnFullScreen` in your `capacitor.config.json`. Other values can lead to unexpected behavior."
             )
         }
     }
@@ -97,7 +97,7 @@ public class SystemBars : Plugin() {
         } else {
             Logger.warn(
                 "SystemBars",
-                "Unknown insetsHandling value '$configuredInsetsHandling'. Falling back to '$INSETS_HANDLING_CSS'.",
+                "Unknown insetsHandling value '$configuredInsetsHandling'. Falling back to '$INSETS_HANDLING_CSS'."
             )
             insetsHandling = INSETS_HANDLING_CSS
         }
@@ -175,8 +175,8 @@ public class SystemBars : Plugin() {
                                 systemBarsInsets.left,
                                 systemBarsInsets.top,
                                 systemBarsInsets.right,
-                                getBottomInset(systemBarsInsets, keyboardVisible),
-                            ),
+                                getBottomInset(systemBarsInsets, keyboardVisible)
+                            )
                         )
                         .build()
 
@@ -190,7 +190,7 @@ public class SystemBars : Plugin() {
                 systemBarsInsets.left,
                 systemBarsInsets.top,
                 systemBarsInsets.right,
-                if (keyboardVisible) imeInsets.bottom else systemBarsInsets.bottom,
+                if (keyboardVisible) imeInsets.bottom else systemBarsInsets.bottom
             )
 
             // Returning `WindowInsetsCompat.CONSUMED` breaks recalculation of safe area insets

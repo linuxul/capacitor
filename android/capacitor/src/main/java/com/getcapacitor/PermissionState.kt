@@ -11,7 +11,7 @@ public enum class PermissionState(private val state: String) {
     GRANTED("granted"),
     DENIED("denied"),
     PROMPT("prompt"),
-    PROMPT_WITH_RATIONALE("prompt-with-rationale"),
+    PROMPT_WITH_RATIONALE("prompt-with-rationale")
     ;
 
     override fun toString(): String = state

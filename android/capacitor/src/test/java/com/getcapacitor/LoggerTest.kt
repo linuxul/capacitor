@@ -30,7 +30,7 @@ class LoggerTest {
 
         assertEquals(
             listOf(Log.VERBOSE to "v", Log.DEBUG to "d", Log.INFO to "i", Log.WARN to "w", Log.ERROR to "e"),
-            logs.entries.map { it.priority to it.message },
+            logs.entries.map { it.priority to it.message }
         )
         assertTrue(logs.entries.all { it.tag == Logger.LOG_TAG_CORE && it.throwable == null })
     }

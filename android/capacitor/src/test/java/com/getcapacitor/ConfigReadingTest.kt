@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.pm.ApplicationInfo
 import android.content.res.AssetManager
 import android.util.Log
+import java.io.IOException
+import java.io.InputStream
 import org.json.JSONException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,12 +13,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
-import org.junit.Test
 import org.junit.Rule
+import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import java.io.IOException
-import java.io.InputStream
 
 class ConfigReadingTest {
     @get:Rule

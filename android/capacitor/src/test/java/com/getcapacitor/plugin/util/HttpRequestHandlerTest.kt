@@ -2,9 +2,9 @@ package com.getcapacitor.plugin.util
 
 import com.getcapacitor.JSObject
 import com.getcapacitor.plugin.util.HttpRequestHandler.HttpURLConnectionBuilder
+import java.net.URL
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.net.URL
 
 class HttpRequestHandlerTest {
     @Test

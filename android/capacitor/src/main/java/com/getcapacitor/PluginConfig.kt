@@ -12,7 +12,7 @@ public class PluginConfig internal constructor(
     /**
      * The JSON Object containing the config of the the provided plugin ID.
      */
-    public val configJSON: JSONObject,
+    public val configJSON: JSONObject
 ) {
     /**
      * Get a string value for a plugin in the Capacitor config.
@@ -21,7 +21,8 @@ public class PluginConfig internal constructor(
      * @param defaultValue A default value to return if the key does not exist in the config
      * @return The value from the config, if key exists. Default value returned if not
      */
-    public fun getString(configKey: String, defaultValue: String? = null): String? = JSONUtils.getString(configJSON, configKey, defaultValue)
+    public fun getString(configKey: String, defaultValue: String? = null): String? =
+        JSONUtils.getString(configJSON, configKey, defaultValue)
 
     /**
      * Get a boolean value for a plugin in the Capacitor config.

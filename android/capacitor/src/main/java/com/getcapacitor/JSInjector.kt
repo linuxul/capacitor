@@ -16,7 +16,7 @@ internal class JSInjector(
     private val bridgeJS: String?,
     private val pluginJS: String?,
     private val localUrlJS: String?,
-    private val miscJS: String? = null,
+    private val miscJS: String? = null
 ) {
     /**
      * Generates injectable JS content.

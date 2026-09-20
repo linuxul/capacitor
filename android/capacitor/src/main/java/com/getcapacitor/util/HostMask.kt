@@ -74,17 +74,16 @@ public interface HostMask {
     public object Util {
         private val DOT: Pattern = Pattern.compile("\\.")
 
-        public fun matches(mask: String?, string: String?): Boolean =
-            if (mask == null) {
-                false
-            } else if ("*" == mask) {
-                true
-            } else if (string == null) {
-                false
-            } else {
-                // Locale.getDefault() is what the no-argument toUpperCase() used implicitly.
-                mask.uppercase(Locale.getDefault()) == string.uppercase(Locale.getDefault())
-            }
+        public fun matches(mask: String?, string: String?): Boolean = if (mask == null) {
+            false
+        } else if ("*" == mask) {
+            true
+        } else if (string == null) {
+            false
+        } else {
+            // Locale.getDefault() is what the no-argument toUpperCase() used implicitly.
+            mask.uppercase(Locale.getDefault()) == string.uppercase(Locale.getDefault())
+        }
 
         public fun splitAndReverse(string: String?): List<String> {
             requireNotNull(string) { "Can not split null argument" }

@@ -3,6 +3,9 @@ package com.getcapacitor
 import android.webkit.WebView
 import androidx.webkit.WebViewFeature
 import com.getcapacitor.annotation.CapacitorPlugin
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -18,9 +21,6 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.io.File
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 
 /**
  * Pins the JS that the native side generates for the WebView and the message format it
@@ -85,7 +85,7 @@ class JSProtocolSnapshotTest {
                 headers.getJSONObject(0).getString("name") +
                 ":\n" +
                 methods.joinToString("\n")
-        )
+            )
     }
 
     @Test

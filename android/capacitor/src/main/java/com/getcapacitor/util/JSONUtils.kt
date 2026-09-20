@@ -1,8 +1,8 @@
 package com.getcapacitor.util
 
+import java.util.regex.Pattern
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.regex.Pattern
 
 /**
  * Helper methods for parsing JSON objects.

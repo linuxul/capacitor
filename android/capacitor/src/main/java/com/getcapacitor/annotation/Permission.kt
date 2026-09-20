@@ -15,5 +15,5 @@ public annotation class Permission(
     /**
      * An optional name to use instead of the Android permission string.
      */
-    val alias: String = "",
+    val alias: String = ""
 )

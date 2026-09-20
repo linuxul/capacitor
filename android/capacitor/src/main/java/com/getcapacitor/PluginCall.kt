@@ -15,7 +15,7 @@ public class PluginCall(
     public val pluginId: String?,
     public val callbackId: String?,
     public val methodName: String?,
-    public val data: JSObject,
+    public val data: JSObject
 ) {
     /**
      * Indicate that the Bridge should cache this call in order to call

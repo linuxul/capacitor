@@ -1,10 +1,10 @@
 package com.getcapacitor
 
+import java.lang.reflect.Method
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.mockito.BDDMockito.given
 import org.mockito.kotlin.mock
-import java.lang.reflect.Method
 
 class PluginMethodHandleTest {
     @Test

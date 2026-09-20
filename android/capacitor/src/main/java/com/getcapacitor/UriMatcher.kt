@@ -20,11 +20,7 @@ import android.net.Uri
 import com.getcapacitor.util.HostMask
 import java.util.regex.Pattern
 
-internal class UriMatcher private constructor(
-    private var mCode: Any?,
-    private var mWhich: Int,
-    private var mText: String?,
-) {
+internal class UriMatcher private constructor(private var mCode: Any?, private var mWhich: Int, private var mText: String?) {
     private val mChildren: ArrayList<UriMatcher> = ArrayList()
 
     /**
@@ -127,11 +123,14 @@ internal class UriMatcher private constructor(
                         if (HostMask.Parser.parse(n.mText).matches(u)) {
                             next = n
                         }
+
                     EXACT ->
                         if (n.mText == u) {
                             next = n
                         }
+
                     TEXT -> next = n
+
                     REST -> return n.mCode
                 }
                 if (next != null) {

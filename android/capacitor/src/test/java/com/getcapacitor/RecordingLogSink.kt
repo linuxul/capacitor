@@ -6,7 +6,9 @@ import org.junit.rules.ExternalResource
  * JUnit rule that replaces [Logger.sink] for the duration of a test and records what gets logged, so unit tests
  * neither need android.util.Log nor a static mock of [Logger].
  */
-class RecordingLogSink : ExternalResource(), LogSink {
+class RecordingLogSink :
+    ExternalResource(),
+    LogSink {
     data class Entry(val priority: Int, val tag: String, val message: String, val throwable: Throwable?)
 
     val entries: MutableList<Entry> = ArrayList()

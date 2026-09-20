@@ -5,7 +5,7 @@ import java.lang.reflect.Method
 public class PluginMethodHandle(
     // The reflect method reference
     public val method: Method,
-    methodDecorator: PluginMethod,
+    methodDecorator: PluginMethod
 ) {
     // The name of the method
     // (nullable only because unit tests hand in Mockito mocks whose getters return null)

@@ -257,7 +257,7 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
     override fun onShowFileChooser(
         webView: WebView?,
         filePathCallback: ValueCallback<Array<Uri>>?,
-        fileChooserParams: FileChooserParams?,
+        fileChooserParams: FileChooserParams?
     ): Boolean {
         // Returning false tells the WebView the callback will not be invoked.
         if (filePathCallback == null || fileChooserParams == null) return false
@@ -294,13 +294,13 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         return (
             PermissionHelper.hasPermissions(bridge.context, permissions) ||
                 !PermissionHelper.hasDefinedPermission(bridge.context, Manifest.permission.CAMERA)
-        )
+            )
     }
 
     private fun showMediaCaptureOrFilePicker(
         filePathCallback: ValueCallback<Array<Uri>>,
         fileChooserParams: FileChooserParams,
-        isVideo: Boolean,
+        isVideo: Boolean
     ) {
         val shown =
             if (isVideo) {
@@ -432,7 +432,7 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
                     "File: %s - Line %d - Msg: %s",
                     consoleMessage.sourceId(),
                     consoleMessage.lineNumber(),
-                    consoleMessage.message(),
+                    consoleMessage.message()
                 )
             val level = consoleMessage.messageLevel().name
             if ("ERROR".equals(level, ignoreCase = true)) {
