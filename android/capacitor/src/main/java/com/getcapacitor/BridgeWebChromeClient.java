@@ -7,7 +7,6 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.view.View;
@@ -254,10 +253,7 @@ public class BridgeWebChromeClient extends WebChromeClient {
                     callback.invoke(origin, true, false);
                 } else {
                     final String[] coarsePermission = { Manifest.permission.ACCESS_COARSE_LOCATION };
-                    if (
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                        PermissionHelper.hasPermissions(bridge.getContext(), coarsePermission)
-                    ) {
+                    if (PermissionHelper.hasPermissions(bridge.getContext(), coarsePermission)) {
                         callback.invoke(origin, true, false);
                     } else {
                         callback.invoke(origin, false, false);
