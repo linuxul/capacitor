@@ -13,11 +13,7 @@ export async function getPluginFiles(plugins: Plugin[]): Promise<string[]> {
 
   const options: ReaddirPOptions = {
     filter: (item) => {
-      if (item.stats.isFile() && (item.path.endsWith('.swift') || item.path.endsWith('.m'))) {
-        return true;
-      } else {
-        return false;
-      }
+      return item.stats.isFile() && item.path.endsWith('.swift');
     },
   };
 
@@ -37,17 +33,12 @@ export async function findPluginClasses(files: string[]): Promise<string[]> {
 
   for (const file of files) {
     const fileData = readFileSync(file, 'utf-8');
-    const swiftPluginRegex = RegExp(/@objc\(([A-Za-z0-9_-]+)\)/);
-    const objcPluginRegex = RegExp(/CAP_PLUGIN\(([A-Za-z0-9_-]+)/);
 
-    const swiftMatches = swiftPluginRegex.exec(fileData);
-    if (swiftMatches?.[1] && !classList.includes(swiftMatches[1])) {
-      classList.push(swiftMatches[1]);
-    }
-
-    const objcMatches = objcPluginRegex.exec(fileData);
-    if (objcMatches?.[1] && !classList.includes(objcMatches[1])) {
-      classList.push(objcMatches[1]);
+    // The bridge loads plugins by their Objective-C runtime name, so only classes exposed with @objc(Name) count
+    for (const match of fileData.matchAll(/@objc\(([A-Za-z0-9_-]+)\)/g)) {
+      if (!classList.includes(match[1])) {
+        classList.push(match[1]);
+      }
     }
   }
 
