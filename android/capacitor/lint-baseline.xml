@@ -14,28 +14,6 @@
 
     <issue
         id="DefaultLocale"
-        message="Implicitly using the default locale is a common source of bugs: Use `toUpperCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
-        errorLine1="                return mask.toUpperCase().equals(string.toUpperCase());"
-        errorLine2="                            ~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/getcapacitor/util/HostMask.java"
-            line="110"
-            column="29"/>
-    </issue>
-
-    <issue
-        id="DefaultLocale"
-        message="Implicitly using the default locale is a common source of bugs: Use `toUpperCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
-        errorLine1="                return mask.toUpperCase().equals(string.toUpperCase());"
-        errorLine2="                                                        ~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/getcapacitor/util/HostMask.java"
-            line="110"
-            column="57"/>
-    </issue>
-
-    <issue
-        id="DefaultLocale"
         message="Implicitly using the default locale is a common source of bugs: Use `toLowerCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
         errorLine1="                        if (header.getKey().equalsIgnoreCase(&quot;Accept&quot;) &amp;&amp; header.getValue().toLowerCase().contains(&quot;text/html&quot;)) {"
         errorLine2="                                                                                            ~~~~~~~~~~~">
@@ -54,17 +32,6 @@
             file="src/main/java/com/getcapacitor/BridgeWebChromeClient.java"
             line="458"
             column="28"/>
-    </issue>
-
-    <issue
-        id="SimpleDateFormat"
-        message="To get local formatting use `getDateInstance()`, `getDateTimeInstance()`, or `getTimeInstance()`, or use `new SimpleDateFormat(String template, Locale locale)` with for example `Locale.US` for ASCII dates."
-        errorLine1="        DateFormat df = new SimpleDateFormat(&quot;yyyy-MM-dd&apos;T&apos;HH:mm&apos;Z&apos;&quot;);"
-        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/getcapacitor/PluginResult.java"
-            line="44"
-            column="25"/>
     </issue>
 
 </issues>

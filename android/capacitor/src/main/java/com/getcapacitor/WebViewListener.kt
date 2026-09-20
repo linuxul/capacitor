@@ -1,19 +1,18 @@
-package com.getcapacitor;
+package com.getcapacitor
 
-import android.webkit.RenderProcessGoneDetail;
-import android.webkit.WebView;
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebView
 
 /**
- * Provides callbacks associated with the {@link BridgeWebViewClient}
+ * Provides callbacks associated with the [BridgeWebViewClient]
  */
-public abstract class WebViewListener {
-
+abstract class WebViewListener {
     /**
      * Callback for page load event.
      *
      * @param webView The WebView that loaded
      */
-    public void onPageLoaded(WebView webView) {
+    open fun onPageLoaded(webView: WebView?) {
         // Override me to add behavior to the page loaded event
     }
 
@@ -22,7 +21,7 @@ public abstract class WebViewListener {
      *
      * @param webView The WebView that loaded
      */
-    public void onReceivedError(WebView webView) {
+    open fun onReceivedError(webView: WebView?) {
         // Override me to add behavior to handle the onReceivedError event
     }
 
@@ -31,7 +30,7 @@ public abstract class WebViewListener {
      *
      * @param webView The WebView that loaded
      */
-    public void onReceivedHttpError(WebView webView) {
+    open fun onReceivedHttpError(webView: WebView?) {
         // Override me to add behavior to handle the onReceivedHttpError event
     }
 
@@ -40,7 +39,7 @@ public abstract class WebViewListener {
      *
      * @param webView The WebView that loaded
      */
-    public void onPageStarted(WebView webView) {
+    open fun onPageStarted(webView: WebView?) {
         // Override me to add behavior to the page started event
     }
 
@@ -50,9 +49,9 @@ public abstract class WebViewListener {
      * @param webView The WebView that loaded
      * @return returns false by default if the listener is not overridden and used
      */
-    public boolean onRenderProcessGone(WebView webView, RenderProcessGoneDetail detail) {
+    open fun onRenderProcessGone(webView: WebView?, detail: RenderProcessGoneDetail?): Boolean {
         // Override me to add behavior to the web view render process gone event
-        return false;
+        return false
     }
 
     /**
@@ -61,7 +60,7 @@ public abstract class WebViewListener {
      * @param view The WebView for which the navigation occurred.
      * @param url The URL corresponding to the page navigation that triggered this callback.
      */
-    public void onPageCommitVisible(WebView view, String url) {
+    open fun onPageCommitVisible(view: WebView?, url: String?) {
         // Override me to add behavior to handle the onPageCommitVisible event
     }
 }
