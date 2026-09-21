@@ -1,5 +1,6 @@
 import { columnar } from '@ionic/utils-terminal';
 
+import { warnIfCleartextBlocked } from '../android/cleartext';
 import { runAndroid } from '../android/run';
 import c from '../colors';
 import {
@@ -97,6 +98,9 @@ export async function runCommand(
       }
       await run(config, platformName, options);
       if (options.liveReload) {
+        if (platformName === config.android.name) {
+          await warnIfCleartextBlocked(config, options);
+        }
         new Promise((resolve) => process.on('SIGINT', resolve))
           .then(async () => {
             await CapLiveReloadHelper.revertCapConfigForLiveReload();
