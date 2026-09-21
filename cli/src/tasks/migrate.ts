@@ -3,6 +3,7 @@ import { join } from 'path';
 import { rimraf } from 'rimraf';
 import { coerce, gte, lt } from 'semver';
 
+import { cleanupLegacyCordovaAndroid } from '../android/cordova-cleanup';
 import c from '../colors';
 import { getCoreVersion, runTask, checkJDKMajorVersion } from '../common';
 import type { Config } from '../definitions';
@@ -182,6 +183,12 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
         }
 
         await migrateToUIScene(config);
+      }
+
+      // Has to happen before `cap sync`: `cap update android` stops with an error while the
+      // Gradle files still reference the Cordova plugins project.
+      if (allDependencies['@capacitor/android'] && existsSync(config.android.platformDirAbs)) {
+        await cleanupLegacyCordovaAndroid(config);
       }
 
       if (!installFailed) {

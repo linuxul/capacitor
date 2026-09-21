@@ -21,7 +21,7 @@ const debug = Debug('capacitor:android:update');
  * Gradle project that used to hold the native code of Cordova plugins.
  * Cordova is not supported anymore, this is only used to clean up older apps.
  */
-const legacyCordovaPluginsDir = 'capacitor-cordova-android-plugins';
+export const legacyCordovaPluginsDir = 'capacitor-cordova-android-plugins';
 
 export async function updateAndroid(config: Config): Promise<void> {
   const plugins = await getPluginsTask(config);
@@ -178,6 +178,15 @@ if (hasProperty('postBuildExtras')) {
 }
 
 /**
+ * The lines of a Gradle file that still mention the legacy Cordova plugins project.
+ * `cap update android` refuses to run while any exist and `cap migrate` removes them,
+ * so both go through this one function and can't drift apart.
+ */
+export function findLegacyCordovaGradleLines(contents: string): string[] {
+  return contents.split(/\r?\n/).filter((line) => line.includes(legacyCordovaPluginsDir));
+}
+
+/**
  * Apps created before Cordova support was removed still reference the
  * `capacitor-cordova-android-plugins` Gradle project, which doesn't exist anymore.
  * Fail early with instructions instead of letting Gradle fail with a cryptic error.
@@ -193,8 +202,8 @@ async function checkLegacyCordovaGradleReferences(config: Config): Promise<void>
     if (!(await pathExists(gradleFile))) {
       continue;
     }
-    const lines = (await readFile(gradleFile, { encoding: 'utf-8' })).split(/\r?\n/);
-    const found = lines.filter((line) => line.includes(legacyCordovaPluginsDir)).map((line) => `    ${line.trim()}`);
+    const contents = await readFile(gradleFile, { encoding: 'utf-8' });
+    const found = findLegacyCordovaGradleLines(contents).map((line) => `    ${line.trim()}`);
     if (found.length > 0) {
       offenders.push(`${c.strong(convertToUnixPath(relative(config.app.rootDir, gradleFile)))}:\n${found.join('\n')}`);
     }
