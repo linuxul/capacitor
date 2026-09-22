@@ -2,6 +2,23 @@
 
 This fork of Capacitor 8 narrows what the runtime supports so that its internals can be plain Kotlin and Swift. Apps and plugins written for upstream Capacitor need the changes below.
 
+## Installing
+
+The fork is not published to npm. Its packages keep the `@capacitor/*` names, and each version is attached to a GitHub release as tarballs, which an app installs by URL:
+
+```json
+"dependencies": {
+  "@capacitor/core": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-core-8.5.3.tgz",
+  "@capacitor/android": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-android-8.5.3.tgz",
+  "@capacitor/ios": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-ios-8.5.3.tgz"
+},
+"devDependencies": {
+  "@capacitor/cli": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-cli-8.5.3.tgz"
+}
+```
+
+Installing `@capacitor/*` by version from npm gets upstream Capacitor instead. `npx cap migrate` leaves a Capacitor package alone when it points at a tarball, a `file:` path or git, and only pins the ones that come from the registry.
+
 ## Supported platforms
 
 - **iOS 17** is the minimum deployment target.

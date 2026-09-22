@@ -1,7 +1,7 @@
 import { writeFileSync, readFileSync, existsSync } from 'fs-extra';
 import { join } from 'path';
 import { rimraf } from 'rimraf';
-import { coerce, gte, lt } from 'semver';
+import { coerce, gte, lt, validRange } from 'semver';
 
 import { cleanupLegacyCordovaAndroid } from '../android/cordova-cleanup';
 import c from '../colors';
@@ -339,7 +339,14 @@ async function checkCapacitorMajorVersion(config: Config): Promise<number> {
   return majorVersion;
 }
 
-async function installLatestLibs(dependencyManager: string, runInstall: boolean, config: Config) {
+// Only a version range or a dist-tag is resolved from the npm registry. A file:, link:, tarball URL
+// or git spec points at a build of this fork, and pinning it to a range would install upstream
+// Capacitor from npm instead.
+export function isRegistrySpec(spec: string): boolean {
+  return validRange(spec) !== null || /^[a-z][a-z0-9._-]*$/i.test(spec);
+}
+
+export async function installLatestLibs(dependencyManager: string, runInstall: boolean, config: Config): Promise<void> {
   const pkgJsonPath = join(config.app.rootDir, 'package.json');
   const pkgJsonFile = readFile(pkgJsonPath);
   if (!pkgJsonFile) {
@@ -347,18 +354,18 @@ async function installLatestLibs(dependencyManager: string, runInstall: boolean,
   }
   const pkgJson: any = JSON.parse(pkgJsonFile);
 
-  for (const devDepKey of Object.keys(pkgJson['devDependencies'] || {})) {
-    if (libs.includes(devDepKey)) {
-      pkgJson['devDependencies'][devDepKey] = coreVersion;
-    } else if (plugins.includes(devDepKey)) {
-      pkgJson['devDependencies'][devDepKey] = pluginVersion;
-    }
-  }
-  for (const depKey of Object.keys(pkgJson['dependencies'] || {})) {
-    if (libs.includes(depKey)) {
-      pkgJson['dependencies'][depKey] = coreVersion;
-    } else if (plugins.includes(depKey)) {
-      pkgJson['dependencies'][depKey] = pluginVersion;
+  for (const depsKey of ['devDependencies', 'dependencies']) {
+    const deps = pkgJson[depsKey] || {};
+    for (const name of Object.keys(deps)) {
+      const version = libs.includes(name) ? coreVersion : plugins.includes(name) ? pluginVersion : undefined;
+      if (!version) {
+        continue;
+      }
+      if (!isRegistrySpec(deps[name])) {
+        logger.info(`Kept ${name} at ${deps[name]}, which does not come from the npm registry.`);
+        continue;
+      }
+      deps[name] = version;
     }
   }
 
