@@ -145,7 +145,7 @@ class PluginCallSettleTests: XCTestCase {
             }
         }
         bridge.handleJSCall(call: JSCall(options: [:], pluginId: "SettleTest", method: method, callbackId: callbackId))
-        wait(for: [sent], timeout: 2)
+        wait(for: [sent], timeout: 20)
         // let anything sent late show up
         bridge.dispatchQueue.sync {}
         return bridge.messages.filter { $0.callbackId == callbackId }

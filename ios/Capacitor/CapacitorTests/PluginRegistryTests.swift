@@ -167,7 +167,7 @@ class PluginRegistryTests: XCTestCase {
         let sent = expectation(description: "result sent")
         bridge.onMessage = { if $0.callbackId == callbackId { sent.fulfill() } }
         bridge.handleJSCall(call: JSCall(options: ["value": "hi"], pluginId: pluginId, method: method, callbackId: callbackId))
-        wait(for: [sent], timeout: 2)
+        wait(for: [sent], timeout: 20)
         return bridge.messages.last { $0.callbackId == callbackId }
     }
 

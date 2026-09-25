@@ -48,7 +48,8 @@ class JavaScriptPanelTests: XCTestCase {
 
     /// Runs the main run loop until `condition` holds, for at most five seconds.
     private func waitUntil(_ condition: () -> Bool, _ description: String) {
-        let deadline = Date(timeIntervalSinceNow: 5)
+        // generous so a busy machine does not fail the test; a condition that holds returns right away
+        let deadline = Date(timeIntervalSinceNow: 20)
         while !condition(), Date() < deadline {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
         }

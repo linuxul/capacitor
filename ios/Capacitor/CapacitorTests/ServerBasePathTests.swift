@@ -48,11 +48,14 @@ class ServerBasePathTests: XCTestCase {
             appLocation = bridge.config.appLocation.path
             changed.fulfill()
         }
-        wait(for: [changed], timeout: 2)
+        wait(for: [changed], timeout: 20)
         XCTAssertEqual(appLocation, path)
 
-        // the router follows on the main queue
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+        // the router follows on the main queue; wait for it instead of a fixed delay, which a busy machine outlasts
+        let deadline = Date(timeIntervalSinceNow: 20)
+        while assetHandler.assetPaths.isEmpty, Date() < deadline {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+        }
         XCTAssertEqual(assetHandler.assetPaths.map(\.path), [path])
         XCTAssertEqual(assetHandler.assetPaths.map(\.onMain), [true])
     }

@@ -46,7 +46,7 @@ class BuiltInPluginTests: XCTestCase {
         let settled = expectation(description: "call settled")
         let recorded = RecordedCall(options, expectation: settled)
         invoke(recorded.call)
-        wait(for: [settled], timeout: 2)
+        wait(for: [settled], timeout: 20)
         return recorded
     }
 

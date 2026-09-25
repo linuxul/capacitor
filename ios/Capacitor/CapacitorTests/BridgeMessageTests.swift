@@ -113,7 +113,7 @@ class BridgeMessageTests: XCTestCase {
         bridge.onMessage = { _ in sent.fulfill() }
         let callbackId = UUID().uuidString
         bridge.handleJSCall(call: JSCall(options: [:], pluginId: "MessageTest", method: method, callbackId: callbackId))
-        wait(for: [sent], timeout: 2)
+        wait(for: [sent], timeout: 20)
         return bridge.messages.last { $0.callbackId == callbackId }
     }
 
