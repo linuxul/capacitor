@@ -53,6 +53,11 @@ public open class Plugin {
      */
     private val permissionLaunchers: MutableMap<String, ActivityResultLauncher<Array<String>>> = HashMap()
 
+    /**
+     * The functions annotated with [PermissionCallback], by name, for requests that need no prompt
+     */
+    private val permissionCallbacks: MutableMap<String, Method> = HashMap()
+
     private var lastPluginCallId: String? = null
 
     // Stored results of an event if an event was fired and
@@ -94,6 +99,7 @@ public open class Plugin {
                     }
 
                 permissionLaunchers[method.name] = launcher
+                permissionCallbacks[method.name] = method
             }
         }
     }
@@ -103,13 +109,17 @@ public open class Plugin {
 
         // validate permissions and invoke the permission result callback
         if (bridge.validatePermissions(this, savedCall, permissionResultMap)) {
-            try {
-                method.isAccessible = true
-                method.invoke(this, savedCall)
-            } catch (e: ReflectiveOperationException) {
-                // Method.invoke only declares IllegalAccessException and InvocationTargetException here.
-                e.printStackTrace()
-            }
+            invokePermissionCallback(method, savedCall)
+        }
+    }
+
+    private fun invokePermissionCallback(method: Method, call: PluginCall?) {
+        try {
+            method.isAccessible = true
+            method.invoke(this, call)
+        } catch (e: ReflectiveOperationException) {
+            // Method.invoke only declares IllegalAccessException and InvocationTargetException here.
+            e.printStackTrace()
         }
     }
 
@@ -256,6 +266,10 @@ public open class Plugin {
      * be rejected. Make sure a valid permission callback method is registered using the
      * [PermissionCallback] annotation.
      *
+     * An empty [aliases] array rejects the call. When the aliases map to no Android permission
+     * string, such as an alias declared with `strings = []`, there is nothing to ask the user, so the
+     * callback is run right away, on the main thread like the result of a prompt.
+     *
      * @param aliases a set of aliases defined on the plugin
      * @param call the plugin call involved in originating the request
      * @param callbackName the name of the callback to run when the permission request is complete
@@ -263,6 +277,7 @@ public open class Plugin {
     protected open fun requestPermissionForAliases(aliases: Array<String>, call: PluginCall, callbackName: String) {
         if (aliases.isEmpty()) {
             Logger.error("No permission alias was provided")
+            call.reject("No permission alias was provided")
             return
         }
 
@@ -270,12 +285,30 @@ public open class Plugin {
 
         if (permissions.isNotEmpty()) {
             permissionActivityResult(call, permissions, callbackName)
+            return
         }
+
+        val declaredAliases = handle.pluginAnnotation.permissions.map { it.alias }
+        val undeclaredAliases = aliases.filterNot { it in declaredAliases }
+        if (undeclaredAliases.isNotEmpty()) {
+            Logger.warn(logTag, "Permission aliases $undeclaredAliases are not declared on @CapacitorPlugin")
+        }
+
+        // Without a runtime permission to prompt for, the callback reads the states and settles the call now. It
+        // runs where a prompt's result would: callbacks may expect the main thread.
+        val callback = permissionCallbacks[callbackName]
+        if (callback == null) {
+            rejectUnregisteredPermissionCallback(call, callbackName)
+            return
+        }
+        bridge.executeOnMainThread { invokePermissionCallback(callback, call) }
     }
 
     /**
      * Gets the Android permission strings defined on the [CapacitorPlugin] annotation with
      * the provided aliases.
+     *
+     * An empty string counts as no permission, as it does for the reported permission states.
      *
      * @param aliases aliases for permissions defined on the plugin
      * @return Android permission strings associated with the provided aliases, if exists
@@ -284,7 +317,7 @@ public open class Plugin {
         val perms = HashSet<String>()
         for (perm in handle.pluginAnnotation.permissions) {
             if (aliases.contains(perm.alias)) {
-                perms.addAll(perm.strings)
+                perms.addAll(perm.strings.filter { it.isNotEmpty() })
             }
         }
 
@@ -329,16 +362,20 @@ public open class Plugin {
 
         // if there is no registered launcher, reject the call with an error and return null
         if (permissionLauncher == null) {
-            val registerError =
-                "There is no PermissionCallback method registered for the name: $methodName. " +
-                    "Please define a callback method annotated with @PermissionCallback " +
-                    "that receives arguments: (PluginCall)"
-            Logger.error(registerError)
-            call.reject(registerError)
+            rejectUnregisteredPermissionCallback(call, methodName)
             return null
         }
 
         return permissionLauncher
+    }
+
+    private fun rejectUnregisteredPermissionCallback(call: PluginCall, methodName: String?) {
+        val registerError =
+            "There is no PermissionCallback method registered for the name: $methodName. " +
+                "Please define a callback method annotated with @PermissionCallback " +
+                "that receives arguments: (PluginCall)"
+        Logger.error(registerError)
+        call.reject(registerError)
     }
 
     /**
