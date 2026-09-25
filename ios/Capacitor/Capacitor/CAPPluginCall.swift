@@ -11,8 +11,16 @@ open class CAPPluginCall: NSObject {
     @objc public let callbackId: String
     @objc public let methodName: String
     public let options: JSObject
+    /// The raw handlers behind ``resolve()`` and ``reject(_:_:_:_:)``. Calling them directly bypasses the rule that a
+    /// call settles once; ``CAPPlugin/notifyListeners(_:data:)`` does so to deliver every event to a listener.
     @objc public let successHandler: CAPPluginCallSuccessHandler
     @objc public let errorHandler: CAPPluginCallErrorHandler
+
+    /// The JavaScript name of the plugin the call was made to, set by the bridge for diagnostics.
+    internal var pluginName: String?
+
+    private let settleLock = NSLock()
+    private var isSettled = false
 
     public init(callbackId: String, methodName: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
         self.callbackId = callbackId
@@ -23,6 +31,25 @@ open class CAPPluginCall: NSObject {
         super.init()
     }
 
+    /// Claims the right to send a result. A call that is not kept alive settles once: the first resolve or reject is
+    /// sent and every later one is dropped and logged, because the page has already released the promise. A call that is
+    /// kept alive may send any number of results.
+    internal func claimSettlement(_ attempt: StaticString) -> Bool {
+        let claimed: Bool = settleLock.withLock {
+            if keepAlive {
+                return true
+            }
+            if isSettled {
+                return false
+            }
+            isSettled = true
+            return true
+        }
+        if !claimed {
+            CAPLog.print("⚡️  \(pluginName ?? "Plugin").\(methodName) (callbackId \(callbackId)) already settled; dropping \(attempt)")
+        }
+        return claimed
+    }
 }
 
 extension CAPPluginCall: JSValueContainer {
@@ -36,17 +63,22 @@ extension CAPPluginCall: JSValueContainer {
 }
 
 @objc public extension CAPPluginCall {
+    // Unless the call is kept alive, only the first resolve, reject, unimplemented or unavailable is sent.
+
     /// Resolves the call with no data. JavaScript receives `undefined`; use `resolve([:])` to send `{}`.
     func resolve() {
+        guard claimSettlement("resolve()") else { return }
         successHandler(CAPPluginCallResult(nil), self)
     }
 
     /// Resolves the call with `data`.
     func resolve(_ data: PluginCallResultData) {
+        guard claimSettlement("resolve(_:)") else { return }
         successHandler(CAPPluginCallResult(data), self)
     }
 
     func reject(_ message: String, _ code: String? = nil, _ error: Error? = nil, _ data: PluginCallResultData? = nil) {
+        guard claimSettlement("reject(_:_:_:_:)") else { return }
         errorHandler(CAPPluginCallError(message: message, code: code, error: error, data: data))
     }
 
@@ -55,6 +87,7 @@ extension CAPPluginCall: JSValueContainer {
     }
 
     func unimplemented(_ message: String) {
+        guard claimSettlement("unimplemented(_:)") else { return }
         errorHandler(CAPPluginCallError(message: message, code: "UNIMPLEMENTED", error: nil, data: [:]))
     }
 
@@ -63,6 +96,7 @@ extension CAPPluginCall: JSValueContainer {
     }
 
     func unavailable(_ message: String) {
+        guard claimSettlement("unavailable(_:)") else { return }
         errorHandler(CAPPluginCallError(message: message, code: "UNAVAILABLE", error: nil, data: [:]))
     }
 }

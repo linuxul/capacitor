@@ -429,6 +429,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
                                             self?.toJsError(error: JSResultError(call: call, callError: error), save: save)
                                            })
             weakPluginCall = pluginCall
+            pluginCall.pluginName = call.pluginId
 
             plugin.perform(selector, with: pluginCall)
             if pluginCall.keepAlive {
