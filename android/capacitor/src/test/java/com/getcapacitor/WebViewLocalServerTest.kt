@@ -83,7 +83,7 @@ class WebViewLocalServerTest {
         val response = serve("/assets/app.js")
 
         assertEquals(200, response.statusCode)
-        assertEquals(1000, response.stream.available())
+        assertEquals(1000, response.stream!!.available())
     }
 
     @Test
@@ -116,6 +116,33 @@ class WebViewLocalServerTest {
     }
 
     @Test
+    fun partialResponseStreamEndsAfterTheLastByteOfTheRange() {
+        // The WebView skips to the first byte itself and reads to the end of the stream.
+        val response = serve("/assets/video.mp4", mapOf("Range" to "bytes=100-199"))
+        val stream = response.stream!!
+
+        assertEquals(200, stream.available())
+        assertEquals(100, stream.skip(100))
+        assertEquals(100, stream.readBytes().size)
+    }
+
+    @Test
+    fun rangePastTheEndIsA416WithoutAStream() {
+        for (range in listOf("bytes=1000-", "bytes=2000-3000", "bytes=-0")) {
+            responseArguments.clear()
+            handler.opened.clear()
+
+            val response = serve("/assets/video.mp4", mapOf("Range" to range))
+
+            assertEquals(range, 416, response.statusCode)
+            assertEquals(range, "bytes */1000", response.headers["Content-Range"])
+            // A stream would make the WebView check the range itself and fail the request.
+            assertNull(range, response.stream)
+            assertTrue(range, handler.opened.single().closed)
+        }
+    }
+
+    @Test
     fun lowercaseRangeHeaderIsRead() {
         val response = serve("/assets/video.mp4", mapOf("range" to "bytes=10-19"))
 
@@ -124,8 +151,8 @@ class WebViewLocalServerTest {
     }
 
     @Test
-    fun malformedOrUnsatisfiableRangeFallsBackToTheWholeFile() {
-        for (range in listOf("bytes", "bytes=", "bytes=abc", "bytes=0-1,5-6", "bytes=5-2", "bytes=2000-", "items=0-1")) {
+    fun rangeThatIsNotOneByteRangeFallsBackToTheWholeFile() {
+        for (range in listOf("bytes", "bytes=", "bytes=abc", "bytes=0-1,5-6", "bytes=5-2", "items=0-1")) {
             responseArguments.clear()
             handler.opened.clear()
 
@@ -182,7 +209,7 @@ class WebViewLocalServerTest {
         assertEquals(404, response.statusCode)
     }
 
-    class Response(val mimeType: String?, val statusCode: Int, val headers: Map<*, *>, val stream: InputStream)
+    class Response(val mimeType: String?, val statusCode: Int, val headers: Map<*, *>, val stream: InputStream?)
 
     /**
      * Runs a GET for [path] on the app's own host through [WebViewLocalServer.shouldInterceptRequest], with the
@@ -193,7 +220,7 @@ class WebViewLocalServerTest {
 
         // WebResourceResponse(mimeType, encoding, statusCode, reasonPhrase, responseHeaders, data)
         val arguments = responseArguments.single()
-        return Response(arguments[0] as String?, arguments[2] as Int, arguments[4] as Map<*, *>, arguments[5] as InputStream)
+        return Response(arguments[0] as String?, arguments[2] as Int, arguments[4] as Map<*, *>, arguments[5] as InputStream?)
     }
 
     /**

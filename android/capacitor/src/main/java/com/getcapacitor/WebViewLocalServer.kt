@@ -377,10 +377,16 @@ public class WebViewLocalServer internal constructor(
     }
 
     /**
-     * Answers a request for part of a file with a 206, or returns null when [rangeString] cannot be served as one
-     * partial response (malformed, several ranges, past the end) or the file is missing.
+     * Answers a request for part of a file with a 206, a range past the end of the file with a 416, and returns
+     * null when [rangeString] is not one byte range (malformed, several ranges) or the file is missing, so that the
+     * request is answered in full.
      *
-     * The WebView applies the requested range to the returned stream itself; this sets the matching headers.
+     * The WebView applies the Range of the request to a response stream itself (Chromium's
+     * AndroidStreamReaderURLLoader): it skips to the first byte of the range, then reads to the end of the stream, and
+     * it fails the request with net::ERR_REQUEST_RANGE_NOT_SATISFIABLE when the range does not fit the stream's
+     * available() size. So a partial response ends its stream after the last byte of the range, and a 416 has no
+     * stream, which the WebView passes to the page as it is. A malformed Range fails in the WebView before any
+     * response is read.
      */
     private fun handleRangeRequest(
         path: String,
@@ -390,22 +396,37 @@ public class WebViewLocalServer internal constructor(
     ): WebResourceResponse? {
         val responseStream = LazyInputStream(handler, request)
         val headers = handler.buildDefaultResponseHeaders()
-        var statusCode = 206
+        val mimeType = getMimeType(path, null)
         try {
-            val range =
-                if (responseStream.exists()) RangeHeader.parse(rangeString, responseStream.available().toLong()) else null
-            if (range == null) {
-                responseStream.close()
-                return null
-            }
-            headers["Accept-Ranges"] = "bytes"
-            headers["Content-Range"] = range.contentRange
-        } catch (e: IOException) {
-            statusCode = 404
-        }
+            val resolution =
+                if (responseStream.exists()) {
+                    RangeHeader.resolve(rangeString, responseStream.available().toLong())
+                } else {
+                    RangeHeader.Resolution.Whole
+                }
+            when (resolution) {
+                RangeHeader.Resolution.Whole -> {
+                    responseStream.close()
+                    return null
+                }
 
-        val mimeType = getMimeType(path, responseStream)
-        return WebResourceResponse(mimeType, handler.encoding, statusCode, handler.reasonPhrase, headers, responseStream)
+                is RangeHeader.Resolution.Unsatisfiable -> {
+                    responseStream.close()
+                    headers["Accept-Ranges"] = "bytes"
+                    headers["Content-Range"] = resolution.contentRange
+                    return WebResourceResponse(mimeType, handler.encoding, 416, "Range Not Satisfiable", headers, null)
+                }
+
+                is RangeHeader.Resolution.Partial -> {
+                    headers["Accept-Ranges"] = "bytes"
+                    headers["Content-Range"] = resolution.range.contentRange
+                    val body = BoundedInputStream(responseStream, resolution.range.last + 1)
+                    return WebResourceResponse(mimeType, handler.encoding, 206, "Partial Content", headers, body)
+                }
+            }
+        } catch (e: IOException) {
+            return WebResourceResponse(mimeType, handler.encoding, 404, "Not Found", headers, responseStream)
+        }
     }
 
     /**

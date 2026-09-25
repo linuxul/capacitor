@@ -7,6 +7,26 @@ import org.junit.Test
 class RangeHeaderTest {
     private fun parse(header: String?, totalLength: Long = 1000): RangeHeader? = RangeHeader.parse(header, totalLength)
 
+    private fun resolve(header: String?, totalLength: Long = 1000): RangeHeader.Resolution = RangeHeader.resolve(header, totalLength)
+
+    @Test
+    fun rangesPastTheEndAreUnsatisfiableAsOnIOS() {
+        for (header in listOf("bytes=1000-", "bytes=5000-6000", "bytes=-0")) {
+            val resolution = resolve(header)
+            assertEquals(header, RangeHeader.Resolution.Unsatisfiable(1000), resolution)
+            assertEquals(header, "bytes */1000", (resolution as RangeHeader.Resolution.Unsatisfiable).contentRange)
+        }
+    }
+
+    @Test
+    fun anythingElseThatIsNotOneRangeIsServedWhole() {
+        for (header in listOf(null, "bytes", "bytes=abc", "bytes=5-2", "bytes=0-1,5-6", "items=0-1")) {
+            assertEquals(header, RangeHeader.Resolution.Whole, resolve(header))
+        }
+        assertEquals(RangeHeader.Resolution.Whole, resolve("bytes=0-", 0))
+        assertEquals(RangeHeader.Resolution.Partial(RangeHeader(100, 199, 1000)), resolve("bytes=100-199"))
+    }
+
     @Test
     fun openEndedRangeRunsToTheLastByte() {
         assertEquals(RangeHeader(0, 999, 1000), parse("bytes=0-"))
