@@ -92,8 +92,8 @@ import WebKit
         let descriptor = InstanceDescriptor.init()
         if !isNewBinary {
             if let persistedPath = KeyValueStore.standard["serverBasePath", as: String.self], !persistedPath.isEmpty {
-                if let libPath = NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first {
-                    descriptor.appLocation = URL(fileURLWithPath: libPath, isDirectory: true)
+                if let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first {
+                    descriptor.appLocation = library
                         .appendingPathComponent("NoCloud")
                         .appendingPathComponent("ionic_built_snapshots")
                         .appendingPathComponent(URL(fileURLWithPath: persistedPath, isDirectory: true).lastPathComponent)

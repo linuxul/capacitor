@@ -37,6 +37,22 @@ class ServerBasePathTests: XCTestCase {
         try super.tearDownWithError()
     }
 
+    func testAPersistedServerBasePathIsServedFromTheSnapshotsInLibrary() throws {
+        let store = KeyValueStore.standard
+        let previous = store["serverBasePath", as: String.self]
+        defer { store["serverBasePath"] = previous }
+        store["serverBasePath"] = "/elsewhere/ionic_built_snapshots/snapshot-1"
+
+        let viewController = CAPBridgeViewController()
+        viewController.isNewBinary = false
+        let library = try XCTUnwrap(NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first)
+        let expected = URL(fileURLWithPath: library, isDirectory: true)
+            .appendingPathComponent("NoCloud")
+            .appendingPathComponent("ionic_built_snapshots")
+            .appendingPathComponent("snapshot-1")
+        XCTAssertEqual(viewController.instanceDescriptor().appLocation, expected)
+    }
+
     func testTheRouterChangesOnTheMainThreadWhenCalledFromTheBridgeQueue() {
         let changed = expectation(description: "base path changed")
         let bridge = self.bridge!
