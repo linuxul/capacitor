@@ -207,41 +207,33 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
     // MARK: - WKUIDelegate
 
     open func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
-        guard var viewController = bridge?.viewController else {
-            completionHandler()
-            return
-        }
-
-        if let presentedVC = viewController.presentedViewController, !presentedVC.isBeingDismissed {
-            viewController = presentedVC
-        }
-
+        let complete = PanelCompletion<Void> { _ in completionHandler() }
         let alertController = UIAlertController(title: nil, message: message, preferredStyle: .alert)
 
         alertController.addAction(UIAlertAction(title: "Ok", style: .default, handler: { (_) in
-            completionHandler()
+            complete(())
         }))
 
-        viewController.present(alertController, animated: true, completion: nil)
+        if !presentJavaScriptPanel(alertController) {
+            complete(())
+        }
     }
 
     open func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
-        guard let viewController = bridge?.viewController else {
-            completionHandler(false)
-            return
-        }
-
+        let complete = PanelCompletion(completionHandler)
         let alertController = UIAlertController(title: nil, message: message, preferredStyle: .alert)
 
         alertController.addAction(UIAlertAction(title: "Cancel", style: .default, handler: { (_) in
-            completionHandler(false)
+            complete(false)
         }))
 
         alertController.addAction(UIAlertAction(title: "Ok", style: .default, handler: { (_) in
-            completionHandler(true)
+            complete(true)
         }))
 
-        viewController.present(alertController, animated: true, completion: nil)
+        if !presentJavaScriptPanel(alertController) {
+            complete(false)
+        }
     }
 
     open func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
@@ -276,11 +268,7 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
             }
         }
 
-        guard let viewController = bridge?.viewController else {
-            completionHandler(nil)
-            return
-        }
-
+        let complete = PanelCompletion(completionHandler)
         let alertController = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
 
         alertController.addTextField { (textField) in
@@ -288,18 +276,20 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
         }
 
         alertController.addAction(UIAlertAction(title: "Cancel", style: .default, handler: { (_) in
-            completionHandler(nil)
+            complete(nil)
         }))
 
         alertController.addAction(UIAlertAction(title: "Ok", style: .default, handler: { (_) in
             if let text = alertController.textFields?.first?.text {
-                completionHandler(text)
+                complete(text)
             } else {
-                completionHandler(defaultText)
+                complete(defaultText)
             }
         }))
 
-        viewController.present(alertController, animated: true, completion: nil)
+        if !presentJavaScriptPanel(alertController) {
+            complete(nil)
+        }
     }
 
     open func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
@@ -314,6 +304,35 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
     // disable zooming in WKWebView ScrollView
     open func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
         scrollView.pinchGestureRecognizer?.isEnabled = false
+    }
+
+    // MARK: - Presentation
+
+    /// The view controller at the top of the presentation stack that starts at `viewController`. A presented view
+    /// controller that is being dismissed is skipped, because presenting from it would fail.
+    static func topmostViewController(from viewController: UIViewController) -> UIViewController {
+        var topmost = viewController
+        while let presented = topmost.presentedViewController, !presented.isBeingDismissed {
+            topmost = presented
+        }
+        return topmost
+    }
+
+    /// Presents a JavaScript panel from the topmost view controller above the bridge's view controller.
+    ///
+    /// Returns false when the panel could not be presented: there is no view controller, its view is not in a window,
+    /// or UIKit refused the presentation. UIKit only logs in those cases, so the caller has to answer WebKit itself,
+    /// which keeps the page's script blocked until the completion handler is called.
+    private func presentJavaScriptPanel(_ panel: UIAlertController) -> Bool {
+        guard let viewController = bridge?.viewController else {
+            return false
+        }
+        let presenter = Self.topmostViewController(from: viewController)
+        guard presenter.viewIfLoaded?.window != nil else {
+            return false
+        }
+        presenter.present(panel, animated: true, completion: nil)
+        return panel.presentingViewController != nil
     }
 
     // MARK: - Private
@@ -334,5 +353,21 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
         CAPLog.print("⚡️  URL: \(url)")
         CAPLog.print("⚡️  \(filename):\(line):\(col)")
         CAPLog.print("\n⚡️  See above for help with debugging blank-screen issues")
+    }
+}
+
+/// Calls a WebKit panel completion handler at most once. WebKit raises an exception when one is called twice, which
+/// could otherwise happen if a panel that was reported as not presented shows up after all.
+private final class PanelCompletion<Answer> {
+    private var handler: ((Answer) -> Void)?
+
+    init(_ handler: @escaping (Answer) -> Void) {
+        self.handler = handler
+    }
+
+    func callAsFunction(_ answer: Answer) {
+        let handler = self.handler
+        self.handler = nil
+        handler?(answer)
     }
 }

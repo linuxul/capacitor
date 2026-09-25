@@ -603,9 +603,21 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     // MARK: - CAPBridgeProtocol: View Presentation
 
+    /// Presents an alert from the topmost view controller. Safe to call from any thread; plugins usually call it from
+    /// the bridge queue, and UIKit is only used on the main thread.
     open func showAlertWith(title: String, message: String, buttonTitle: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: UIAlertController.Style.alert)
-        alert.addAction(UIAlertAction(title: buttonTitle, style: UIAlertAction.Style.default, handler: nil))
-        self.viewController?.present(alert, animated: true, completion: nil)
+        let show = { [weak self] in
+            guard let viewController = self?.viewController else {
+                return
+            }
+            let alert = UIAlertController(title: title, message: message, preferredStyle: UIAlertController.Style.alert)
+            alert.addAction(UIAlertAction(title: buttonTitle, style: UIAlertAction.Style.default, handler: nil))
+            WebViewDelegationHandler.topmostViewController(from: viewController).present(alert, animated: true, completion: nil)
+        }
+        if Thread.isMainThread {
+            show()
+        } else {
+            DispatchQueue.main.async(execute: show)
+        }
     }
 }
