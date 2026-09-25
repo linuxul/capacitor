@@ -30,7 +30,8 @@ public open class CapacitorWebView(context: Context, attrs: AttributeSet?) : Web
     @Suppress("DEPRECATION")
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         if (event != null && event.action == KeyEvent.ACTION_MULTIPLE) {
-            evaluateJavascript("document.activeElement.value = document.activeElement.value + '" + event.characters + "';", null)
+            val characters = JsStrings.literal(event.characters)
+            evaluateJavascript("document.activeElement.value = document.activeElement.value + $characters;", null)
             return false
         }
         return super.dispatchKeyEvent(event)

@@ -611,17 +611,27 @@ public class Bridge private constructor(
         executeOnMainThread { webView.evaluateJavascript(js, callback) }
     }
 
+    /**
+     * Log [message] to the web console at [level] (a console method such as "log" or "warn").
+     */
     @JvmOverloads
     public fun logToJs(message: String?, level: String? = "log") {
-        eval("window.Capacitor.logJs(\"$message\", \"$level\")", null)
+        eval("window.Capacitor.logJs(${JsStrings.literal(message)}, ${JsStrings.literal(level)})", null)
     }
 
+    /**
+     * Dispatch the event [eventName] on [target] ("window", "document" or a CSS selector) in the web view.
+     */
     public fun triggerJSEvent(eventName: String?, target: String?) {
-        eval("window.Capacitor.triggerEvent(\"$eventName\", \"$target\")") { }
+        eval("window.Capacitor.triggerEvent(${JsStrings.literal(eventName)}, ${JsStrings.literal(target)})") { }
     }
 
+    /**
+     * Dispatch the event [eventName] on [target] with [data], which must be a JSON value (it is inserted into
+     * the script as it is, for example a `JSObject.toString()`).
+     */
     public fun triggerJSEvent(eventName: String?, target: String?, data: String?) {
-        eval("window.Capacitor.triggerEvent(\"$eventName\", \"$target\", $data)") { }
+        eval("window.Capacitor.triggerEvent(${JsStrings.literal(eventName)}, ${JsStrings.literal(target)}, $data)") { }
     }
 
     public fun triggerWindowJSEvent(eventName: String?) {
@@ -728,7 +738,7 @@ public class Bridge private constructor(
             val globalJS = JSExport.getGlobalJS(activity, config.isLoggingEnabled, isDevMode)
             val bridgeJS = JSExport.getBridgeJS(activity)
             val pluginJS = JSExport.getPluginJS(plugins.values)
-            val localUrlJS = "window.WEBVIEW_SERVER_URL = '$localUrl';"
+            val localUrlJS = "window.WEBVIEW_SERVER_URL = ${JsStrings.literal(localUrl)};"
             val miscJS = JSExport.getMiscFileJS(miscJSFileInjections, activity)
 
             miscJSFileInjections = ArrayList()
