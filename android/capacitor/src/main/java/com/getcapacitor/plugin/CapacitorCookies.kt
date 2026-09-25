@@ -11,6 +11,8 @@ import java.net.CookiePolicy
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 @CapacitorPlugin
 public class CapacitorCookies : Plugin() {
@@ -46,36 +48,43 @@ public class CapacitorCookies : Plugin() {
     }
 
     @PluginMethod
-    public fun getCookies(call: PluginCall) {
-        bridge.eval("document.cookie") { value: String? ->
-            val cookieMap = JSObject()
+    public suspend fun getCookies(call: PluginCall): JSObject {
+        val documentCookie = suspendCoroutine<String?> { continuation -> bridge.eval("document.cookie") { continuation.resume(it) } }
 
-            // evaluateJavascript reports a JS null as the string "null", which yields an empty map below;
-            // a null reference is treated the same way instead of crashing the callback.
-            if (value != null) {
-                val cookies = value.substring(1, value.length - 1)
-                // Pattern.split keeps java.lang.String.split semantics (trailing empty parts dropped).
-                val cookieArray = SEMICOLON.split(cookies)
+        return parseDocumentCookie(documentCookie)
+    }
 
-                for (cookie in cookieArray) {
-                    if (cookie.isNotEmpty()) {
-                        val keyValue = EQUALS.split(cookie, 2)
+    /**
+     * The cookies in [value], the result of evaluating `document.cookie`: a JSON string literal.
+     */
+    private fun parseDocumentCookie(value: String?): JSObject {
+        val cookieMap = JSObject()
 
-                        if (keyValue.size == 2) {
-                            // trim { it <= ' ' } is java.lang.String.trim().
-                            // decode(String, Charset) is API 33, which is this fork's minSdk, and throws
-                            // no checked exception.
-                            val key = URLDecoder.decode(keyValue[0].trim { it <= ' ' }, StandardCharsets.UTF_8)
-                            val cookieValue = URLDecoder.decode(keyValue[1].trim { it <= ' ' }, StandardCharsets.UTF_8)
+        // evaluateJavascript reports a JS null as the string "null", which yields an empty map below;
+        // a null reference is treated the same way.
+        if (value != null) {
+            val cookies = value.substring(1, value.length - 1)
+            // Pattern.split keeps java.lang.String.split semantics (trailing empty parts dropped).
+            val cookieArray = SEMICOLON.split(cookies)
 
-                            cookieMap.put(key, cookieValue)
-                        }
+            for (cookie in cookieArray) {
+                if (cookie.isNotEmpty()) {
+                    val keyValue = EQUALS.split(cookie, 2)
+
+                    if (keyValue.size == 2) {
+                        // trim { it <= ' ' } is java.lang.String.trim().
+                        // decode(String, Charset) is API 33, which is this fork's minSdk, and throws
+                        // no checked exception.
+                        val key = URLDecoder.decode(keyValue[0].trim { it <= ' ' }, StandardCharsets.UTF_8)
+                        val cookieValue = URLDecoder.decode(keyValue[1].trim { it <= ' ' }, StandardCharsets.UTF_8)
+
+                        cookieMap.put(key, cookieValue)
                     }
                 }
             }
-
-            call.resolve(cookieMap)
         }
+
+        return cookieMap
     }
 
     @PluginMethod

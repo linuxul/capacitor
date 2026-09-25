@@ -1,11 +1,17 @@
 package com.getcapacitor.plugin
 
+import android.webkit.ValueCallback
+import com.getcapacitor.Bridge
 import com.getcapacitor.JSObject
 import com.getcapacitor.MessageHandler
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginResult
 import com.getcapacitor.RecordingLogSink
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -13,11 +19,14 @@ import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
+import org.mockito.kotlin.whenever
 
 /**
  * A cookie call with a missing option is rejected and leaves the cookie store alone.
@@ -76,6 +85,40 @@ class CapacitorCookiesTest {
 
         verify(cookieManager).setCookie("https://a.test", "k", "v", "", "/")
         verify(handler, times(1)).sendResponseMessage(any(), isNull(), isNull())
+    }
+
+    @Test
+    fun getCookiesReturnsTheCookiesOfTheDocument() {
+        val cookies = getCookies("\"a=1; b=x%20y; noValue; c=d=e\"")
+
+        assertEquals("1", cookies.getString("a"))
+        assertEquals("x y", cookies.getString("b"))
+        assertEquals("d=e", cookies.getString("c"))
+        assertFalse(cookies.has("noValue"))
+    }
+
+    @Test
+    fun getCookiesOfADocumentWithoutCookiesIsEmpty() {
+        // evaluateJavascript reports a JS null as "null", and a missing value as a null reference.
+        assertEquals(0, getCookies("null").length())
+        assertEquals(0, getCookies(null).length())
+    }
+
+    /**
+     * Runs getCookies against a bridge whose evaluation of document.cookie yields [documentCookie]. The evaluation
+     * answers right away, so the suspend method returns without suspending.
+     */
+    private fun getCookies(documentCookie: String?): JSObject {
+        val bridge = mock<Bridge>()
+        doAnswer { it.getArgument<ValueCallback<String?>>(1).onReceiveValue(documentCookie) }
+            .whenever(bridge)
+            .eval(eq("document.cookie"), any())
+        plugin.bridge = bridge
+
+        var result: Result<JSObject>? = null
+        val block: suspend () -> JSObject = { plugin.getCookies(call("getCookies", JSObject())) }
+        block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+        return checkNotNull(result).getOrThrow()
     }
 
     @Test

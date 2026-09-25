@@ -10,10 +10,12 @@ import com.getcapacitor.Bridge
 import com.getcapacitor.JSObject
 import com.getcapacitor.MessageHandler
 import com.getcapacitor.PluginCall
+import com.getcapacitor.PluginMethod
+import com.getcapacitor.PluginThread
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.mockito.Mockito.mockStatic
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -85,8 +87,6 @@ class SystemBarsTest {
         whenever(bridge.activity).thenReturn(activity)
         whenever(activity.window).thenReturn(window)
         whenever(window.decorView).thenReturn(decorView)
-        // show()/hide() do their work inside executeOnMainThread; run it inline.
-        doAnswer { it.getArgument<Runnable>(0).run() }.whenever(bridge).executeOnMainThread(any())
 
         plugin.bridge = bridge
 
@@ -100,6 +100,16 @@ class SystemBarsTest {
             if (hidden) plugin.hide(call) else plugin.show(call)
         }
 
+        // The bridge runs show()/hide() on the main thread; they no longer post there themselves.
+        verify(bridge, never()).executeOnMainThread(any())
         return controller
+    }
+
+    @Test
+    fun barMethodsRunOnTheMainThread() {
+        for (name in listOf("setStyle", "show", "hide")) {
+            val method = SystemBars::class.java.getMethod(name, PluginCall::class.java)
+            assertEquals(name, PluginThread.MAIN, method.getAnnotation(PluginMethod::class.java)?.thread)
+        }
     }
 }

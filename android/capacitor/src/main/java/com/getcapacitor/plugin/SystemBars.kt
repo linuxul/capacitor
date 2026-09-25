@@ -13,6 +13,7 @@ import com.getcapacitor.Logger
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
+import com.getcapacitor.PluginThread
 import com.getcapacitor.WebViewListener
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.util.Locale
@@ -113,36 +114,30 @@ public class SystemBars : Plugin() {
         }
     }
 
-    @PluginMethod
+    @PluginMethod(thread = PluginThread.MAIN)
     public fun setStyle(call: PluginCall) {
         // PluginCall.getString returns the given default when the key is absent, so the elvis never fires.
         val bar = call.getString("bar", "") ?: ""
         val style = call.getString("style", STYLE_DEFAULT) ?: STYLE_DEFAULT
 
-        bridge.executeOnMainThread {
-            setStyle(style, bar)
-            call.resolve()
-        }
+        setStyle(style, bar)
+        call.resolve()
     }
 
-    @PluginMethod
+    @PluginMethod(thread = PluginThread.MAIN)
     public fun show(call: PluginCall) {
         val bar = call.getString("bar", "") ?: ""
 
-        bridge.executeOnMainThread {
-            setHidden(false, bar)
-            call.resolve()
-        }
+        setHidden(false, bar)
+        call.resolve()
     }
 
-    @PluginMethod
+    @PluginMethod(thread = PluginThread.MAIN)
     public fun hide(call: PluginCall) {
         val bar = call.getString("bar", "") ?: ""
 
-        bridge.executeOnMainThread {
-            setHidden(true, bar)
-            call.resolve()
-        }
+        setHidden(true, bar)
+        call.resolve()
     }
 
     @PluginMethod
