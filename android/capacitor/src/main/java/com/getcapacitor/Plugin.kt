@@ -527,15 +527,26 @@ public open class Plugin {
      */
     @PluginMethod(returnType = PluginMethod.RETURN_PROMISE)
     public open fun removeAllListeners(call: PluginCall) {
-        synchronized(listenerLock) {
-            eventListeners.clear()
-        }
+        releaseAllListeners()
         call.resolve()
     }
 
+    /**
+     * Remove every listener of this plugin and release their saved calls. The bridge calls this when it resets.
+     */
     public open fun removeAllListeners() {
-        synchronized(listenerLock) {
-            eventListeners.clear()
+        releaseAllListeners()
+    }
+
+    // The bridge keeps each addListener call alive; release it too, or it stays saved for the life of the bridge.
+    private fun releaseAllListeners() {
+        val removed =
+            synchronized(listenerLock) {
+                eventListeners.values.flatten().also { eventListeners.clear() }
+            }
+
+        for (listener in removed) {
+            bridge.releaseCall(listener)
         }
     }
 
