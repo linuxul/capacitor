@@ -33,4 +33,18 @@ internal final class PluginRegistry {
             return replaced
         }
     }
+
+    /// Registers `plugin` unless a plugin is registered under its JavaScript name already, and returns the plugin that
+    /// is registered under that name afterwards.
+    func registerIfAbsent(_ plugin: CapacitorPlugin) -> CapacitorPlugin {
+        let name = plugin.jsName
+        return lock.withLock {
+            if let registered = plugins[name] {
+                return registered
+            }
+            plugins[name] = plugin
+            names.append(name)
+            return plugin
+        }
+    }
 }

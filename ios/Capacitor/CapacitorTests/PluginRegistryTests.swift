@@ -29,6 +29,63 @@ private class NamedPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+// The classes below are looked up by name. The test bundle subclasses CAPPlugin across the framework's library
+// evolution boundary, so the Swift compiler emits them as Obj-C class stubs, which NSClassFromString only finds once
+// they have been realized; the tests realize them first (see `lookUp`). Plugins built with SwiftPM are ordinary classes.
+
+/// Not listed for registration, but its class name is its JavaScript name, so the bridge loads it on first use.
+@objc(LazyEcho)
+class LazyEchoPlugin: CAPPlugin, CAPBridgedPlugin {
+    static var instances = 0
+    let identifier = "LazyEcho"
+    let jsName = "LazyEcho"
+    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+
+    override func load() {
+        LazyEchoPlugin.instances += 1
+    }
+
+    @objc func echo(_ call: CAPPluginCall) {
+        call.resolve(["value": call.getString("value") ?? ""])
+    }
+}
+
+/// Registered under a JavaScript name that differs from its class name.
+@objc(CAPRegistryIdentifierPlugin)
+class RegistryIdentifierPlugin: CAPPlugin, CAPBridgedPlugin {
+    let identifier = "CAPRegistryIdentifierPlugin"
+    let jsName = "RegistryIdentifier"
+    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+
+    @objc func echo(_ call: CAPPluginCall) {
+        call.resolve()
+    }
+}
+
+/// Not registered, and its JavaScript name differs from its class name.
+@objc(CAPRegistryMismatchPlugin)
+class RegistryMismatchPlugin: CAPPlugin, CAPBridgedPlugin {
+    let identifier = "CAPRegistryMismatchPlugin"
+    let jsName = "RegistryMismatch"
+    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+
+    @objc func echo(_ call: CAPPluginCall) {
+        call.resolve()
+    }
+}
+
+/// Instance plugins are registered by the app, never created by the bridge.
+@objc(CAPRegistryInstancePlugin)
+class RegistryInstancePlugin: CAPInstancePlugin, CAPBridgedPlugin {
+    let identifier = "CAPRegistryInstancePlugin"
+    let jsName = "CAPRegistryInstancePlugin"
+    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+
+    @objc func echo(_ call: CAPPluginCall) {
+        call.resolve()
+    }
+}
+
 private class ExternalNavigationAction: WKNavigationAction {
     override var request: URLRequest { URLRequest(url: URL(string: "https://example.com/")!) }
     override var targetFrame: WKFrameInfo? { nil }
@@ -96,4 +153,64 @@ class PluginRegistryTests: XCTestCase {
         XCTAssertTrue(bridge.plugin(withName: "Lookup") === plugin)
         XCTAssertTrue(bridge.pluginRegistry.all.contains { $0 === plugin })
     }
+
+    // MARK: - Lazy loading
+
+    /// Realizes `type` and checks that the Obj-C runtime finds it under `name`, so a rejection is not just a failed lookup.
+    private func lookUp(_ type: AnyClass, as name: String) {
+        _ = type.description()
+        XCTAssertTrue(NSClassFromString(name) === type, "\(name) must be visible to the Obj-C runtime")
+    }
+
+    private func send(_ pluginId: String, _ method: String = "echo", to bridge: RecordingBridge) -> RecordingBridge.Message? {
+        let callbackId = UUID().uuidString
+        let sent = expectation(description: "result sent")
+        bridge.onMessage = { if $0.callbackId == callbackId { sent.fulfill() } }
+        bridge.handleJSCall(call: JSCall(options: ["value": "hi"], pluginId: pluginId, method: method, callbackId: callbackId))
+        wait(for: [sent], timeout: 2)
+        return bridge.messages.last { $0.callbackId == callbackId }
+    }
+
+    func testLoadsAnUnlistedPluginWhoseClassNameIsItsJavaScriptName() {
+        lookUp(LazyEchoPlugin.self, as: "LazyEcho")
+        let bridge = RecordingBridge(delegate: TestBridgeDelegate())
+        let loadedBefore = LazyEchoPlugin.instances
+        XCTAssertEqual(send("LazyEcho", to: bridge)?.payload, #"{"value":"hi"}"#)
+        let plugin = bridge.plugin(withName: "LazyEcho")
+        XCTAssertNotNil(plugin)
+        XCTAssertEqual(send("LazyEcho", to: bridge)?.success, true)
+        XCTAssertTrue(bridge.plugin(withName: "LazyEcho") === plugin, "the loaded instance is reused")
+        XCTAssertEqual(LazyEchoPlugin.instances, loadedBefore + 1)
+    }
+
+    func testDoesNotReplaceARegisteredPluginCalledByItsClassName() {
+        let bridge = RecordingBridge(delegate: TestBridgeDelegate())
+        let registered = RegistryIdentifierPlugin()
+        bridge.registerPluginInstance(registered)
+        lookUp(RegistryIdentifierPlugin.self, as: "CAPRegistryIdentifierPlugin")
+
+        let message = send("CAPRegistryIdentifierPlugin", to: bridge)
+        XCTAssertEqual(message?.success, false)
+        XCTAssertTrue(bridge.plugin(withName: "RegistryIdentifier") === registered)
+        XCTAssertNil(bridge.plugin(withName: "CAPRegistryIdentifierPlugin"))
+        XCTAssertEqual(bridge.pluginRegistry.all.count, 1)
+    }
+
+    func testDoesNotLoadPluginsWhoseJavaScriptNameDiffers() {
+        lookUp(RegistryMismatchPlugin.self, as: "CAPRegistryMismatchPlugin")
+        let bridge = RecordingBridge(delegate: TestBridgeDelegate())
+        XCTAssertEqual(send("CAPRegistryMismatchPlugin", to: bridge)?.success, false)
+        XCTAssertTrue(bridge.pluginRegistry.all.isEmpty)
+    }
+
+    func testDoesNotLoadClassesThatAreNotBridgedPlugins() {
+        lookUp(RegistryInstancePlugin.self, as: "CAPRegistryInstancePlugin")
+        let bridge = RecordingBridge(delegate: TestBridgeDelegate())
+        for name in ["NSObject", "UIView", "CAPPlugin", "CAPRegistryInstancePlugin", "NoSuchClass"] {
+            XCTAssertEqual(send(name, to: bridge)?.success, false, name)
+        }
+        XCTAssertTrue(bridge.pluginRegistry.all.isEmpty)
+    }
 }
+
+
