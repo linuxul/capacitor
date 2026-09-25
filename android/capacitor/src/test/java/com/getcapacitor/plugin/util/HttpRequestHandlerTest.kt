@@ -13,6 +13,7 @@ import java.util.Locale
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -75,6 +76,25 @@ class HttpRequestHandlerTest {
         }
 
         assertTrue(connections.single().disconnected)
+    }
+
+    @Test
+    fun requestWithoutBridgeOrUserAgentUsesTheConnectionDefault() {
+        val connections = serve { ByteArrayInputStream("hi".toByteArray()) }
+        val call =
+            PluginCall(
+                mock<MessageHandler>(),
+                "CapacitorHttp",
+                "1",
+                "get",
+                JSObject().put("url", "${FakeHttpProtocol.SCHEME}://server/path")
+            )
+
+        // The bridge parameter is nullable; without a User-Agent header this dereferenced it.
+        val response = HttpRequestHandler.request(call, "GET", null)
+
+        assertEquals("hi", response.getString("data"))
+        assertNull(connections.single().sentHeaders["User-Agent"])
     }
 
     @Test

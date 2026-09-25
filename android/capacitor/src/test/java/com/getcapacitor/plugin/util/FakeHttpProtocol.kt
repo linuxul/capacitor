@@ -45,7 +45,11 @@ class FakeHttpConnection(url: URL, private val body: () -> InputStream = { throw
     @Volatile
     var disconnected: Boolean = false
 
+    /** The request headers as they were when the request was sent. */
+    var sentHeaders: Map<String, List<String>> = emptyMap()
+
     override fun connect() {
+        sentHeaders = requestProperties
         connected = true
     }
 

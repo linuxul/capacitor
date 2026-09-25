@@ -368,9 +368,9 @@ public object HttpRequestHandler {
         }
         headers.remove("x-cap-user-agent")
 
-        if (!headers.has("User-Agent") && !headers.has("user-agent")) {
-            // Same as the Java original: a null bridge throws here.
-            headers.put("User-Agent", bridge!!.config.overriddenUserAgentString)
+        // Without a bridge there is no configured user agent, and the connection sends its default one.
+        if (bridge != null && !headers.has("User-Agent") && !headers.has("user-agent")) {
+            headers.put("User-Agent", bridge.config.overriddenUserAgentString)
         }
 
         val url = URL(urlString)
