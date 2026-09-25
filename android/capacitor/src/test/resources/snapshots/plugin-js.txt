@@ -2,27 +2,27 @@
 (function(w) {
 var a = (w.Capacitor = w.Capacitor || {});
 var p = (a.Plugins = a.Plugins || {});
-var t = (p['Snapshot'] = {});
+var t = (p["Snapshot"] = {});
 t.addListener = function(eventName, callback) {
-  return w.Capacitor.addListener('Snapshot', eventName, callback);
+  return w.Capacitor.addListener("Snapshot", eventName, callback);
 }
-t['checkPermissions'] = function(_options) {
-return w.Capacitor.nativePromise('Snapshot', 'checkPermissions', _options)
+t["checkPermissions"] = function(_options) {
+return w.Capacitor.nativePromise("Snapshot", "checkPermissions", _options)
 }
-t['echo'] = function(_options) {
-return w.Capacitor.nativePromise('Snapshot', 'echo', _options)
+t["echo"] = function(_options) {
+return w.Capacitor.nativePromise("Snapshot", "echo", _options)
 }
-t['fire'] = function(_options) {
-return w.Capacitor.nativeCallback('Snapshot', 'fire', _options)
+t["fire"] = function(_options) {
+return w.Capacitor.nativeCallback("Snapshot", "fire", _options)
 }
-t['removeAllListeners'] = function(_options) {
-return w.Capacitor.nativePromise('Snapshot', 'removeAllListeners', _options)
+t["removeAllListeners"] = function(_options) {
+return w.Capacitor.nativePromise("Snapshot", "removeAllListeners", _options)
 }
-t['requestPermissions'] = function(_options) {
-return w.Capacitor.nativePromise('Snapshot', 'requestPermissions', _options)
+t["requestPermissions"] = function(_options) {
+return w.Capacitor.nativePromise("Snapshot", "requestPermissions", _options)
 }
-t['watch'] = function(_options, _callback) {
-return w.Capacitor.nativeCallback('Snapshot', 'watch', _options, _callback)
+t["watch"] = function(_options, _callback) {
+return w.Capacitor.nativeCallback("Snapshot", "watch", _options, _callback)
 }
 })(window);
 

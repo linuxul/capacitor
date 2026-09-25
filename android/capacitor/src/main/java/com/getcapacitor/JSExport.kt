@@ -6,6 +6,13 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
+/**
+ * Builds the JavaScript that defines the plugin proxies and proxies their calls to the bridge.
+ *
+ * Every string these scripts take from Kotlin (plugin ids and method names) is written with [JsStrings.literal], like the
+ * server URL and the scripts the bridge evaluates, so a quote, a backslash or a line break in it cannot end the literal
+ * early. The plugin headers are JSON, which is already JavaScript.
+ */
 internal object JSExport {
     private const val CATCHALL_OPTIONS_PARAM = "_options"
     private const val CALLBACK_PARAM = "_callback"
@@ -34,17 +41,14 @@ internal object JSExport {
 
         lines.add("// Begin: Capacitor Plugin JS")
         for (plugin in plugins) {
+            val pluginId = JsStrings.literal(plugin.id)
             lines.add(
                 "(function(w) {\n" +
                     "var a = (w.Capacitor = w.Capacitor || {});\n" +
                     "var p = (a.Plugins = a.Plugins || {});\n" +
-                    "var t = (p['" +
-                    plugin.id +
-                    "'] = {});\n" +
+                    "var t = (p[$pluginId] = {});\n" +
                     "t.addListener = function(eventName, callback) {\n" +
-                    "  return w.Capacitor.addListener('" +
-                    plugin.id +
-                    "', eventName, callback);\n" +
+                    "  return w.Capacitor.addListener($pluginId, eventName, callback);\n" +
                     "}"
             )
             val methods = plugin.methods
@@ -53,7 +57,7 @@ internal object JSExport {
                     // Don't export add/remove listener, we do that automatically above as they are "special snowflakes"
                     continue
                 }
-                lines.add(generateMethodJS(plugin, method))
+                lines.add(generateMethodJS(pluginId, method))
             }
 
             lines.add("})(window);\n")
@@ -119,8 +123,10 @@ internal object JSExport {
 
     fun getBridgeJS(context: Context): String = getFilesContent(context, "native-bridge.js")
 
-    private fun generateMethodJS(plugin: PluginHandle, method: PluginMethodHandle): String {
+    /** [pluginId] is the plugin id already written as a JavaScript literal. */
+    private fun generateMethodJS(pluginId: String, method: PluginMethodHandle): String {
         val lines = ArrayList<String>()
+        val methodName = JsStrings.literal(method.name)
 
         val args = ArrayList<String>()
         // Add the catch all param that will take a full javascript object to pass to the plugin
@@ -133,17 +139,15 @@ internal object JSExport {
 
         // Create the method function declaration
         val argList = args.joinToString(", ")
-        lines.add("t['" + method.name + "'] = function(" + argList + ") {")
+        lines.add("t[$methodName] = function($argList) {")
 
         when (returnType) {
             // _callback is already in args when the method returns one, so the same line serves both.
             PluginMethod.RETURN_NONE, PluginMethod.RETURN_CALLBACK ->
-                lines.add("return w.Capacitor.nativeCallback('" + plugin.id + "', '" + method.name + "', " + argList + ")")
+                lines.add("return w.Capacitor.nativeCallback($pluginId, $methodName, $argList)")
 
             PluginMethod.RETURN_PROMISE ->
-                lines.add(
-                    "return w.Capacitor.nativePromise('" + plugin.id + "', '" + method.name + "', " + CATCHALL_OPTIONS_PARAM + ")"
-                )
+                lines.add("return w.Capacitor.nativePromise($pluginId, $methodName, $CATCHALL_OPTIONS_PARAM)")
 
             else -> {
                 // TODO: Do something here?

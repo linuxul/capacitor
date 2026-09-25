@@ -63,8 +63,8 @@ class JSProtocolSnapshotTest {
         val trailerAt = pluginJS.indexOf(trailer)
         val headersAt = pluginJS.indexOf(headersPrefix)
 
-        // The first block is the plugin preamble; only the t['name'] blocks after it are unordered.
-        val blocks = pluginJS.substring(0, trailerAt).split(Regex("\n(?=t\\[')"))
+        // The first block is the plugin preamble; only the t["name"] blocks after it are unordered.
+        val blocks = pluginJS.substring(0, trailerAt).split(Regex("\n(?=t\\[\")"))
         val sortedBlocks = blocks.take(1) + blocks.drop(1).sorted()
 
         val header = JSONArray(pluginJS.substring(headersAt + headersPrefix.length, pluginJS.length - 1)).getJSONObject(0)

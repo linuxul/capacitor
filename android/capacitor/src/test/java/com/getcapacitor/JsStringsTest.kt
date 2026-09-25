@@ -112,4 +112,70 @@ class JsStringsTest {
         verify(webView).evaluateJavascript(script.capture(), isNull())
         assertEquals("document.activeElement.value = document.activeElement.value + ${JsStrings.literal("it's\n")};", script.firstValue)
     }
+
+    private fun methodHandle(methodName: String, returnType: String): PluginMethodHandle {
+        val method = mock<PluginMethodHandle>()
+        whenever(method.name).thenReturn(methodName)
+        whenever(method.returnType).thenReturn(returnType)
+        return method
+    }
+
+    @Test
+    fun pluginProxiesQuotePluginAndMethodNames() {
+        // A plugin id is any annotation string. Kotlin cannot declare a method whose name has a backslash or a line
+        // break, but the JVM allows one, so the handles are mocks.
+        val pluginId = "Echo'\\\n\u2028"
+        val promiseName = "it's\\a\nmethod\u2028"
+        val callbackName = "watch'\\\n\u2028"
+        val noneName = "fire'\\\n\u2028"
+        // Stubbed before plugin.methods: Mockito cannot stub one mock inside another's thenReturn.
+        val methods =
+            listOf(
+                methodHandle(promiseName, PluginMethod.RETURN_PROMISE),
+                methodHandle(callbackName, PluginMethod.RETURN_CALLBACK),
+                methodHandle(noneName, PluginMethod.RETURN_NONE)
+            )
+        val plugin = mock<PluginHandle>()
+        whenever(plugin.id).thenReturn(pluginId)
+        whenever(plugin.methods).thenReturn(methods)
+
+        val (proxies, headers) = JSExport.getPluginJS(listOf(plugin)).split("\nwindow.Capacitor.PluginHeaders = ")
+
+        // A raw string keeps its backslashes, so this is the JavaScript source itself.
+        assertEquals(
+            """
+            // Begin: Capacitor Plugin JS
+            (function(w) {
+            var a = (w.Capacitor = w.Capacitor || {});
+            var p = (a.Plugins = a.Plugins || {});
+            var t = (p["Echo'\\\n\u2028"] = {});
+            t.addListener = function(eventName, callback) {
+              return w.Capacitor.addListener("Echo'\\\n\u2028", eventName, callback);
+            }
+            t["it's\\a\nmethod\u2028"] = function(_options) {
+            return w.Capacitor.nativePromise("Echo'\\\n\u2028", "it's\\a\nmethod\u2028", _options)
+            }
+            t["watch'\\\n\u2028"] = function(_options, _callback) {
+            return w.Capacitor.nativeCallback("Echo'\\\n\u2028", "watch'\\\n\u2028", _options, _callback)
+            }
+            t["fire'\\\n\u2028"] = function(_options) {
+            return w.Capacitor.nativeCallback("Echo'\\\n\u2028", "fire'\\\n\u2028", _options)
+            }
+            })(window);
+            """.trimIndent() + "\n",
+            proxies
+        )
+        // Read back the way an engine would, the script's string literals are exactly the names: none ends early.
+        val literals = Regex("\"(?:[^\"\\\\]|\\\\.)*\"").findAll(proxies).map { evaluate(it.value) }.toSet()
+        assertEquals(setOf(pluginId, promiseName, callbackName, noneName), literals)
+
+        // The headers are JSON, a JavaScript literal as they are.
+        val header = JSONArray(headers.removeSuffix(";")).getJSONObject(0)
+        val methodHeaders = header.getJSONArray("methods")
+        assertEquals(pluginId, header.getString("name"))
+        assertEquals(
+            listOf(promiseName, callbackName, noneName),
+            (0 until methodHeaders.length()).map { methodHeaders.getJSONObject(it).getString("name") }
+        )
+    }
 }

@@ -16,6 +16,10 @@ These changes are on the `refactor/kotlin-swift` branch and ship with the next r
 
 - The scripts injected at document start (`window.WEBVIEW_SERVER_URL` and the plugin proxies in `window.Capacitor.Plugins`) write the server URL and plugin and method names as JSON string literals, so a quote, backslash or line break in `server.hostname`/`server.iosScheme`, a `jsName` or a method name no longer breaks the script or injects code. The generated source uses double quotes (`t["echo"] = …`, `nativePromise("Echo", "echo", _options)`); the values are unchanged.
 
+### Android runtime
+
+- The plugin proxies injected into the page (`window.Capacitor.Plugins`) write plugin ids and method names as JSON string literals, so a quote, backslash, line break or U+2028/U+2029 in a `@CapacitorPlugin` name or a `@PluginMethod` method name no longer breaks the script or injects code. The generated source uses double quotes (`t["echo"] = …`, `nativePromise("Echo", "echo", _options)`), as on iOS; the values are unchanged. `window.WEBVIEW_SERVER_URL` was already quoted this way.
+
 ## 9.0: changes from fork 8.5.3
 
 This section is for apps and plugins that already run on fork 8.5.3. The sections after it describe how the fork differs from upstream Capacitor.
