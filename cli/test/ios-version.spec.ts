@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs-extra';
 import { resolve } from 'path';
 
-import { getMajoriOSVersionFromPbx } from '../src/ios/common';
+import { getMajoriOSVersionFromPbx, getSPMiOSMajorVersion } from '../src/ios/common';
 
 const REPO_ROOT = resolve(__dirname, '..', '..');
 
@@ -30,5 +30,16 @@ describe('getMajoriOSVersionFromPbx', () => {
   it.each(['ios-spm-template', 'ios-pods-template'])('reads iOS 17 from the shipped %s', (template) => {
     const pbx = readFileSync(resolve(REPO_ROOT, template, 'App/App.xcodeproj/project.pbxproj'), 'utf-8');
     expect(getMajoriOSVersionFromPbx(pbx)).toBe('17');
+  });
+});
+
+describe('getSPMiOSMajorVersion', () => {
+  it.each([
+    ['15', '17.0', '17'],
+    ['17', '17.0', '17'],
+    ['18', '17.0', '18'],
+    ['', '17.0', '17'],
+  ])('declares iOS %s as %s-or-later for the app package', (appMajor, runtimeMin, expected) => {
+    expect(getSPMiOSMajorVersion(appMajor, runtimeMin)).toBe(expected);
   });
 });

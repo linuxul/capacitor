@@ -127,6 +127,15 @@ export function getMajoriOSVersionFromPbx(pbx: string): string | undefined {
   return majors.length > 0 ? String(Math.min(...majors)) : undefined;
 }
 
+/**
+ * The iOS major version to declare for the app's Swift package. An app project that still targets an
+ * iOS older than the runtime minimum gets the minimum, because SwiftPM refuses to link a package graph
+ * in which a dependency (the Capacitor runtime) requires a newer platform than the package using it.
+ */
+export function getSPMiOSMajorVersion(appMajor: string, runtimeMinVersion: string): string {
+  return String(Math.max(parseInt(appMajor, 10) || 0, parseInt(runtimeMinVersion, 10)));
+}
+
 export function getMajoriOSVersion(config: Config): string {
   const pbx = readFileSync(join(config.ios.nativeXcodeProjDirAbs, 'project.pbxproj'), 'utf-8');
   return getMajoriOSVersionFromPbx(pbx) ?? config.ios.minVersion.split('.')[0];

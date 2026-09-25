@@ -17,7 +17,7 @@ import { extract } from 'tar';
 
 import type { Config } from '../definitions';
 import { fatal } from '../errors';
-import { getMajoriOSVersion } from '../ios/common';
+import { getMajoriOSVersion, getSPMiOSMajorVersion } from '../ios/common';
 import { logger } from '../log';
 import type { Plugin } from '../plugin';
 import { getPluginType, PluginType } from '../plugin';
@@ -114,7 +114,7 @@ async function linkCapacitorPackage(config: Config): Promise<string> {
 
 export async function generatePackageText(config: Config, plugins: Plugin[]): Promise<string> {
   const capacitorPackagePath = await linkCapacitorPackage(config);
-  const iosVersion = getMajoriOSVersion(config);
+  const iosVersion = getSPMiOSMajorVersion(getMajoriOSVersion(config), config.ios.minVersion);
   const packageTraits = config.app.extConfig.experimental?.ios?.spm?.packageTraits ?? {};
   const packageOptions = config.app.extConfig.experimental?.ios?.spm?.packageOptions ?? {};
   const swiftToolsVersion = config.app.extConfig.experimental?.ios?.spm?.swiftToolsVersion ?? '5.9';
