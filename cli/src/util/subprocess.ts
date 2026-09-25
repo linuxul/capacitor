@@ -23,6 +23,21 @@ export async function runCommand(
   }
 }
 
+/**
+ * Whether a failure from `runCommand` is a permission error, such as a gradlew without the
+ * executable bit. `runCommand` usually throws the output as a string, but can also throw an Error
+ * or another value, so none of those may be assumed.
+ */
+export function isPermissionError(e: unknown): boolean {
+  if (typeof e === 'string') {
+    return e.includes('EACCES');
+  }
+  if (e instanceof Error) {
+    return e.message.includes('EACCES') || (e as NodeJS.ErrnoException).code === 'EACCES';
+  }
+  return false;
+}
+
 export async function getCommandOutput(
   command: string,
   args: readonly string[],

@@ -6,7 +6,7 @@ import { parseApkNameFromFlavor, promptForPlatformTarget, runTask } from '../com
 import type { Config } from '../definitions';
 import type { RunCommandOptions } from '../tasks/run';
 import { runNativeRun, getPlatformTargets } from '../util/native-run';
-import { runCommand } from '../util/subprocess';
+import { isPermissionError, runCommand } from '../util/subprocess';
 
 const debug = Debug('capacitor:android:run');
 
@@ -40,8 +40,8 @@ export async function runAndroid(
         cwd: config.android.platformDirAbs,
       }),
     );
-  } catch (e: any) {
-    if (e.includes('EACCES')) {
+  } catch (e) {
+    if (isPermissionError(e)) {
       throw `gradlew file does not have executable permissions. This can happen if the Android platform was added on a Windows machine. Please run ${c.strong(
         `chmod +x ./${config.android.platformDir}/gradlew`,
       )} and try again.`;

@@ -5,7 +5,7 @@ import { runTask } from '../common';
 import type { Config } from '../definitions';
 import { logSuccess } from '../log';
 import type { BuildCommandOptions } from '../tasks/build';
-import { runCommand } from '../util/subprocess';
+import { isPermissionError, runCommand } from '../util/subprocess';
 
 export async function buildAndroid(config: Config, buildOptions: BuildCommandOptions): Promise<void> {
   const releaseType = buildOptions.androidreleasetype ?? 'AAB';
@@ -21,7 +21,7 @@ export async function buildAndroid(config: Config, buildOptions: BuildCommandOpt
       }),
     );
   } catch (e) {
-    if ((e as any).includes('EACCES')) {
+    if (isPermissionError(e)) {
       throw `gradlew file does not have executable permissions. This can happen if the Android platform was added on a Windows machine. Please run ${c.strong(
         `chmod +x ./${config.android.platformDir}/gradlew`,
       )} and try again.`;

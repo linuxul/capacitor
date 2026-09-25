@@ -11,7 +11,7 @@ import { fatal } from '../errors';
 import { getMajoriOSVersion } from '../ios/common';
 import { logger, logPrompt, logSuccess } from '../log';
 import { deleteFolderRecursive } from '../util/fs';
-import { runCommand } from '../util/subprocess';
+import { isPermissionError, runCommand } from '../util/subprocess';
 import { extractTemplate } from '../util/template';
 
 import { migrateToUIScene } from './migrate-uiscene';
@@ -218,8 +218,8 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
             await runTask(`Upgrading gradle wrapper files`, () => {
               return updateGradleWrapperFiles(config.android.platformDirAbs);
             });
-          } catch (e: any) {
-            if (e.includes('EACCES')) {
+          } catch (e) {
+            if (isPermissionError(e)) {
               logger.error(
                 `gradlew file does not have executable permissions. This can happen if the Android platform was added on a Windows machine. Please run ${c.input(
                   `chmod +x ./${config.android.platformDir}/gradlew`,
