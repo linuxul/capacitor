@@ -416,14 +416,19 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
         // Create a plugin call object and handle the success/error callbacks
         dispatchQueue.async { [weak self] in
+            // The error handler has no call parameter, but needs keepAlive to tell the page whether to keep its callback.
+            // The call is alive whenever its handler runs, so a weak reference is enough.
+            weak var weakPluginCall: CAPPluginCall?
             let pluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: call.method,
                                            options: JSTypes.coerceDictionaryToJSObject(call.options,
                                                                                        formattingDatesAsStrings: plugin.shouldStringifyDatesInCalls) ?? [:],
                                            success: { (result: CAPPluginCallResult, pluginCall: CAPPluginCall) in
                                             self?.toJs(result: JSResult(call: call, callResult: result), save: pluginCall.keepAlive)
                                            }, error: { (error: CAPPluginCallError) in
-                                            self?.toJsError(error: JSResultError(call: call, callError: error))
+                                            let save = weakPluginCall?.keepAlive ?? false
+                                            self?.toJsError(error: JSResultError(call: call, callError: error), save: save)
                                            })
+            weakPluginCall = pluginCall
 
             plugin.perform(selector, with: pluginCall)
             if pluginCall.keepAlive {
@@ -435,7 +440,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     private func rejectJSCall(_ call: JSCall, message: String) {
         CAPLog.print("⚡️  \(message)")
         let error = CAPPluginCallError(message: message, code: "UNIMPLEMENTED", error: nil, data: nil)
-        toJsError(error: JSResultError(call: call, callError: error))
+        toJsError(error: JSResultError(call: call, callError: error), save: false)
     }
 
     func removeAllPluginListeners() {
@@ -446,35 +451,28 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     /**
      Send a successful result to the JavaScript layer.
+
+     `save` tells the page whether to keep the callback for further results, as it does for a call that is kept alive.
      */
     func toJs(result: JSResultProtocol, save: Bool) {
         let resultJson = result.jsonPayload()
         CAPLog.print("⚡️  TO JS", resultJson.prefix(256))
-
-        DispatchQueue.main.async {
-            self.webView?.evaluateJavaScript("""
-             window.Capacitor.fromNative({
-             callbackId: '\(result.callbackID)',
-             pluginId: '\(result.pluginID)',
-             methodName: '\(result.methodName)',
-             save: \(save),
-             success: true,
-             data: \(resultJson)
-             })
-            """) { (_, error) in
-                if let error = error {
-                    CAPLog.print(error)
-                }
-            }
-        }
+        evaluateFromNative(BridgeScript.fromNative(result, success: true, save: save, payload: resultJson))
     }
 
     /**
      Send an error result to the JavaScript layer.
+
+     `save` has the same meaning as for ``toJs(result:save:)``: an error ends a call unless it is kept alive, and the
+     page releases a callback-style entry only when it is told not to save it.
      */
-    func toJsError(error: JSResultProtocol) {
+    func toJsError(error: JSResultProtocol, save: Bool) {
+        evaluateFromNative(BridgeScript.fromNative(error, success: false, save: save, payload: error.jsonPayload()))
+    }
+
+    private func evaluateFromNative(_ script: String) {
         DispatchQueue.main.async {
-            self.webView?.evaluateJavaScript("window.Capacitor.fromNative({ callbackId: '\(error.callbackID)', pluginId: '\(error.pluginID)', methodName: '\(error.methodName)', success: false, error: \(error.jsonPayload())})") { (_, error) in
+            self.webView?.evaluateJavaScript(script) { (_, error) in
                 if let error = error {
                     CAPLog.print(error)
                 }
@@ -502,12 +500,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
      */
     // swiftlint:disable:next identifier_name
     public func evalWithPlugin(_ plugin: CAPPlugin, js: String) {
-        eval(js: """
-        window.Capacitor.withPlugin('\(plugin.getId())', function(plugin) {
-        if(!plugin) { console.error('Unable to execute JS in plugin, no such plugin found for id \(plugin.getId())'); }
-        \(js)
-        });
-        """)
+        eval(js: BridgeScript.withPlugin(plugin.getId(), js: js))
     }
 
     /**
@@ -527,11 +520,11 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     public func triggerJSEvent(eventName: String, target: String) {
-        self.eval(js: "window.Capacitor.triggerEvent('\(eventName)', '\(target)')")
+        self.eval(js: BridgeScript.triggerEvent(eventName, target: target))
     }
 
     public func triggerJSEvent(eventName: String, target: String, data: String) {
-        self.eval(js: "window.Capacitor.triggerEvent('\(eventName)', '\(target)', \(data))")
+        self.eval(js: BridgeScript.triggerEvent(eventName, target: target, data: data))
     }
 
     public func triggerWindowJSEvent(eventName: String) {
@@ -552,9 +545,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
 
     public func logToJs(_ message: String, _ level: String = "log") {
         DispatchQueue.main.async {
-            self.webView?.evaluateJavaScript("window.Capacitor.logJs('\(message)', '\(level)')") { (result, error) in
-                if error != nil, let result = result {
-                    CAPLog.print(result)
+            self.webView?.evaluateJavaScript(BridgeScript.logJs(message, level: level)) { (_, error) in
+                if let error = error {
+                    CAPLog.print(error)
                 }
             }
         }

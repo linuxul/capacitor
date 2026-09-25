@@ -109,3 +109,58 @@ internal extension JSResultError {
         result = callError.resultData ?? .dictionary([:])
     }
 }
+
+/**
+ * The JavaScript the bridge evaluates in the web view.
+ *
+ * Plugin ids, method names and callback ids come from the page, and event names and log messages from plugins, so
+ * every string is written as a JSON literal instead of being interpolated between quotes, where a quote or a line
+ * break would end the literal early.
+ */
+internal enum BridgeScript {
+    /// `window.Capacitor.fromNative({...})` for a call result. `payload` is already JavaScript (serialized JSON or
+    /// `undefined`) and becomes the value of `data` on success and of `error` on failure.
+    static func fromNative(_ result: JSResultProtocol, success: Bool, save: Bool, payload: String) -> String {
+        let envelope: [String: Any] = [
+            "callbackId": result.callbackID,
+            "pluginId": result.pluginID,
+            "methodName": result.methodName,
+            "save": save,
+            "success": success
+        ]
+        // the envelope is serialized with sorted keys and the payload is spliced in as the last member
+        let members = literal(envelope).dropLast()
+        return "window.Capacitor.fromNative(\(members),\(literal(success ? "data" : "error")):\(payload)})"
+    }
+
+    /// `window.Capacitor.triggerEvent(...)`. `data` is JavaScript supplied by the caller and is passed as is.
+    static func triggerEvent(_ eventName: String, target: String, data: String? = nil) -> String {
+        let arguments = [literal(eventName), literal(target)] + (data.map { [$0] } ?? [])
+        return "window.Capacitor.triggerEvent(\(arguments.joined(separator: ", ")))"
+    }
+
+    static func logJs(_ message: String, level: String) -> String {
+        "window.Capacitor.logJs(\(literal(message)), \(literal(level)))"
+    }
+
+    /// Runs `js`, which is JavaScript supplied by the caller, with the plugin `pluginId` bound to `plugin`.
+    static func withPlugin(_ pluginId: String, js: String) -> String { // swiftlint:disable:this identifier_name
+        let id = literal(pluginId)
+        return """
+        window.Capacitor.withPlugin(\(id), function(plugin) {
+        if(!plugin) { console.error('Unable to execute JS in plugin, no such plugin found for id ' + \(id)); }
+        \(js)
+        });
+        """
+    }
+
+    /// A JavaScript literal for a string, a number, a boolean or a JSON compatible collection.
+    static func literal(_ value: Any) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys]),
+              let json = String(data: data, encoding: .utf8) else {
+            // only reachable for values JSON cannot represent, which the bridge never passes
+            return "null"
+        }
+        return json
+    }
+}
