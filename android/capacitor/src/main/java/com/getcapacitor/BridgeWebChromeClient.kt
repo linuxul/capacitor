@@ -45,21 +45,54 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         fun onActivityResult(result: ActivityResult)
     }
 
+    private class PendingPermissionRequest(val permissions: Array<String>, val listener: PermissionListener)
+
     // Registered in the constructor on purpose: launchers must be registered before the owner is STARTED.
     private val permissionLauncher: ActivityResultLauncher<Array<String>>
     private val activityLauncher: ActivityResultLauncher<Intent>
-    private var permissionListener: PermissionListener? = null
+
+    // WebView permission prompts in arrival order; only the first one is launched. A single listener slot lost
+    // the first prompt when a second arrived, and the activity runs one permission request at a time anyway,
+    // cancelling any other. Everything here runs on the main thread.
+    private val pendingPermissionRequests = ArrayDeque<PendingPermissionRequest>()
     private var activityListener: ActivityResultListener? = null
 
     init {
         permissionLauncher =
             bridge.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-                permissionListener?.onPermissionSelect(results.values.all { it })
+                onPermissionResult(results)
             }
         activityLauncher =
             bridge.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 activityListener?.onActivityResult(result)
             }
+    }
+
+    private fun requestPermissions(permissions: Array<String>, listener: PermissionListener) {
+        pendingPermissionRequests.addLast(PendingPermissionRequest(permissions, listener))
+        if (pendingPermissionRequests.size == 1) {
+            launchNextPermissionRequest()
+        }
+    }
+
+    private fun launchNextPermissionRequest() {
+        val next = pendingPermissionRequests.firstOrNull() ?: return
+        try {
+            permissionLauncher.launch(next.permissions)
+        } catch (e: Exception) {
+            Logger.error("Unable to request permissions for the web view", e)
+            onPermissionResult(emptyMap())
+        }
+    }
+
+    private fun onPermissionResult(results: Map<String, Boolean>) {
+        val answered = pendingPermissionRequests.removeFirstOrNull() ?: return
+        try {
+            // An empty result is a cancelled request, not a grant.
+            answered.listener.onPermissionSelect(results.isNotEmpty() && results.values.all { it })
+        } finally {
+            launchNextPermissionRequest()
+        }
     }
 
     /**
@@ -96,16 +129,13 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
             permissionList.add(Manifest.permission.RECORD_AUDIO)
         }
         if (permissionList.isNotEmpty()) {
-            val permissions = permissionList.toTypedArray()
-            permissionListener =
-                PermissionListener { isGranted ->
-                    if (isGranted) {
-                        request.grant(request.resources)
-                    } else {
-                        request.deny()
-                    }
+            requestPermissions(permissionList.toTypedArray()) { isGranted ->
+                if (isGranted) {
+                    request.grant(request.resources)
+                } else {
+                    request.deny()
                 }
-            permissionLauncher.launch(permissions)
+            }
         } else {
             request.grant(request.resources)
         }
@@ -222,20 +252,18 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         val geoPermissions = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
 
         if (!PermissionHelper.hasPermissions(bridge.context, geoPermissions)) {
-            permissionListener =
-                PermissionListener { isGranted ->
-                    if (isGranted) {
+            requestPermissions(geoPermissions) { isGranted ->
+                if (isGranted) {
+                    callback?.invoke(origin, true, false)
+                } else {
+                    val coarsePermission = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    if (PermissionHelper.hasPermissions(bridge.context, coarsePermission)) {
                         callback?.invoke(origin, true, false)
                     } else {
-                        val coarsePermission = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)
-                        if (PermissionHelper.hasPermissions(bridge.context, coarsePermission)) {
-                            callback?.invoke(origin, true, false)
-                        } else {
-                            callback?.invoke(origin, false, false)
-                        }
+                        callback?.invoke(origin, false, false)
                     }
                 }
-            permissionLauncher.launch(geoPermissions)
+            }
         } else {
             // permission is already granted
             callback?.invoke(origin, true, false)
@@ -259,17 +287,14 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
             if (isMediaCaptureSupported()) {
                 showMediaCaptureOrFilePicker(filePathCallback, fileChooserParams, captureVideo)
             } else {
-                permissionListener =
-                    PermissionListener { isGranted ->
-                        if (isGranted) {
-                            showMediaCaptureOrFilePicker(filePathCallback, fileChooserParams, captureVideo)
-                        } else {
-                            Logger.warn(Logger.tags("FileChooser"), "Camera permission not granted")
-                            filePathCallback.onReceiveValue(null)
-                        }
+                requestPermissions(arrayOf(Manifest.permission.CAMERA)) { isGranted ->
+                    if (isGranted) {
+                        showMediaCaptureOrFilePicker(filePathCallback, fileChooserParams, captureVideo)
+                    } else {
+                        Logger.warn(Logger.tags("FileChooser"), "Camera permission not granted")
+                        filePathCallback.onReceiveValue(null)
                     }
-                val camPermission = arrayOf(Manifest.permission.CAMERA)
-                permissionLauncher.launch(camPermission)
+                }
             }
         } else {
             showFilePicker(filePathCallback, fileChooserParams)
