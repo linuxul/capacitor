@@ -5,8 +5,12 @@ import type { CapacitorException } from './util';
 
 /**
  * Base class web plugins should extend.
+ *
+ * `Events` maps the plugin's event names to the data each one carries. When it is given,
+ * `notifyListeners` only accepts those names and data, for example
+ * `class NetworkWeb extends WebPlugin<{ networkStatusChange: ConnectionStatus }>`.
  */
-export class WebPlugin implements Plugin {
+export class WebPlugin<Events extends Record<string, any> = Record<string, any>> implements Plugin {
   protected listeners: { [eventName: string]: ListenerCallback[] } = {};
   protected retainedEventArguments: { [eventName: string]: any[] } = {};
   protected windowListeners: { [eventName: string]: WindowListenerHandle } = {};
@@ -48,7 +52,38 @@ export class WebPlugin implements Plugin {
     this.windowListeners = {};
   }
 
-  protected notifyListeners(eventName: string, data: any, retainUntilConsumed?: boolean): void {
+  protected notifyListeners<E extends keyof Events & string>(
+    eventName: E,
+    data: Events[E],
+    retainUntilConsumed?: boolean,
+  ): void {
+    this.notifyEventListeners(eventName, data, retainUntilConsumed);
+  }
+
+  protected hasListeners(eventName: keyof Events & string): boolean {
+    return !!this.listeners[eventName]?.length;
+  }
+
+  protected registerWindowListener(windowEventName: string, pluginEventName: keyof Events & string): void {
+    this.windowListeners[pluginEventName] = {
+      registered: false,
+      windowEventName,
+      pluginEventName,
+      handler: (event) => {
+        this.notifyEventListeners(pluginEventName, event);
+      },
+    };
+  }
+
+  protected unimplemented(msg = 'not implemented'): CapacitorException {
+    return new Capacitor.Exception(msg, ExceptionCode.Unimplemented);
+  }
+
+  protected unavailable(msg = 'not available'): CapacitorException {
+    return new Capacitor.Exception(msg, ExceptionCode.Unavailable);
+  }
+
+  private notifyEventListeners(eventName: string, data: unknown, retainUntilConsumed?: boolean): void {
     const listeners = this.listeners[eventName];
     if (!listeners?.length) {
       if (retainUntilConsumed) {
@@ -67,29 +102,6 @@ export class WebPlugin implements Plugin {
 
     // Iterate over a copy: a listener that removes itself would otherwise make the next one be skipped.
     [...listeners].forEach((listener) => listener(data));
-  }
-
-  protected hasListeners(eventName: string): boolean {
-    return !!this.listeners[eventName]?.length;
-  }
-
-  protected registerWindowListener(windowEventName: string, pluginEventName: string): void {
-    this.windowListeners[pluginEventName] = {
-      registered: false,
-      windowEventName,
-      pluginEventName,
-      handler: (event) => {
-        this.notifyListeners(pluginEventName, event);
-      },
-    };
-  }
-
-  protected unimplemented(msg = 'not implemented'): CapacitorException {
-    return new Capacitor.Exception(msg, ExceptionCode.Unimplemented);
-  }
-
-  protected unavailable(msg = 'not available'): CapacitorException {
-    return new Capacitor.Exception(msg, ExceptionCode.Unavailable);
   }
 
   private async removeListener(eventName: string, listenerFunc: ListenerCallback): Promise<void> {
@@ -135,12 +147,15 @@ export class WebPlugin implements Plugin {
     delete this.retainedEventArguments[eventName];
 
     args.forEach((arg) => {
-      this.notifyListeners(eventName, arg);
+      this.notifyEventListeners(eventName, arg);
     });
   }
 }
 
-export type ListenerCallback = (err: any, ...args: any[]) => void;
+/**
+ * A listener of a web plugin event. It receives the event's data.
+ */
+export type ListenerCallback<T = any> = (event: T) => void;
 
 export interface WindowListenerHandle {
   registered: boolean;

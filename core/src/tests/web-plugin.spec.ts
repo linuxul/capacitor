@@ -231,3 +231,33 @@ describe('Web Plugin', () => {
     expect(listenersAfter[1]).toBe(lf2);
   });
 });
+
+// Compile-time checks: ts-jest type-checks this file, and an unused @ts-expect-error fails the run.
+describe('Web Plugin event types', () => {
+  interface TickEvent {
+    count: number;
+  }
+
+  class TypedPlugin extends WebPlugin<{ tick: TickEvent }> {
+    fire(count: number) {
+      this.notifyListeners('tick', { count });
+    }
+
+    fireWrongly() {
+      // @ts-expect-error not one of the plugin's events
+      this.notifyListeners('tock', { count: 1 });
+      // @ts-expect-error wrong data for the event
+      this.notifyListeners('tick', { count: 'one' });
+    }
+  }
+
+  it('delivers typed events', async () => {
+    const plugin = new TypedPlugin();
+    const listener = jest.fn();
+    await plugin.addListener('tick', listener);
+
+    plugin.fire(3);
+
+    expect(listener).toHaveBeenCalledWith({ count: 3 });
+  });
+});

@@ -28,6 +28,10 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 
 ### Web implementations
 
+- `WebPlugin` takes an optional map of event names to event data, `WebPlugin<{ networkStatusChange: ConnectionStatus }>`. With it, `notifyListeners`, `hasListeners` and `registerWindowListener` only accept those events and data. Without it nothing changes.
+- `ListenerCallback` is `(event: T) => void` (with `T` defaulting to `any`). It was declared as `(err: any, ...args: any[]) => void`, although listeners always receive the event data as their only argument.
+- `HttpResponse` and the `CapacitorHttp` methods take an optional type for the response data: `CapacitorHttp.get<User[]>(...)` returns `HttpResponse<User[]>`. The default stays `any`.
+- `SystemBars` on web resolves without doing anything, as before. This is now intentional and documented; the web implementation used to create an "unavailable" error and drop it.
 - A `WebPlugin` listener that removes itself while it is being notified no longer makes the next listener be skipped.
 - After the last listener of an event is removed, events sent with `retainUntilConsumed` are retained again and delivered to the next listener.
 - `CapacitorHttp` on web joins array URL parameters correctly (`tag=a&tag=b&page=2`, not `tag=a&tag=b&&page=2`).

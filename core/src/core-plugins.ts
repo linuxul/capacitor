@@ -161,27 +161,27 @@ export interface CapacitorHttpPlugin {
   /**
    * Make a Http Request to a server using native libraries.
    */
-  request(options: HttpOptions): Promise<HttpResponse>;
+  request<T = any>(options: HttpOptions): Promise<HttpResponse<T>>;
   /**
    * Make a Http GET Request to a server using native libraries.
    */
-  get(options: HttpOptions): Promise<HttpResponse>;
+  get<T = any>(options: HttpOptions): Promise<HttpResponse<T>>;
   /**
    * Make a Http POST Request to a server using native libraries.
    */
-  post(options: HttpOptions): Promise<HttpResponse>;
+  post<T = any>(options: HttpOptions): Promise<HttpResponse<T>>;
   /**
    * Make a Http PUT Request to a server using native libraries.
    */
-  put(options: HttpOptions): Promise<HttpResponse>;
+  put<T = any>(options: HttpOptions): Promise<HttpResponse<T>>;
   /**
    * Make a Http PATCH Request to a server using native libraries.
    */
-  patch(options: HttpOptions): Promise<HttpResponse>;
+  patch<T = any>(options: HttpOptions): Promise<HttpResponse<T>>;
   /**
    * Make a Http DELETE Request to a server using native libraries.
    */
-  delete(options: HttpOptions): Promise<HttpResponse>;
+  delete<T = any>(options: HttpOptions): Promise<HttpResponse<T>>;
 }
 
 /**
@@ -263,11 +263,11 @@ export interface HttpHeaders {
   [key: string]: string;
 }
 
-export interface HttpResponse {
+export interface HttpResponse<T = any> {
   /**
    * Additional data received with the Http response.
    */
-  data: any;
+  data: T;
   /**
    * The status code received from the Http response.
    */
@@ -402,7 +402,7 @@ export class CapacitorHttpPluginWeb extends WebPlugin implements CapacitorHttpPl
    * Perform an Http request given a set of options
    * @param options Options to build the HTTP request
    */
-  async request(options: HttpOptions): Promise<HttpResponse> {
+  async request<T = any>(options: HttpOptions): Promise<HttpResponse<T>> {
     const requestInit = buildRequestInit(options, options.webFetchExtra);
     const urlParams = buildUrlParams(options.params, options.shouldEncodeUrlParams);
     const url = urlParams ? `${options.url}?${urlParams}` : options.url;
@@ -453,40 +453,40 @@ export class CapacitorHttpPluginWeb extends WebPlugin implements CapacitorHttpPl
    * Perform an Http GET request given a set of options
    * @param options Options to build the HTTP request
    */
-  async get(options: HttpOptions): Promise<HttpResponse> {
-    return this.request({ ...options, method: 'GET' });
+  async get<T = any>(options: HttpOptions): Promise<HttpResponse<T>> {
+    return this.request<T>({ ...options, method: 'GET' });
   }
 
   /**
    * Perform an Http POST request given a set of options
    * @param options Options to build the HTTP request
    */
-  async post(options: HttpOptions): Promise<HttpResponse> {
-    return this.request({ ...options, method: 'POST' });
+  async post<T = any>(options: HttpOptions): Promise<HttpResponse<T>> {
+    return this.request<T>({ ...options, method: 'POST' });
   }
 
   /**
    * Perform an Http PUT request given a set of options
    * @param options Options to build the HTTP request
    */
-  async put(options: HttpOptions): Promise<HttpResponse> {
-    return this.request({ ...options, method: 'PUT' });
+  async put<T = any>(options: HttpOptions): Promise<HttpResponse<T>> {
+    return this.request<T>({ ...options, method: 'PUT' });
   }
 
   /**
    * Perform an Http PATCH request given a set of options
    * @param options Options to build the HTTP request
    */
-  async patch(options: HttpOptions): Promise<HttpResponse> {
-    return this.request({ ...options, method: 'PATCH' });
+  async patch<T = any>(options: HttpOptions): Promise<HttpResponse<T>> {
+    return this.request<T>({ ...options, method: 'PATCH' });
   }
 
   /**
    * Perform an Http DELETE request given a set of options
    * @param options Options to build the HTTP request
    */
-  async delete(options: HttpOptions): Promise<HttpResponse> {
-    return this.request({ ...options, method: 'DELETE' });
+  async delete<T = any>(options: HttpOptions): Promise<HttpResponse<T>> {
+    return this.request<T>({ ...options, method: 'DELETE' });
   }
 }
 
@@ -637,21 +637,25 @@ export interface SystemBarsPlugin {
   setAnimation(options: SystemBarsAnimationOptions): Promise<void>;
 }
 
+/**
+ * A browser has no system bars to style, show or hide, so every method resolves without doing
+ * anything. Apps can call SystemBars unconditionally, including while developing in a browser.
+ */
 export class SystemBarsPluginWeb extends WebPlugin implements SystemBarsPlugin {
   async setStyle(): Promise<void> {
-    this.unavailable('not available for web');
+    return;
   }
 
   async setAnimation(): Promise<void> {
-    this.unavailable('not available for web');
+    return;
   }
 
   async show(): Promise<void> {
-    this.unavailable('not available for web');
+    return;
   }
 
   async hide(): Promise<void> {
-    this.unavailable('not available for web');
+    return;
   }
 }
 
