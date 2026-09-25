@@ -59,6 +59,13 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 - `FileUtils.getFileUrlForUri` returns `null` instead of throwing when the provider gives no cursor or no display name.
 - `Bridge.triggerJSEvent` and the other `trigger*JSEvent` functions quote their string arguments as JavaScript string literals, so quotes or line breaks in them no longer break or inject script. The `data` argument of `triggerJSEvent` must still be JSON.
 - `Logger.error(message)`, `PluginConfig.getString(key)`, `PluginConfig.getArray(key)` and `InternalUtils.getPackageInfo(pm, packageName)` are callable from Java, as described under "API changes" below.
+- `<input type="file" capture>` opens the camera app. The library manifest declares `<queries>` for `android.media.action.IMAGE_CAPTURE` and `VIDEO_CAPTURE`, which merge into the app; without them Android 11 and later hid the camera app from the runtime and capture always fell back to the file picker.
+- An invalid `server.url` (for example `192.168.1.5:8100` without a scheme) stops the app with an `IllegalArgumentException` ("Provided server url is invalid: …") when the bridge is created, instead of a `NullPointerException` later.
+- An empty `backgroundColor` is ignored like any other invalid color instead of crashing the app at startup; `WebColor.parseColor("")` throws `IllegalArgumentException`.
+- A request for a path made only of slashes (`https://localhost//`) no longer crashes the app. In html5mode it gets `index.html`; otherwise the local server does not answer it.
+- `WebView.setServerBasePath`/`setServerAssetPath` without `path` reject with "Must provide a path" and leave the served path alone, instead of serving from `null` until the app restarts.
+- `CapacitorHttp` requests with `params` keep the URL fragment out of the query (`?q=1#r` plus a param used to reach the server as `?q=1&page=2r`).
+- `FileUtils.getFileUrlForUri` returns `null` for a media document it cannot resolve (for example a PDF from the picker's Documents category) instead of throwing.
 
 ### iOS runtime
 
@@ -143,6 +150,10 @@ suspend fun take(call: PluginCall): JSObject {
 - `CapacitorHttp` declares no permissions: its `HttpWrite`/`HttpRead` aliases asked for storage permissions that apps cannot be granted on API 33 and later.
 - `SystemBars.setStyle/show/hide` run on the main thread and `CapacitorCookies.getCookies` is a suspend method; their results are unchanged.
 - `@PluginMethod` has a `thread` element; the consumer ProGuard rules keep `com.getcapacitor.PluginThread`.
+- `Bridge.appUrl` and `Bridge.localUrl` are `String` instead of `String?`.
+- `HttpRequestHandler.request(call, method, null)` works without a bridge; it used to throw when the call had no User-Agent header.
+- `HttpURLConnectionBuilder` without `setUrl`/`setHeaders`, and `Bridge.Builder(fragment).create()` for a detached fragment, throw `IllegalStateException` with a message instead of `NullPointerException`.
+- New Android apps register `clean` with `tasks.register` and delete `rootProject.layout.buildDirectory`, and set `ignoreAssetsPattern` in `androidResources` instead of `aaptOptions`, so the template builds without Gradle deprecation warnings. Existing apps can make the same two edits; `cap migrate` does not.
 
 ### CLI
 
