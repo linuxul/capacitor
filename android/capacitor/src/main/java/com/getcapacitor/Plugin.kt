@@ -15,6 +15,8 @@ import com.getcapacitor.annotation.PermissionCallback
 import com.getcapacitor.util.PermissionHelper
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.suspendCoroutine
 import org.json.JSONException
 
 /**
@@ -65,6 +67,17 @@ public open class Plugin {
 
     private var lastPluginCallId: String? = null
 
+    /**
+     * The launcher of [requestPermissionsFor], registered with the others while the plugin loads
+     */
+    private var permissionRequestLauncher: ActivityResultLauncher<Array<String>>? = null
+
+    // The requests of requestPermissionsFor, oldest first. The first one is being asked; the others wait for it,
+    // because an activity asks for one set of permissions at a time.
+    private val permissionRequests = ArrayDeque<PermissionRequest>()
+
+    private class PermissionRequest(val permissions: Array<String>, val continuation: Continuation<Map<String, Boolean>>)
+
     // Stored results of an event if an event was fired and
     // no listeners were attached yet. Only stores the last value.
     private val retainedEventArguments: MutableMap<String, MutableList<JSObject?>> = HashMap()
@@ -107,6 +120,11 @@ public open class Plugin {
                 permissionCallbacks[method.name] = method
             }
         }
+
+        permissionRequestLauncher =
+            bridge.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+                finishPermissionRequest(Result.success(permissions))
+            }
     }
 
     private fun triggerPermissionCallback(method: Method, permissionResultMap: Map<String, Boolean>) {
@@ -332,6 +350,93 @@ public open class Plugin {
     }
 
     /**
+     * Asks the user for the permissions of [aliases], like [requestPermissionForAliases], and returns the state of
+     * each alias once the user has answered. For suspend plugin methods, which need no [PermissionCallback] for it:
+     *
+     * ```kotlin
+     * @PluginMethod
+     * public suspend fun takePhoto(call: PluginCall): JSObject {
+     *     if (requestPermissionsFor(CAMERA)[CAMERA] != PermissionState.GRANTED) {
+     *         throw PluginException("Camera permission was denied", code = "DENIED")
+     *     }
+     *     ...
+     * }
+     * ```
+     *
+     * Aliases that map to no Android permission string are not asked for and report their state right away; aliases
+     * the plugin does not declare are left out of the result. A request made while another one of this plugin is
+     * being asked waits for it.
+     *
+     * @throws PluginException when no alias is given, or a permission is missing from AndroidManifest.xml
+     */
+    protected suspend fun requestPermissionsFor(vararg aliases: String): Map<String, PermissionState> {
+        if (aliases.isEmpty()) {
+            throw PluginException("No permission alias was provided")
+        }
+
+        val permissions = getPermissionStringsForAliases(aliases)
+        if (permissions.isNotEmpty()) {
+            val result = suspendCoroutine { continuation -> startPermissionRequest(PermissionRequest(permissions, continuation)) }
+
+            // Caches denied states, as for a PermissionCallback; false when the manifest lacks a permission.
+            if (!bridge.validatePermissions(this, null, result)) {
+                throw PluginException(bridge.missingPermissionsMessage(permissions) ?: "Missing permissions in AndroidManifest.xml")
+            }
+        }
+
+        val states = permissionStates
+        val undeclaredAliases = aliases.filterNot { it in states }
+        if (undeclaredAliases.isNotEmpty()) {
+            Logger.warn(logTag, "Permission aliases $undeclaredAliases are not declared on @CapacitorPlugin")
+        }
+        return aliases.filter { it in states }.associateWith { states.getValue(it) }
+    }
+
+    private fun startPermissionRequest(request: PermissionRequest) {
+        val first =
+            synchronized(permissionRequests) {
+                permissionRequests.addLast(request)
+                permissionRequests.size == 1
+            }
+
+        if (first) {
+            launchPermissionRequest(request)
+        }
+    }
+
+    private fun launchPermissionRequest(request: PermissionRequest) {
+        try {
+            val launcher = permissionRequestLauncher ?: throw IllegalStateException("The plugin has not been loaded by a bridge")
+            launcher.launch(request.permissions)
+        } catch (e: Exception) {
+            // Nothing will answer this request, so it fails, and the next one is asked.
+            finishPermissionRequest(Result.failure(e))
+        }
+    }
+
+    /**
+     * Answers the request being asked with [result], then asks the next one.
+     */
+    private fun finishPermissionRequest(result: Result<Map<String, Boolean>>) {
+        val (finished, next) =
+            synchronized(permissionRequests) {
+                permissionRequests.removeFirstOrNull() to permissionRequests.firstOrNull()
+            }
+
+        if (finished == null) {
+            // For example a result delivered to the plugin of a recreated activity, which asked for nothing.
+            Logger.warn(logTag, "Dropping a permission result that no request is waiting for")
+            return
+        }
+
+        finished.continuation.resumeWith(result)
+
+        if (next != null) {
+            launchPermissionRequest(next)
+        }
+    }
+
+    /**
      * Gets the Android permission strings defined on the [CapacitorPlugin] annotation with
      * the provided aliases.
      *
@@ -340,7 +445,7 @@ public open class Plugin {
      * @param aliases aliases for permissions defined on the plugin
      * @return Android permission strings associated with the provided aliases, if exists
      */
-    private fun getPermissionStringsForAliases(aliases: Array<String>): Array<String> {
+    private fun getPermissionStringsForAliases(aliases: Array<out String>): Array<String> {
         val perms = HashSet<String>()
         for (perm in handle.pluginAnnotation.permissions) {
             if (aliases.contains(perm.alias)) {

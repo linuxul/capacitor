@@ -830,20 +830,24 @@ public class Bridge private constructor(
             }
         }
 
-        val permStrings = permissions.keys.toTypedArray()
+        val message = missingPermissionsMessage(permissions.keys.toTypedArray()) ?: return true
 
-        if (!PermissionHelper.hasDefinedPermissions(context, permStrings)) {
-            val message =
-                buildString {
-                    appendLine("Missing the following permissions in AndroidManifest.xml:")
-                    PermissionHelper.getUndefinedPermissions(context, permStrings).forEach { appendLine(it) }
-                }
-            // The Java original threw when no call had been saved for the request; there is nothing to reject then.
-            savedCall?.reject(message)
-            return false
+        // The Java original threw when no call had been saved for the request; there is nothing to reject then.
+        savedCall?.reject(message)
+        return false
+    }
+
+    /**
+     * The error for the permissions in [permStrings] that AndroidManifest.xml does not declare, or null if it
+     * declares them all.
+     */
+    internal fun missingPermissionsMessage(permStrings: Array<String>): String? {
+        if (PermissionHelper.hasDefinedPermissions(context, permStrings)) return null
+
+        return buildString {
+            appendLine("Missing the following permissions in AndroidManifest.xml:")
+            PermissionHelper.getUndefinedPermissions(context, permStrings).forEach { appendLine(it) }
         }
-
-        return true
     }
 
     /**
