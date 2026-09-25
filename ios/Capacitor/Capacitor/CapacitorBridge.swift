@@ -6,7 +6,8 @@ import WebKit
 internal typealias CapacitorPlugin = CAPPlugin & CAPBridgedPlugin
 
 struct RegistrationList: Codable {
-    let packageClassList: Set<String>
+    /// The plugin classes the CLI found, in the order it listed them.
+    let packageClassList: [String]
 }
 
 /**
@@ -116,8 +117,8 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         get { configLock.withLock { lockedConfig } }
         set { configLock.withLock { lockedConfig = newValue } }
     }
-    // Map of all loaded and instantiated plugins by pluginId -> instance
-    var plugins =  [String: CapacitorPlugin]()
+    // All loaded and instantiated plugins by JavaScript name, in registration order
+    let pluginRegistry = PluginRegistry()
     // Calls we are storing to resolve later
     var storedCalls = ConcurrentDictionary<CAPPluginCall>()
     private var injectMiscFiles: [String] = []
@@ -271,7 +272,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
                     let pluginData = try Data(contentsOf: pluginJSON)
                     let registrationList = try JSONDecoder().decode(RegistrationList.self, from: pluginData)
 
-                    for plugin in registrationList.packageClassList {
+                    // keep the listed order so plugins are registered, and consulted, in the same order on every launch
+                    var listed = Set<String>()
+                    for plugin in registrationList.packageClassList where listed.insert(plugin).inserted {
                         if let pluginClass = NSClassFromString(plugin) {
                             pluginList.append(pluginClass)
                         }
@@ -313,10 +316,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
             return
         }
 
-        if plugins[pluginInstance.jsName] != nil {
+        if pluginRegistry.register(pluginInstance) != nil {
             CAPLog.print("⚡️  Overriding existing registered plugin \(pluginInstance.classForCoder)")
         }
-        plugins[pluginInstance.jsName] = pluginInstance
         pluginInstance.load(on: self)
 
         JSExport.exportJS(for: pluginInstance, in: webViewDelegationHandler.contentController)
@@ -337,14 +339,14 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
             return nil
         }
         plugin.load(on: self)
-        plugins[plugin.jsName] = plugin
+        pluginRegistry.register(plugin)
         return plugin
     }
 
     // MARK: - CAPBridgeProtocol: Plugin Access
 
     public func plugin(withName: String) -> CAPPlugin? {
-        return self.plugins[withName]
+        return pluginRegistry[withName]
     }
 
     // MARK: - CAPBridgeProtocol: Call Management
@@ -389,7 +391,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
                 .flatMap(self.loadPlugin(type:))
         }
 
-        guard let plugin = plugins[call.pluginId] ?? load() else {
+        guard let plugin = pluginRegistry[call.pluginId] ?? load() else {
             rejectJSCall(call, message: "Error loading plugin \(call.pluginId) for call. Check that the pluginId is correct")
             return
         }
@@ -445,7 +447,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     func removeAllPluginListeners() {
-        for plugin in plugins.values {
+        for plugin in pluginRegistry.all {
             plugin.removeAllListeners()
         }
     }

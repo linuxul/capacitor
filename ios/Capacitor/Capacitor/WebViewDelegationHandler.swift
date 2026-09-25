@@ -79,8 +79,8 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
             return
         }
 
-        // first, give plugins the chance to handle the decision
-        for plugin in bridge.plugins.values {
+        // first, give plugins the chance to handle the decision, in registration order
+        for plugin in bridge.pluginRegistry.all {
             if let shouldOverrideLoad = plugin.shouldOverrideLoad(navigationAction) {
                 decisionHandler(shouldOverrideLoad ? .cancel : .allow)
                 return
@@ -162,11 +162,12 @@ open class WebViewDelegationHandler: NSObject, WKNavigationDelegate, WKUIDelegat
             return
         }
 
-        for pluginObject in bridge.plugins {
-            let plugin = pluginObject.value
-            if plugin.handleWKWebViewURLAuthenticationChallenge(challenge, completionHandler: completionHandler) {
-                return
-            }
+        // the first plugin, in registration order, that takes the challenge answers it
+        let handled = bridge.pluginRegistry.all.contains { plugin in
+            plugin.handleWKWebViewURLAuthenticationChallenge(challenge, completionHandler: completionHandler)
+        }
+        if handled {
+            return
         }
 
         completionHandler(.rejectProtectionSpace, nil)

@@ -23,6 +23,7 @@
 		623D68FA254C5037002D01D1 /* KeyPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 623D68F9254C5037002D01D1 /* KeyPath.swift */; };
 		623D6914254C7030002D01D1 /* CAPInstanceDescriptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 623D6913254C7030002D01D1 /* CAPInstanceDescriptor.swift */; };
 		625AF1ED258963C700869675 /* WebViewAssetHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625AF1EC258963C700869675 /* WebViewAssetHandler.swift */; };
+		84E1AA158C184FBD77B9C196 /* PluginRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99B7D7CFD10D4F3C9D8B31F9 /* PluginRegistry.swift */; };
 		B7FA8D81EBD11F8EA2C2FAED /* ByteRange.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D55E479B920985039E4F82F /* ByteRange.swift */; };
 		6263686025F6EC0100576C1C /* PluginCallAccessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6263685F25F6EC0100576C1C /* PluginCallAccessorTests.swift */; };
 		626D2D992613B61E0046CE81 /* hidinglogs.json in CopyFiles */ = {isa = PBXBuildFile; fileRef = 626D2D902613B4BB0046CE81 /* hidinglogs.json */; };
@@ -67,6 +68,7 @@
 		A38C3D7B2848BE6F004B3680 /* CapacitorCookieManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38C3D7A2848BE6F004B3680 /* CapacitorCookieManager.swift */; };
 		A71289E627F380A500DADDF3 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71289E527F380A500DADDF3 /* Router.swift */; };
 		A71289EB27F380FD00DADDF3 /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71289EA27F380FD00DADDF3 /* RouterTests.swift */; };
+		28D43868435733EDAD896F26 /* PluginRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D68D9F04A440E806CD7EB95 /* PluginRegistryTests.swift */; };
 		7780FDA3142C027C79A0BE0F /* UIColorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79338044CA82D8F674C19FE0 /* UIColorTests.swift */; };
 		681B051DE304E65C853CC4D7 /* PluginCallSettleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23FF9E33DAC63E79F17EEBAA /* PluginCallSettleTests.swift */; };
 		ADEAD0593889CF10DA16EA25 /* BridgeMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA54121D9667BD248AAAE7B3 /* BridgeMessageTests.swift */; };
@@ -157,6 +159,7 @@
 		623D68F9254C5037002D01D1 /* KeyPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPath.swift; sourceTree = "<group>"; };
 		623D6913254C7030002D01D1 /* CAPInstanceDescriptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAPInstanceDescriptor.swift; sourceTree = "<group>"; };
 		625AF1EC258963C700869675 /* WebViewAssetHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebViewAssetHandler.swift; sourceTree = "<group>"; };
+		99B7D7CFD10D4F3C9D8B31F9 /* PluginRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginRegistry.swift; sourceTree = "<group>"; };
 		2D55E479B920985039E4F82F /* ByteRange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteRange.swift; sourceTree = "<group>"; };
 		6263685F25F6EC0100576C1C /* PluginCallAccessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginCallAccessorTests.swift; sourceTree = "<group>"; };
 		626D2D902613B4BB0046CE81 /* hidinglogs.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = hidinglogs.json; sourceTree = "<group>"; };
@@ -205,6 +208,7 @@
 		A38C3D7A2848BE6F004B3680 /* CapacitorCookieManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapacitorCookieManager.swift; sourceTree = "<group>"; };
 		A71289E527F380A500DADDF3 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
 		A71289EA27F380FD00DADDF3 /* RouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterTests.swift; sourceTree = "<group>"; };
+		1D68D9F04A440E806CD7EB95 /* PluginRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginRegistryTests.swift; sourceTree = "<group>"; };
 		79338044CA82D8F674C19FE0 /* UIColorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIColorTests.swift; sourceTree = "<group>"; };
 		23FF9E33DAC63E79F17EEBAA /* PluginCallSettleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginCallSettleTests.swift; sourceTree = "<group>"; };
 		DA54121D9667BD248AAAE7B3 /* BridgeMessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeMessageTests.swift; sourceTree = "<group>"; };
@@ -311,6 +315,7 @@
 				62E79C712638B23300414164 /* JSExportTests.swift */,
 				62959BBD2526510200A3D7F1 /* Info.plist */,
 				A71289EA27F380FD00DADDF3 /* RouterTests.swift */,
+				1D68D9F04A440E806CD7EB95 /* PluginRegistryTests.swift */,
 				79338044CA82D8F674C19FE0 /* UIColorTests.swift */,
 				23FF9E33DAC63E79F17EEBAA /* PluginCallSettleTests.swift */,
 				DA54121D9667BD248AAAE7B3 /* BridgeMessageTests.swift */,
@@ -351,6 +356,7 @@
 				62959B0A2524DA7700A3D7F1 /* CAPBridgeDelegate.swift */,
 				62E207AD2588234500A78983 /* WebViewDelegationHandler.swift */,
 				625AF1EC258963C700869675 /* WebViewAssetHandler.swift */,
+				99B7D7CFD10D4F3C9D8B31F9 /* PluginRegistry.swift */,
 				2D55E479B920985039E4F82F /* ByteRange.swift */,
 				62959AEA2524DA7700A3D7F1 /* Plugins */,
 				623D6913254C7030002D01D1 /* CAPInstanceDescriptor.swift */,
@@ -650,6 +656,7 @@
 				373A69C1255C9360000A6F44 /* NotificationHandlerProtocol.swift in Sources */,
 				0F83E885285A332E006C43CB /* AppUUID.swift in Sources */,
 				625AF1ED258963C700869675 /* WebViewAssetHandler.swift in Sources */,
+				84E1AA158C184FBD77B9C196 /* PluginRegistry.swift in Sources */,
 				B7FA8D81EBD11F8EA2C2FAED /* ByteRange.swift in Sources */,
 				A327E6B728DB8B2900CA8B0A /* CapacitorHttp.swift in Sources */,
 				0F8F33B327DA980A003F49D6 /* PluginConfig.swift in Sources */,
@@ -675,6 +682,7 @@
 				62A91C3425535F5700861508 /* ConfigurationTests.swift in Sources */,
 				621ECCC3254204B700D3D615 /* BridgedTypesTests.swift in Sources */,
 				A71289EB27F380FD00DADDF3 /* RouterTests.swift in Sources */,
+				28D43868435733EDAD896F26 /* PluginRegistryTests.swift in Sources */,
 				7780FDA3142C027C79A0BE0F /* UIColorTests.swift in Sources */,
 				681B051DE304E65C853CC4D7 /* PluginCallSettleTests.swift in Sources */,
 				ADEAD0593889CF10DA16EA25 /* BridgeMessageTests.swift in Sources */,
