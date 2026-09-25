@@ -4,18 +4,21 @@ public typealias CAPPluginCallSuccessHandler = (_ result: CAPPluginCallResult, _
 public typealias CAPPluginCallErrorHandler = (_ error: CAPPluginCallError) -> Void
 
 /// A single invocation of a plugin method from JavaScript.
+///
+/// The class stays visible to the Obj-C runtime under this name because methods registered by selector take it as
+/// their argument; its members are Swift only.
 @objc(CAPPluginCall)
 open class CAPPluginCall: NSObject {
     /// Whether the call should be retained by the bridge after the plugin method returns so that it can be resolved later or repeatedly.
     ///
     /// Safe to read and write from any thread: plugins set it on the bridge queue or in completion handlers, while the
     /// bridge reads it when it saves the call and whenever a result is sent.
-    @objc public var keepAlive: Bool {
+    public var keepAlive: Bool {
         get { stateLock.withLock { lockedKeepAlive } }
         set { stateLock.withLock { lockedKeepAlive = newValue } }
     }
-    @objc public let callbackId: String
-    @objc public let methodName: String
+    public let callbackId: String
+    public let methodName: String
     public let options: JSObject
     /// The raw handlers behind ``resolve()`` and ``reject(_:_:_:_:)``. Calling them directly bypasses the rule that a
     /// call settles once; ``CAPPlugin/notifyListeners(_:data:)`` does so to deliver every event to a listener.
@@ -100,7 +103,7 @@ extension CAPPluginCall: JSValueContainer {
     }()
 }
 
-@objc public extension CAPPluginCall {
+public extension CAPPluginCall {
     // Unless the call is kept alive, only the first resolve, reject, unimplemented or unavailable is sent.
 
     /// Resolves the call with no data. JavaScript receives `undefined`; use `resolve([:])` to send `{}`.
