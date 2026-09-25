@@ -45,6 +45,19 @@ class PluginCallDispatcherTest {
         fun watch(call: PluginCall) {
             call.keepAlive = true
         }
+
+        @PluginMethod
+        fun echo(call: PluginCall) {
+            call.resolve()
+        }
+
+        @PluginMethod(thread = PluginThread.MAIN)
+        fun showDialog(call: PluginCall) {
+            call.resolve()
+        }
+
+        @PluginMethod(thread = PluginThread.MAIN)
+        fun denyOnMain(call: PluginCall): Unit = throw PluginException("Denied on main", "DENIED")
     }
 
     private val handler = mock<MessageHandler>()
@@ -52,15 +65,19 @@ class PluginCallDispatcherTest {
     private val saved = ArrayList<PluginCall>()
     private var threadAvailable = true
 
+    // The "threads" tasks were posted to, in order.
+    private val postedTo = ArrayList<String>()
+
     // Runs posted tasks right away, as long as the "thread" is available.
-    private val dispatcher =
-        PluginCallDispatcher(
-            { task ->
-                if (threadAvailable) task.run()
-                threadAvailable
-            },
-            { saved.add(it) }
-        )
+    private fun thread(name: String) = TaskPoster { task ->
+        if (threadAvailable) {
+            postedTo.add(name)
+            task.run()
+        }
+        threadAvailable
+    }
+
+    private val dispatcher = PluginCallDispatcher(thread("plugin"), thread("main")) { saved.add(it) }
 
     private fun dispatch(method: String): PluginCall {
         val call = PluginCall(handler, "Dispatched", "1", method, JSObject())
@@ -133,6 +150,48 @@ class PluginCallDispatcherTest {
         assertEquals("Plugin thread is unavailable", error.getString("message"))
         assertEquals("UNAVAILABLE", error.getString("code"))
         assertTrue(saved.isEmpty())
+    }
+
+    @Test
+    fun methodsRunOnThePluginThreadByDefault() {
+        dispatch("echo")
+
+        assertEquals(listOf("plugin"), postedTo)
+        verify(handler, times(1)).sendResponseMessage(any(), isNull(), isNull())
+    }
+
+    @Test
+    fun mainThreadMethodsArePostedToTheMainThread() {
+        dispatch("showDialog")
+
+        assertEquals(listOf("main"), postedTo)
+        verify(handler, times(1)).sendResponseMessage(any(), isNull(), isNull())
+    }
+
+    @Test
+    fun mainThreadMethodFailuresRejectTheSameWay() {
+        dispatch("denyOnMain")
+
+        assertEquals(listOf("main"), postedTo)
+        assertEquals("DENIED", rejection().getString("code"))
+    }
+
+    @Test
+    fun unavailableMainThreadRejects() {
+        threadAvailable = false
+
+        dispatch("showDialog")
+
+        val error = rejection()
+        assertEquals("Main thread is unavailable", error.getString("message"))
+        assertEquals("UNAVAILABLE", error.getString("code"))
+    }
+
+    @Test
+    fun missingMethodIsReportedFromThePluginThread() {
+        dispatch("nope")
+
+        assertEquals(listOf("plugin"), postedTo)
     }
 
     @Test

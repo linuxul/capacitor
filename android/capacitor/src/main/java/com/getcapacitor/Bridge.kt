@@ -117,8 +117,8 @@ public class Bridge private constructor(
     // Saved plugin calls: kept alive, waiting for permissions, or waiting for an activity result
     private val savedCallStore = SavedCallStore()
 
-    // Runs plugin methods on the plugin thread. taskHandler is read when a call is posted, after init has set it.
-    private val callDispatcher = PluginCallDispatcher({ taskHandler.post(it) }, ::saveCall)
+    // Runs plugin methods on the plugin or the main thread. taskHandler is read when a call is posted, after init has set it.
+    private val callDispatcher = PluginCallDispatcher({ taskHandler.post(it) }, { mainHandler.post(it) }, ::saveCall)
 
     /**
      * Get the URI that was used to launch the app (if any)

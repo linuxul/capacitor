@@ -31,6 +31,9 @@ class PluginHandleContractTest {
         @PluginMethod(returnType = PluginMethod.RETURN_CALLBACK)
         fun watch(call: PluginCall) {}
 
+        @PluginMethod(thread = PluginThread.MAIN)
+        fun present(call: PluginCall) {}
+
         @PermissionCallback
         private fun permissionsDone(call: PluginCall?) {
             permissionCallbackCalls++
@@ -69,7 +72,7 @@ class PluginHandleContractTest {
 
     class UnannotatedPlugin : Plugin()
 
-    private val ownMethods = setOf("echo", "watch")
+    private val ownMethods = setOf("echo", "watch", "present")
     private val inheritedMethods = setOf("addListener", "removeListener", "removeAllListeners", "checkPermissions", "requestPermissions")
 
     @Test
@@ -102,6 +105,24 @@ class PluginHandleContractTest {
         assertEquals("promise", PluginMethod.RETURN_PROMISE)
         assertEquals("callback", PluginMethod.RETURN_CALLBACK)
         assertEquals("none", PluginMethod.RETURN_NONE)
+    }
+
+    @Test
+    fun threadsAreReadFromTheAnnotation() {
+        val threads = PluginHandle(mock<Bridge>(), TestPlugin()).methods.associate { it.name to it.thread }
+
+        assertEquals(PluginThread.MAIN, threads["present"])
+        assertEquals(PluginThread.PLUGIN, threads["echo"])
+        assertEquals(PluginThread.PLUGIN, threads["addListener"])
+    }
+
+    @Test
+    fun javaPluginsUseTheSameAnnotation() {
+        val methods = PluginHandle(mock<Bridge>(), JavaAnnotatedPlugin()).methods.associateBy { it.name }
+
+        assertEquals(PluginMethod.RETURN_NONE, methods["fireAndForget"]?.returnType)
+        assertEquals(PluginThread.PLUGIN, methods["fireAndForget"]?.thread)
+        assertEquals(PluginThread.MAIN, methods["present"]?.thread)
     }
 
     @Test

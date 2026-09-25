@@ -12,4 +12,7 @@ public class PluginMethodHandle(
 
     // The return type of the method (see PluginMethod for constants)
     public val returnType: String = methodDecorator.returnType
+
+    // The thread the method runs on
+    public val thread: PluginThread = methodDecorator.thread
 }

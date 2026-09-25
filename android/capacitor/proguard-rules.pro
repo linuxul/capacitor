@@ -17,3 +17,6 @@
 }
 
 -keep public class * extends com.getcapacitor.Plugin { *; }
+
+# @PluginMethod(thread = ...) is read at runtime, which looks the enum constant up by its name.
+-keep enum com.getcapacitor.PluginThread { *; }

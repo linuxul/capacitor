@@ -46,6 +46,9 @@ private constructor(public val pluginClass: Class<out Plugin>, private val bridg
     public val methods: Collection<PluginMethodHandle>
         get() = pluginMethods.values
 
+    // pluginMethods is filled while the handle is built and not changed afterwards, so any thread may read it.
+    internal fun findMethod(methodName: String?): PluginMethodHandle? = pluginMethods[methodName]
+
     public fun load(): Plugin {
         if (this::instance.isInitialized) {
             return instance

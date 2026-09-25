@@ -12,11 +12,19 @@ internal fun interface TaskPoster {
 /**
  * Runs the plugin methods the [Bridge] is asked to call, and answers the calls whose method fails.
  *
- * @param pluginThread where plugin methods run: the bridge's plugin HandlerThread
+ * @param pluginThread where plugin methods run by default: the bridge's plugin HandlerThread
+ * @param mainThread where methods declared with `@PluginMethod(thread = PluginThread.MAIN)` run
  * @param saveCall keeps a call the method kept alive, so it can be found by its callback id later
  */
-internal class PluginCallDispatcher(private val pluginThread: TaskPoster, private val saveCall: (PluginCall) -> Unit) {
+internal class PluginCallDispatcher(
+    private val pluginThread: TaskPoster,
+    private val mainThread: TaskPoster,
+    private val saveCall: (PluginCall) -> Unit
+) {
     fun dispatch(plugin: PluginHandle, methodName: String?, call: PluginCall) {
+        // A method that does not exist is reported from the plugin thread, where invoke throws for it.
+        val onMainThread = plugin.findMethod(methodName)?.thread == PluginThread.MAIN
+
         val task =
             Runnable {
                 try {
@@ -30,8 +38,9 @@ internal class PluginCallDispatcher(private val pluginThread: TaskPoster, privat
                 }
             }
 
-        if (!pluginThread.post(task)) {
-            call.reject("Plugin thread is unavailable", code = "UNAVAILABLE")
+        val posted = if (onMainThread) mainThread.post(task) else pluginThread.post(task)
+        if (!posted) {
+            call.reject(if (onMainThread) "Main thread is unavailable" else "Plugin thread is unavailable", code = "UNAVAILABLE")
         }
     }
 
