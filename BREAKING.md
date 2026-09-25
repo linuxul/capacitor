@@ -261,6 +261,18 @@ The fork is not published to npm. Its packages keep the `@capacitor/*` names, an
 
 Installing `@capacitor/*` by version from npm gets upstream Capacitor instead. `npx cap migrate` leaves a Capacitor package alone when it points at a tarball, a `file:` path or git, and only pins the ones that come from the registry.
 
+### Official plugins
+
+The official plugins (`@capacitor/app`, `@capacitor/camera`, `@capacitor/local-notifications`, …) are released the same way from [linuxul/capacitor-plugins](https://github.com/linuxul/capacitor-plugins/releases), one tarball per plugin:
+
+```json
+"dependencies": {
+  "@capacitor/camera": "https://github.com/linuxul/capacitor-plugins/releases/download/9.0.0/capacitor-camera-9.0.0.tgz"
+}
+```
+
+`npm install @capacitor/camera` installs the upstream plugin instead, without the fork's fixes and with the plugin API that 9.0 deprecates. Plugins 9.x require the fork 9.0 or later.
+
 ## Supported platforms
 
 - **iOS 17** is the minimum deployment target.
