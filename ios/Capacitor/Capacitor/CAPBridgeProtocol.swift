@@ -2,19 +2,25 @@ import Foundation
 import UIKit
 import WebKit
 
+/// What plugins can reach of the bridge that hosts them, through ``CAPPlugin/bridge``.
+///
+/// The members that return or change UIKit state are isolated to the main actor. They are `@preconcurrency`, so in the
+/// Swift 5 language mode plugins keep using them from the bridge queue without a diagnostic, except inside a `Task`
+/// or an `async` function, where the compiler warns. Read them on the main thread: in a `@MainActor` method, or in
+/// `DispatchQueue.main.async`.
 public protocol CAPBridgeProtocol: AnyObject {
     // MARK: - Environment Properties
-    var viewController: UIViewController? { get }
+    @preconcurrency @MainActor var viewController: UIViewController? { get }
     var config: InstanceConfiguration { get }
-    var webView: WKWebView? { get }
+    @preconcurrency @MainActor var webView: WKWebView? { get }
     var notificationRouter: NotificationRouter { get }
     var isSimEnvironment: Bool { get }
     var isDevEnvironment: Bool { get }
-    var userInterfaceStyle: UIUserInterfaceStyle { get }
+    @preconcurrency @MainActor var userInterfaceStyle: UIUserInterfaceStyle { get }
     var autoRegisterPlugins: Bool { get }
-    var statusBarVisible: Bool { get set }
-    var statusBarStyle: UIStatusBarStyle { get set }
-    var statusBarAnimation: UIStatusBarAnimation { get set }
+    @preconcurrency @MainActor var statusBarVisible: Bool { get set }
+    @preconcurrency @MainActor var statusBarStyle: UIStatusBarStyle { get set }
+    @preconcurrency @MainActor var statusBarAnimation: UIStatusBarAnimation { get set }
 
     // MARK: - Plugin Access
     func plugin(withName: String) -> CAPPlugin?
@@ -53,11 +59,12 @@ public protocol CAPBridgeProtocol: AnyObject {
     func registerPluginInstance(_ pluginInstance: CAPPlugin)
 
     // MARK: - View Presentation
-    func showAlertWith(title: String, message: String, buttonTitle: String)
+    @preconcurrency @MainActor func showAlertWith(title: String, message: String, buttonTitle: String)
 }
 
 extension CAPBridgeProtocol {
     // default arguments are not permitted in protocol declarations
+    @preconcurrency @MainActor
     public func alert(_ title: String, _ message: String, _ buttonTitle: String = "OK") {
         showAlertWith(title: title, message: message, buttonTitle: buttonTitle)
     }
