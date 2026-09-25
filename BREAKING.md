@@ -208,6 +208,7 @@ private func pick(_ call: CAPPluginCall) async throws -> JSObject {
 - The members of `CAPPluginCall` are not `@objc`, and `CAPPluginCall.jsDateFormatter` is a constant.
 - Removed, unused by the official and community plugins: the `NSNotification.capacitor…` statics (use the `Notification.Name` ones), the `NSDictionary` overload of `JSTypes.coerceDictionaryToJSObject`, the `SSLPinningHttpRequestHandlerClass` hook (use `CapacitorHttpRequestHandling`), `AppUUID`, `Data.sha256`, and `CapacitorBridge.logToJs`.
 - The UIKit members of `CAPBridgeProtocol` (`viewController`, `webView`, `userInterfaceStyle`, the status bar members, `showAlertWith`, `alert`) are `@preconcurrency @MainActor`. Code on the plugin queue compiles as before; reading them in a `Task` or an `async` function without `await` is a warning.
+- `CAPPlugin.eventListeners` and `retainedEventArguments` are internal. Use `hasListeners`, `getListeners`, `addEventListener`, `removeEventListener` and `notifyListeners`, which keep the two consistent. No official or community plugin used them.
 - `CAPLog.enableLogging` is safe to set from any thread.
 - Deprecated, to be removed in 10.0: `CAPPluginMethod(name:returnType:)`, `CAPPluginMethod(_:returnType:)` and `CAPPluginMethod.selector`. They keep working, and a method registered this way still needs `@objc`.
 
