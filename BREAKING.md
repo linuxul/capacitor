@@ -237,7 +237,7 @@ Apps compile their plugins against the app's runtime, so API that community plug
 
 A plugin built for fork 8.5.3 compiles against 9.0 unchanged, apart from the removed API listed above that no official or community plugin used. To adopt 9.0:
 
-1. Install the 9.0 tarballs in `devDependencies` (see [Installing](#installing)) and widen `peerDependencies["@capacitor/core"]` to include 9.0. During the beta that is `>=9.0.0-beta.1`, because a range such as `^9.0.0` does not match prerelease versions.
+1. Install the 9.0 tarballs in `devDependencies` (see [Installing](#installing)) and set `peerDependencies["@capacitor/core"]` to `>=9.0.0`. A plugin that must also install 9.0 prereleases needs `>=9.0.0-beta.1`: `>=9.0.0` does not match prerelease versions.
 2. iOS: register each method by reference and drop its `@objc`. Methods that present UI or touch UIKit become `@MainActor` and are registered with `.async`; completion-handler APIs are awaited through `withCheckedThrowingContinuation`. Replace `guard … else { call.reject(…); return }` with `throw CAPPluginError(…)` where it reads better. Run `/contract-check`: it reports a synchronous `@MainActor` method registered with `.promise`.
 3. Android: replace `activity.runOnUiThread`/`Handler(Looper.getMainLooper())` at the top of a method with `@PluginMethod(thread = PluginThread.MAIN)`. Permission and activity-result flows can become `suspend` methods with `requestPermissionsFor(...)`. Throw `PluginException` instead of rejecting and returning. Replace `errorCallback` with `reject`.
 4. Web: declare the events of the web implementation with `WebPlugin<{ … }>`, and stop calling `remove()` on the promise that `addListener` returns.
@@ -250,12 +250,12 @@ The fork is not published to npm. Its packages keep the `@capacitor/*` names, an
 
 ```json
 "dependencies": {
-  "@capacitor/core": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-core-8.5.3.tgz",
-  "@capacitor/android": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-android-8.5.3.tgz",
-  "@capacitor/ios": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-ios-8.5.3.tgz"
+  "@capacitor/core": "https://github.com/linuxul/capacitor/releases/download/9.0.0/capacitor-core-9.0.0.tgz",
+  "@capacitor/android": "https://github.com/linuxul/capacitor/releases/download/9.0.0/capacitor-android-9.0.0.tgz",
+  "@capacitor/ios": "https://github.com/linuxul/capacitor/releases/download/9.0.0/capacitor-ios-9.0.0.tgz"
 },
 "devDependencies": {
-  "@capacitor/cli": "https://github.com/linuxul/capacitor/releases/download/8.5.3/capacitor-cli-8.5.3.tgz"
+  "@capacitor/cli": "https://github.com/linuxul/capacitor/releases/download/9.0.0/capacitor-cli-9.0.0.tgz"
 }
 ```
 
