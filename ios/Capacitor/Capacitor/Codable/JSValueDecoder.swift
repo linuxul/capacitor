@@ -93,9 +93,10 @@ private final class _JSValueDecoder {
     var options: Options
     fileprivate var data: JSValue
 
-    init(data: JSValue, options: Options) {
+    init(data: JSValue, options: Options, codingPath: [CodingKey] = []) {
         self.data = data
         self.options = options
+        self.codingPath = codingPath
     }
 }
 
@@ -227,7 +228,7 @@ extension KeyedContainer: KeyedDecodingContainerProtocol {
 
         var newPath = codingPath
         newPath.append(key)
-        let decoder = _JSValueDecoder(data: rawValue, options: options)
+        let decoder = _JSValueDecoder(data: rawValue, options: options, codingPath: newPath)
         return try decoder.decodeData(as: T.self)
     }
 
@@ -268,7 +269,7 @@ extension KeyedContainer: KeyedDecodingContainerProtocol {
             throw DecodingError.keyNotFound(SuperKey.super, on: data, codingPath: newPath)
         }
 
-        return _JSValueDecoder(data: data, options: options)
+        return _JSValueDecoder(data: data, options: options, codingPath: newPath)
     }
 
     func superDecoder(forKey key: Key) throws -> Decoder {
@@ -278,7 +279,7 @@ extension KeyedContainer: KeyedDecodingContainerProtocol {
             throw DecodingError.keyNotFound(key, on: data, codingPath: newPath)
         }
 
-        return _JSValueDecoder(data: data, options: options)
+        return _JSValueDecoder(data: data, options: options, codingPath: newPath)
     }
 }
 
@@ -303,42 +304,83 @@ extension UnkeyedContainer: UnkeyedDecodingContainer {
     }
 
     var isAtEnd: Bool {
-        currentIndex == data.endIndex
+        currentIndex >= data.endIndex
+    }
+
+    /// The coding path of the element at ``currentIndex``.
+    private var currentPath: [CodingKey] {
+        codingPath + [IndexKey(currentIndex)]
+    }
+
+    /// Returns the element at ``currentIndex`` without consuming it. The index only advances once the element has been
+    /// decoded, so a failed decode leaves the container where it was, the same as `JSONDecoder`.
+    private func peek<T>(_ type: T.Type) throws -> JSValue {
+        guard !isAtEnd else {
+            throw DecodingError.valueNotFound(type, .init(codingPath: currentPath, debugDescription: "Unkeyed container is at end."))
+        }
+        return data[currentIndex]
     }
 
     func decodeNil() throws -> Bool {
-        defer { currentIndex += 1 }
-        return data[currentIndex] is NSNull
+        guard try peek(Any?.self) is NSNull else {
+            return false
+        }
+        currentIndex += 1
+        return true
     }
 
     func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
-        defer { currentIndex += 1 }
-        let decoder = _JSValueDecoder(data: data[currentIndex], options: options)
-        return try decoder.decodeData(as: T.self)
+        let decoder = _JSValueDecoder(data: try peek(type), options: options, codingPath: currentPath)
+        let value = try decoder.decodeData(as: T.self)
+        currentIndex += 1
+        return value
     }
 
     func nestedUnkeyedContainer() throws -> UnkeyedDecodingContainer {
-        defer { currentIndex += 1 }
-        guard let data = data[currentIndex] as? JSArray else {
-            throw DecodingError.typeMismatch(JSArray.self, on: data[currentIndex], codingPath: codingPath)
+        let value = try peek(UnkeyedDecodingContainer.self)
+        guard let data = value as? JSArray else {
+            throw DecodingError.typeMismatch(JSArray.self, on: value, codingPath: currentPath)
         }
 
-        return UnkeyedContainer(data: data, codingPath: codingPath, userInfo: userInfo, options: options)
+        let container = UnkeyedContainer(data: data, codingPath: currentPath, userInfo: userInfo, options: options)
+        currentIndex += 1
+        return container
     }
 
     func nestedContainer<NestedKey>(keyedBy type: NestedKey.Type) throws -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey {
-        defer { currentIndex += 1 }
-        guard let data = data[currentIndex] as? JSObject else {
-            throw DecodingError.typeMismatch(JSObject.self, on: data[currentIndex], codingPath: codingPath)
+        let value = try peek(KeyedDecodingContainer<NestedKey>.self)
+        guard let data = value as? JSObject else {
+            throw DecodingError.typeMismatch(JSObject.self, on: value, codingPath: currentPath)
         }
 
-        return KeyedDecodingContainer(KeyedContainer(data: data, codingPath: codingPath, userInfo: userInfo, options: options))
+        let container = KeyedContainer<NestedKey>(data: data, codingPath: currentPath, userInfo: userInfo, options: options)
+        currentIndex += 1
+        return KeyedDecodingContainer(container)
     }
 
     func superDecoder() throws -> Decoder {
-        defer { currentIndex += 1 }
-        let data = data[currentIndex]
-        return _JSValueDecoder(data: data, options: options)
+        let decoder = _JSValueDecoder(data: try peek(Decoder.self), options: options, codingPath: currentPath)
+        currentIndex += 1
+        return decoder
+    }
+}
+
+/// The coding key of an element of an unkeyed container, which is identified by its position.
+private struct IndexKey: CodingKey {
+    let intValue: Int?
+    let stringValue: String
+
+    init(_ index: Int) {
+        intValue = index
+        stringValue = "Index \(index)"
+    }
+
+    init?(stringValue: String) {
+        return nil
+    }
+
+    init?(intValue: Int) {
+        self.init(intValue)
     }
 }
 
@@ -448,7 +490,7 @@ extension SingleValueContainer: SingleValueDecodingContainer {
     }
 
     func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
-        let decoder = _JSValueDecoder(data: data, options: options)
+        let decoder = _JSValueDecoder(data: data, options: options, codingPath: codingPath)
         return try decoder.decodeData(as: T.self)
     }
 }
