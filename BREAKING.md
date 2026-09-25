@@ -60,6 +60,22 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 - `Bridge.triggerJSEvent` and the other `trigger*JSEvent` functions quote their string arguments as JavaScript string literals, so quotes or line breaks in them no longer break or inject script. The `data` argument of `triggerJSEvent` must still be JSON.
 - `Logger.error(message)`, `PluginConfig.getString(key)`, `PluginConfig.getArray(key)` and `InternalUtils.getPackageInfo(pm, packageName)` are callable from Java, as described under "API changes" below.
 
+### iOS runtime
+
+- A call that is not kept alive settles once: `resolve`, `reject`, `unimplemented` and `unavailable` send only the first result; later ones are dropped and logged ("already settled"). A call with `keepAlive = true` may send any number of results. Calling `successHandler`/`errorHandler` directly is not guarded.
+- An error result carries `save: keepAlive`, as successful results always did and as on Android, so the page releases a callback-style call after an error ends it. A plugin that keeps sending results after a reject must set `keepAlive = true` first.
+- `removeAllListeners` releases the bridge's saved listener calls.
+- Plugins are registered and consulted in a fixed order: built-in plugins, then `packageClassList` from `capacitor.config.json` in listed order, then plugins registered with `registerPluginInstance`/`registerPluginType`. `shouldOverrideLoad(_:)` and `handleWKWebViewURLAuthenticationChallenge` are asked in this order and the first answer wins; the order used to change between launches.
+- A call to a plugin name that is not registered only loads a class whose Obj-C name is that `jsName`, that is a `CAPPlugin` conforming to `CAPBridgedPlugin` and not a `CAPInstancePlugin`, and that is not registered yet. Calling a registered plugin by its class identifier (for example `CAPCookiesPlugin`) rejects with `UNIMPLEMENTED` instead of replacing the registered instance.
+- `Range` requests on the app scheme: `bytes=a-b`, `bytes=a-` and `bytes=-n` return 206, with the end clamped to the file; `bytes=-n` returns the last n bytes (it used to return the first n). A well-formed range that selects no byte of the file returns 416 with `Content-Range: bytes */<size>`. A malformed header, another unit, or several ranges return the whole file (200) instead of crashing the app.
+- Scheme tasks always complete: a request without a URL, a missing file or a non-HTTP response fails the task instead of leaving it open.
+- The `WebView` plugin methods and `CapacitorCookies.clearCookies` settle instead of never answering.
+- `CapacitorHttp` turns number and boolean `params` into strings instead of crashing, rejects a non-HTTP response, and rejects malformed FormData or non-base64 `file` data before sending anything.
+- `alert`, `confirm` and `prompt` are shown from the topmost view controller. When they cannot be shown, the page gets the dismissed answer (`false` for confirm, `null` for prompt) instead of hanging.
+- Decoding a short array into a fixed-size type with `call.decode` throws `DecodingError.valueNotFound` instead of crashing, and nested decoding errors carry their coding path.
+- `UIColor.capacitor.color(argb:)` scales each channel to 0...1; it used to pass 0–255 through, so every non-zero channel came out at full intensity.
+- Strings in the scripts the bridge evaluates (callback ids, plugin and method names, messages) are JSON-encoded, so quotes or line breaks in them no longer break the script.
+
 ### Kotlin plugin API
 
 A `@PluginMethod` may be a `suspend` function, may choose its thread, and may throw to reject:
