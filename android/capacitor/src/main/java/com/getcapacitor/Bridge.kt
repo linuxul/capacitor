@@ -244,7 +244,7 @@ public class Bridge private constructor(
 
     public fun isMinimumWebViewInstalled(): Boolean {
         val info = WebView.getCurrentWebViewPackage() ?: return false
-        // The Java original threw on a WebView package without a version name; it now counts as unsupported.
+        // A WebView package without a version name counts as unsupported.
         val majorVersion = WEBVIEW_MAJOR_VERSION.find(info.versionName ?: return false)?.value?.toInt() ?: return false
         return if (info.packageName == "com.huawei.webview") {
             majorVersion >= config.minHuaweiWebViewVersion
@@ -282,7 +282,7 @@ public class Bridge private constructor(
 
         try {
             val pm = context.packageManager
-            // A missing PackageInfo throws and is reported by the catch below, as in the Java original.
+            // getPackageInfo throws NameNotFoundException rather than returning null; the catch below reports it.
             val pInfo = InternalUtils.getPackageInfo(pm, context.packageName)!!
             versionCode = PackageInfoCompat.getLongVersionCode(pInfo).toInt().toString()
             versionName = pInfo.versionName ?: ""
@@ -913,9 +913,9 @@ public class Bridge private constructor(
         }
 
         public fun create(): Bridge {
-            // Same as the Java original: a fragment without a view or a detached fragment throws here.
+            // A fragment must be attached to its activity and have created its view before the bridge is created.
             val fragment = fragment
-            val activity = activity!!
+            val activity = checkNotNull(activity) { "The fragment is not attached to an activity" }
             val webView: WebView =
                 if (fragment != null) fragment.requireView().findViewById(R.id.webview) else activity.findViewById(R.id.webview)
 

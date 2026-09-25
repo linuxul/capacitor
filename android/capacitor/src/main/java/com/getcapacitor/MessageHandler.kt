@@ -47,7 +47,7 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
     @JavascriptInterface
     public fun postMessage(jsonStr: String?) {
         try {
-            // A null message throws here (NullPointerException from JSONTokener, as in the Java original) and is logged below.
+            // A null message fails here and is logged by the catch below.
             val postData = JSObject(jsonStr!!)
 
             val callbackId = postData.getString("callbackId")

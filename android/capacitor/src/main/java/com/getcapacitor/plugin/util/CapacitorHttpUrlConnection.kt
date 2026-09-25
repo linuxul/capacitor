@@ -169,7 +169,7 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
             return
         }
 
-        // Same as the Java original: every remaining branch dereferences the body.
+        // The other content types need a body; HttpRequestHandler.request only calls this with one.
         val requestBody = body!!
         if (bodyType == "file") {
             DataOutputStream(connection.outputStream).use { os ->
@@ -439,8 +439,8 @@ public class CapacitorHttpUrlConnection(private val connection: HttpURLConnectio
                     .trim { it <= ' ' }
 
             // Remove surrounding double quotes if present.
-            // Same as the Java original: a lone `"` throws StringIndexOutOfBoundsException here,
-            // so this is deliberately not removeSurrounding("\""), which would return it unchanged.
+            // A lone `"` is no quoted value: substring throws for it, and the request fails, where
+            // removeSurrounding("\"") would send `"` as the boundary.
             return if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
                 boundary.substring(1, boundary.length - 1)
             } else {

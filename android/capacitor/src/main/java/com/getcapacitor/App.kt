@@ -36,8 +36,7 @@ public open class App {
         appRestoredListener = listener
     }
 
-    // Was protected in Java, where the same-package MessageHandler could still call it; Kotlin's protected
-    // does not reach package neighbours.
+    // Internal: MessageHandler reports the results of restored calls through it; apps only listen for them.
     internal fun fireRestoredResult(result: PluginResult?) {
         appRestoredListener?.onAppRestored(result)
     }

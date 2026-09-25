@@ -29,7 +29,7 @@ public class CapacitorCookies : Plugin() {
 
     override fun handleOnDestroy() {
         super.handleOnDestroy()
-        // Same as the Java original: throws if load() never ran.
+        // Assigned: a plugin whose load() failed is not registered, so it is never destroyed.
         cookieManager.removeSessionCookies()
     }
 
@@ -41,7 +41,7 @@ public class CapacitorCookies : Plugin() {
     }
 
     // Called from JavaScript: both arguments can arrive as null. CapacitorCookieManager.setCookie
-    // tolerates that (it logs "Failed to set cookie." at worst), exactly as it did for the Java original.
+    // tolerates that (it logs "Failed to set cookie." at worst).
     @JavascriptInterface
     public fun setCookie(domain: String?, action: String?) {
         cookieManager.setCookie(domain, action)

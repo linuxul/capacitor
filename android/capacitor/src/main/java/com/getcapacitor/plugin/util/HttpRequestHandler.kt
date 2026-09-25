@@ -103,8 +103,9 @@ public object HttpRequestHandler {
         }
 
         public fun openConnection(): HttpURLConnectionBuilder {
-            // Same as the Java original: a missing url or headers object throws here.
-            val connection = CapacitorHttpUrlConnection(url!!.openConnection() as HttpURLConnection)
+            val url = checkNotNull(url) { "setUrl must be called before openConnection" }
+            val headers = checkNotNull(headers) { "setHeaders must be called before openConnection" }
+            val connection = CapacitorHttpUrlConnection(url.openConnection() as HttpURLConnection)
             this.connection = connection
 
             connection.setAllowUserInteraction(false)
@@ -114,14 +115,13 @@ public object HttpRequestHandler {
             readTimeout?.let { connection.setReadTimeout(it) }
             disableRedirects?.let { connection.setDisableRedirects(it) }
 
-            connection.setRequestHeaders(headers!!)
+            connection.setRequestHeaders(headers)
             return this
         }
 
         @JvmOverloads
         public fun setUrlParams(params: JSObject, shouldEncode: Boolean = true): HttpURLConnectionBuilder {
-            // Same as the Java original: a missing url throws here.
-            val url = this.url!!
+            val url = checkNotNull(this.url) { "setUrl must be called before setUrlParams" }
             val initialQuery = url.query
             val initialQueryBuilderStr = initialQuery ?: ""
 

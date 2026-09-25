@@ -15,8 +15,7 @@ public object JSONUtils {
      * Follows a dotted key path and reads the value sitting at the deepest key.
      *
      * A path made only of dots (".", "..") splits to no parts at all, because every part is empty and
-     * trailing empty parts are dropped. There is then no key to read and the default value is returned,
-     * as the JSONException raised for a null name did in the Java original.
+     * trailing empty parts are dropped. There is then no key to read and the default value is returned.
      *
      * @param jsonObject A JSON object to search
      * @param key The key path to follow

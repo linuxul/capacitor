@@ -51,7 +51,7 @@ public open class BridgeActivity : AppCompatActivity() {
 
         bridge = bridgeBuilder.addPlugins(initialPlugins).setConfig(config).create()
 
-        // Activity.getIntent() is a platform type; the Java original ignored a null intent here.
+        // getIntent() is null only for an activity started without one; there is nothing to forward then.
         intent?.let { onNewIntent(it) }
     }
 

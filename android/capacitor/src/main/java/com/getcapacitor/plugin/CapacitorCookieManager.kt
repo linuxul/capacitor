@@ -41,9 +41,8 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
      * Resolves [url] against the bridge's server and local URLs, prefixing `https://` when it has no scheme.
      *
      * Unlike the other public functions here this one does not swallow failures: if the result is still not
-     * a valid URI the exception propagates to the caller. The Java original declared
-     * `throws URISyntaxException`; this fork declares no checked exceptions, and a null [url] matching
-     * neither bridge URL throws a `NullPointerException` instead, so no single type is named here.
+     * a valid URI the exception (a `URISyntaxException`) propagates to the caller. A null or empty [url] resolves
+     * to the server or local URL.
      */
     public fun getSanitizedDomain(url: String?): String? {
         var sanitized = url
@@ -53,7 +52,7 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
             sanitized = localUrl
         } else {
             try {
-                // A null url makes URI(..) throw a NullPointerException, as in the Java original.
+                // Not null: a bridge always has a local URL, which a null url resolved to above.
                 val uri = URI(sanitized)
                 val scheme = uri.scheme
                 if (scheme == null || scheme.isEmpty()) {
@@ -199,7 +198,7 @@ public open class CapacitorCookieManager(store: CookieStore?, policy: CookiePoli
                     setCookie(uri.toString(), headerValue)
 
                     // Set at the defined domain in the response or at default capacitor hosted url
-                    // (a null header value throws here and is ignored, as in the Java original)
+                    // (a null header value has no domain; it throws here and the catch below skips it)
                     setCookie(getDomainFromCookieString(headerValue!!), headerValue)
                 } catch (ignored: Exception) {
                 }

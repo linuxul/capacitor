@@ -50,8 +50,12 @@ public object FileUtils {
     private val COLON: Pattern = Pattern.compile(":")
     private val SLASH: Pattern = Pattern.compile("/")
 
+    /**
+     * The URL under which the local server serves the file of [u], on [host] (usually `Bridge.localUrl`).
+     *
+     * @throws NullPointerException when [u] cannot be resolved to a file path; see [getFileUrlForUri]
+     */
     public fun getPortablePath(c: Context, host: String?, u: Uri): String {
-        // Same as the Java original: throws if the uri cannot be resolved to a path.
         var path = getFileUrlForUri(c, u)!!
         if (path.startsWith("file://")) {
             path = path.replace("file://", "")

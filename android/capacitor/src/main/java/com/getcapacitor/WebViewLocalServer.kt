@@ -146,7 +146,7 @@ public class WebViewLocalServer internal constructor(
     }
 
     private fun isLocalFile(uri: Uri): Boolean {
-        // Same as the Java original: a matched uri without a path throws here.
+        // Not null: only hierarchical URIs, which always have a path, can match a handler.
         val path = uri.path!!
         return path.startsWith(CAPACITOR_CONTENT_START) || path.startsWith(CAPACITOR_FILE_START)
     }
@@ -157,7 +157,7 @@ public class WebViewLocalServer internal constructor(
     }
 
     private fun isMainUrl(loadingUrl: Uri): Boolean {
-        // Same as the Java original: a matched uri without a host throws here.
+        // Not null: a URI that matched a handler has the authority the handler was registered for.
         return bridge.serverUrl == null && loadingUrl.host!!.equals(bridge.host, ignoreCase = true)
     }
 
@@ -198,7 +198,7 @@ public class WebViewLocalServer internal constructor(
         else -> "Unknown"
     }
 
-    // Every failure in here (including the NullPointerExceptions of the Java original) is caught by the caller.
+    // Every failure in here (a missing or malformed "u" parameter, a failed connection) is caught by the caller.
     private fun handleCapacitorHttpRequest(request: WebResourceRequest): WebResourceResponse {
         val urlString = request.url.getQueryParameter(Bridge.CAPACITOR_HTTP_INTERCEPTOR_URL_PARAM)
         val url = URL(urlString)
@@ -321,7 +321,7 @@ public class WebViewLocalServer internal constructor(
                     isAsset = processedRoute.isAsset
                 }
 
-                // Same as the Java original: a route processor that yields no path throws here.
+                // A RouteProcessor must return a route with a path for the start page; without one this throws.
                 responseStream =
                     if (isAsset) {
                         protocolHandler.openAsset(startPath!!)
@@ -484,7 +484,7 @@ public class WebViewLocalServer internal constructor(
     private fun getMimeType(path: String?, stream: InputStream?): String? {
         var mimeType: String? = null
         try {
-            // Same as the Java original: a null path throws and ends up in the catch below.
+            // A null path is reported by the catch below, and the type stays unknown.
             val name = path!!
             mimeType = URLConnection.guessContentTypeFromName(name) // Does not recognize *.js
             if (mimeType != null && name.endsWith(".js") && mimeType == "image/x-icon") {
@@ -597,7 +597,7 @@ public class WebViewLocalServer internal constructor(
                     }
 
                     try {
-                        // Same as the Java original: a missing path throws here.
+                        // Not null for a matched URI (see isLocalFile); a RouteProcessor must return a path too.
                         if (path!!.startsWith(CAPACITOR_CONTENT_START)) {
                             stream = protocolHandler.openContentUrl(url)
                         } else if (path.startsWith(CAPACITOR_FILE_START)) {

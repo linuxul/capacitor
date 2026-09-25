@@ -362,8 +362,7 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         return launchCapture(takeVideoIntent) { activityResult ->
             var result: Array<Uri>? = null
             if (activityResult.resultCode == Activity.RESULT_OK) {
-                // The Java original threw on a missing result intent and reported { null } for a missing uri;
-                // both now report "no file".
+                // A result without an intent or without a uri means no file was chosen.
                 val videoUri = activityResult.data?.data
                 if (videoUri != null) {
                     result = arrayOf(videoUri)
@@ -392,7 +391,7 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         if (fileChooserParams.mode == FileChooserParams.MODE_OPEN_MULTIPLE) {
             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         }
-        // The Java original threw on an intent without a type; that case now counts as "does not start with a dot".
+        // An intent without a type does not start with a dot either.
         val typeStartsWithDot = intent.type?.startsWith(".") == true
         if (fileChooserParams.acceptTypes.size > 1 || typeStartsWithDot) {
             val validTypes = getValidTypes(fileChooserParams.acceptTypes)

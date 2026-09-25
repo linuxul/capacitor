@@ -14,7 +14,10 @@ public class JSValue(call: PluginCall, name: String) {
      */
     public val value: Any? = toValue(call, name)
 
-    // Same as the Java original: throws if the underlying value is null.
+    /**
+     * The value as a string. Throws a NullPointerException when the option is missing; check [value] first when
+     * it may be.
+     */
     override fun toString(): String = value!!.toString()
 
     /**

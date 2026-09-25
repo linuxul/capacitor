@@ -66,7 +66,7 @@ internal object JSExport {
     private fun getFilesContent(context: Context, path: String): String {
         val builder = StringBuilder()
         try {
-            // Same as the Java original: AssetManager.list returning null throws here.
+            // AssetManager.list throws an IOException for a path it cannot list rather than returning null.
             val content = context.assets.list(path)!!
             if (content.isNotEmpty()) {
                 for (file in content) {

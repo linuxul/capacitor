@@ -59,8 +59,8 @@ public class SystemBars : Plugin() {
                     override fun onPageCommitVisible(view: WebView?, url: String?) {
                         super.onPageCommitVisible(view, url)
                         bridge.webView.evaluateJavascript(viewportMetaJSFunction) { res: String? ->
-                            // evaluateJavascript reports a JS false/true as the string "false"/"true"; a null reference is
-                            // treated as false instead of throwing inside the callback, unlike the Java original's res.equals.
+                            // evaluateJavascript reports a JS false/true as the string "false"/"true"; a null result
+                            // counts as false.
                             hasViewportCover = res == "true"
 
                             // Request new execution tree of `setOnApplyWindowInsetsListener`
@@ -281,8 +281,8 @@ public class SystemBars : Plugin() {
     private fun getWebViewMajorVersion(): Int {
         val versionName = WebViewCompat.getCurrentWebViewPackage(context)?.versionName ?: return 0
 
-        // Same first segment as the Java original's versionName.split("\\.")[0], and the same
-        // NumberFormatException when it is not a number.
+        // The major version is the first dotted segment ("140" of "140.0.7339.207"). WebView version names start
+        // with it; a name that does not would throw a NumberFormatException.
         return versionName.substringBefore('.').toInt()
     }
 
@@ -317,7 +317,7 @@ public class SystemBars : Plugin() {
         // https://issues.chromium.org/issues/457682720
         const val WEBVIEW_VERSION_WITH_SAFE_AREA_KEYBOARD_FIX = 144
 
-        // A Java text block ends with a newline; trimIndent() drops it, hence the explicit "\n".
+        // The script ends with a newline, which trimIndent() drops, hence the explicit "\n".
         val viewportMetaJSFunction =
             """
             function capacitorSystemBarsCheckMetaViewport() {
