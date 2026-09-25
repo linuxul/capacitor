@@ -10,6 +10,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -128,6 +129,60 @@ class WebViewLocalServerTest {
         handler.missing = true
 
         val response = serve("/assets/app.js")
+
+        assertEquals(404, response.statusCode)
+    }
+
+    @Test
+    fun rangeRequestIsAnsweredWithAPartialResponse() {
+        val cases =
+            mapOf(
+                "bytes=0-" to "bytes 0-999/1000",
+                "bytes=100-199" to "bytes 100-199/1000",
+                "bytes=-100" to "bytes 900-999/1000",
+                "bytes=0-5000" to "bytes 0-999/1000"
+            )
+        for ((range, contentRange) in cases) {
+            responseArguments.clear()
+
+            val response = serve("/assets/video.mp4", mapOf("Range" to range))
+
+            assertEquals(range, 206, response.statusCode)
+            assertEquals(range, contentRange, response.headers["Content-Range"])
+            assertEquals(range, "bytes", response.headers["Accept-Ranges"])
+        }
+    }
+
+    @Test
+    fun lowercaseRangeHeaderIsRead() {
+        val response = serve("/assets/video.mp4", mapOf("range" to "bytes=10-19"))
+
+        assertEquals(206, response.statusCode)
+        assertEquals("bytes 10-19/1000", response.headers["Content-Range"])
+    }
+
+    @Test
+    fun malformedOrUnsatisfiableRangeFallsBackToTheWholeFile() {
+        for (range in listOf("bytes", "bytes=", "bytes=abc", "bytes=0-1,5-6", "bytes=5-2", "bytes=2000-", "items=0-1")) {
+            responseArguments.clear()
+            handler.opened.clear()
+
+            val response = serve("/assets/video.mp4", mapOf("Range" to range))
+
+            assertEquals(range, 200, response.statusCode)
+            assertNull(range, response.headers["Content-Range"])
+            // The stream opened to size the range is closed; the response gets a fresh one.
+            assertEquals(range, 2, handler.opened.size)
+            assertTrue(range, handler.opened[0].closed)
+            assertFalse(range, handler.opened[1].closed)
+        }
+    }
+
+    @Test
+    fun rangeOnAMissingFileIsA404() {
+        handler.missing = true
+
+        val response = serve("/assets/video.mp4", mapOf("Range" to "bytes=0-"))
 
         assertEquals(404, response.statusCode)
     }

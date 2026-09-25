@@ -278,32 +278,8 @@ public class WebViewLocalServer internal constructor(
         val rangeString = requestHeaders["Range"] ?: requestHeaders["range"]
 
         if (rangeString != null) {
-            val responseStream: InputStream = LazyInputStream(handler, request)
-            val mimeType = getMimeType(path, responseStream)
-            val tempResponseHeaders = handler.buildDefaultResponseHeaders()
-            var statusCode = 206
-            try {
-                val totalRange = responseStream.available()
-                val parts = EQUALS.split(rangeString)
-                val streamParts = HYPHEN.split(parts[1])
-                val fromRange = streamParts[0]
-                var range = totalRange - 1
-                if (streamParts.size > 1) {
-                    range = Integer.parseInt(streamParts[1])
-                }
-                tempResponseHeaders["Accept-Ranges"] = "bytes"
-                tempResponseHeaders["Content-Range"] = "bytes $fromRange-$range/$totalRange"
-            } catch (e: IOException) {
-                statusCode = 404
-            }
-            return WebResourceResponse(
-                mimeType,
-                handler.encoding,
-                statusCode,
-                handler.reasonPhrase,
-                tempResponseHeaders,
-                responseStream
-            )
+            // A Range that cannot be served as one partial response is ignored and the request is answered in full below.
+            handleRangeRequest(path, rangeString, handler, request)?.let { return it }
         }
 
         if (isLocalFile(request.url) || isErrorUrl(request.url)) {
@@ -397,6 +373,38 @@ public class WebViewLocalServer internal constructor(
         }
 
         return null
+    }
+
+    /**
+     * Answers a request for part of a file with a 206, or returns null when [rangeString] cannot be served as one
+     * partial response (malformed, several ranges, past the end) or the file is missing.
+     *
+     * The WebView applies the requested range to the returned stream itself; this sets the matching headers.
+     */
+    private fun handleRangeRequest(
+        path: String,
+        rangeString: String,
+        handler: PathHandler,
+        request: WebResourceRequest
+    ): WebResourceResponse? {
+        val responseStream = LazyInputStream(handler, request)
+        val headers = handler.buildDefaultResponseHeaders()
+        var statusCode = 206
+        try {
+            val range =
+                if (responseStream.exists()) RangeHeader.parse(rangeString, responseStream.available().toLong()) else null
+            if (range == null) {
+                responseStream.close()
+                return null
+            }
+            headers["Accept-Ranges"] = "bytes"
+            headers["Content-Range"] = range.contentRange
+        } catch (e: IOException) {
+            statusCode = 404
+        }
+
+        val mimeType = getMimeType(path, responseStream)
+        return WebResourceResponse(mimeType, handler.encoding, statusCode, handler.reasonPhrase, headers, responseStream)
     }
 
     /**
@@ -687,6 +695,5 @@ public class WebViewLocalServer internal constructor(
 
         val SEMICOLON: Pattern = Pattern.compile(";")
         val EQUALS: Pattern = Pattern.compile("=")
-        val HYPHEN: Pattern = Pattern.compile("-")
     }
 }
