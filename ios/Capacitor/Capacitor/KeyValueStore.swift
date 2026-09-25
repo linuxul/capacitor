@@ -94,7 +94,7 @@ public class KeyValueStore {
         case persistent(suiteName: String)
     }
 
-    private let backend: any KeyValueStoreBackend
+    let backend: any KeyValueStoreBackend
 
     /// Creates an instance of ``KeyValueStore`` with a custom backend
     /// - Parameter backend: The custom backend implementation
@@ -229,26 +229,30 @@ private class FileStore: KeyValueStoreBackend {
     // This ensures we essentially have singletons for accessing file based resources
     // so we don't have a scenario where two separate instances may be writing to
     // the same files.
+    // The lookup and the insert happen under one lock, so two threads asking for the same name at the same time get
+    // the same instance.
     static func with(name: String) -> FileStore {
-        if let existing = instances[name] { return existing }
-        guard let library = try? FileManager
-                .default
-                .url(
-                    for: .libraryDirectory,
-                    in: .userDomainMask,
-                    appropriateFor: nil,
-                    create: true
-                )
-        else { fatalError("⚡️ ❌ Library URL unable to be accessed or created by the current application. This is an impossible state.") }
+        instances.withLock { stores in
+            if let existing = stores[name] { return existing }
+            guard let library = try? FileManager
+                    .default
+                    .url(
+                        for: .libraryDirectory,
+                        in: .userDomainMask,
+                        appropriateFor: nil,
+                        create: true
+                    )
+            else { fatalError("⚡️ ❌ Library URL unable to be accessed or created by the current application. This is an impossible state.") }
 
-        let url = library.appendingPathComponent("kvstore").appendingPathComponent(name)
+            let url = library.appendingPathComponent("kvstore").appendingPathComponent(name)
 
-        // Create the folder if it doesn't exist. This should never throw for the current base directory, so we ignore the exception.
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+            // Create the folder if it doesn't exist. This should never throw for the current base directory, so we ignore the exception.
+            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
 
-        let new = FileStore(baseUrl: url)
-        instances[name] = new
-        return new
+            let new = FileStore(baseUrl: url)
+            stores[name] = new
+            return new
+        }
     }
 }
 

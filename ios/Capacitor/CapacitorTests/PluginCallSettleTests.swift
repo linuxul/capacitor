@@ -102,6 +102,28 @@ class PluginCallSettleTests: XCTestCase {
         XCTAssertEqual(counter.counts.successes + counter.counts.errors, 1)
     }
 
+    func testKeepAliveIsSafeToUseFromManyThreads() {
+        let counter = Counter()
+        let call = counter.call()
+        DispatchQueue.concurrentPerform(iterations: 1000) { index in
+            if index.isMultiple(of: 2) {
+                call.keepAlive = true
+            } else {
+                _ = call.keepAlive
+            }
+        }
+        XCTAssertTrue(call.keepAlive)
+        // resolving while other threads flip keepAlive settles at least once and never crashes
+        DispatchQueue.concurrentPerform(iterations: 200) { index in
+            if index.isMultiple(of: 3) {
+                call.keepAlive.toggle()
+            } else {
+                call.resolve()
+            }
+        }
+        XCTAssertGreaterThanOrEqual(counter.counts.successes, 1)
+    }
+
     func testListenersStillReceiveEveryEvent() {
         let plugin = SettleTestPlugin()
         let counter = Counter()

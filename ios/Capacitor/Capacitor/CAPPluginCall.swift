@@ -7,7 +7,13 @@ public typealias CAPPluginCallErrorHandler = (_ error: CAPPluginCallError) -> Vo
 @objc(CAPPluginCall)
 open class CAPPluginCall: NSObject {
     /// Whether the call should be retained by the bridge after the plugin method returns so that it can be resolved later or repeatedly.
-    @objc public var keepAlive: Bool = false
+    ///
+    /// Safe to read and write from any thread: plugins set it on the bridge queue or in completion handlers, while the
+    /// bridge reads it when it saves the call and whenever a result is sent.
+    @objc public var keepAlive: Bool {
+        get { stateLock.withLock { lockedKeepAlive } }
+        set { stateLock.withLock { lockedKeepAlive = newValue } }
+    }
     @objc public let callbackId: String
     @objc public let methodName: String
     public let options: JSObject
@@ -19,7 +25,9 @@ open class CAPPluginCall: NSObject {
     /// The JavaScript name of the plugin the call was made to, set by the bridge for diagnostics.
     internal var pluginName: String?
 
-    private let settleLock = NSLock()
+    /// Guards the mutable state of the call.
+    private let stateLock = NSLock()
+    private var lockedKeepAlive = false
     private var isSettled = false
 
     public init(callbackId: String, methodName: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
@@ -35,8 +43,8 @@ open class CAPPluginCall: NSObject {
     /// sent and every later one is dropped and logged, because the page has already released the promise. A call that is
     /// kept alive may send any number of results.
     internal func claimSettlement(_ attempt: StaticString) -> Bool {
-        let claimed: Bool = settleLock.withLock {
-            if keepAlive {
+        let claimed: Bool = stateLock.withLock {
+            if lockedKeepAlive {
                 return true
             }
             if isSettled {
