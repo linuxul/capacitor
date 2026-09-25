@@ -20,7 +20,7 @@ struct RegistrationList: Codable {
 // swiftlint:disable lower_acl_than_parent
 // swiftlint:disable file_length
 // swiftlint:disable type_body_length
-open class CapacitorBridge: NSObject, CAPBridgeProtocol {
+open class CapacitorBridge: CAPBridgeProtocol {
 
     // this decision is needed before the bridge is instantiated,
     // so we need a class property to avoid duplication
@@ -180,7 +180,6 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         self.notificationRouter = NotificationRouter()
         self.notificationRouter.handleApplicationNotifications = configuration.handleApplicationNotifications
         self.autoRegisterPlugins = autoRegisterPlugins
-        super.init()
 
         // covers bridges that are created without a CAPBridgeViewController
         _ = CapacitorRuntimeHooks.install
