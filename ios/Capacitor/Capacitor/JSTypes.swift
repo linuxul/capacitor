@@ -188,10 +188,6 @@ extension JSValueContainer {
  */
 public enum JSTypes {}
 extension JSTypes {
-    public static func coerceDictionaryToJSObject(_ dictionary: NSDictionary?, formattingDatesAsStrings: Bool = false) -> JSObject? {
-        return coerceToJSValue(dictionary, formattingDates: formattingDatesAsStrings) as? JSObject
-    }
-
     public static func coerceDictionaryToJSObject(_ dictionary: [AnyHashable: Any]?, formattingDatesAsStrings: Bool = false) -> JSObject? {
         return coerceToJSValue(dictionary, formattingDates: formattingDatesAsStrings) as? JSObject
     }
