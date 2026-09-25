@@ -42,7 +42,7 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
         guard let obj = data as? JSObject else {
             // Throw, other data types explicitly not supported
             throw CapacitorUrlRequestError.serializationError(
-                "[ data ] argument for request with content-type [ multipart/form-data ] may only be a plain javascript object"
+                "[ data ] argument for request with content-type [ application/x-www-form-urlencoded ] may only be a plain javascript object"
             )
         }
 
@@ -66,7 +66,7 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
         guard let obj = data as? JSObject else {
             // Throw, other data types explicitly not supported.
             throw CapacitorUrlRequestError.serializationError(
-                "[ data ] argument for request with content-type [ application/x-www-form-urlencoded ] may only be a plain javascript object"
+                "[ data ] argument for request with content-type [ multipart/form-data ] may only be a plain javascript object"
             )
         }
 

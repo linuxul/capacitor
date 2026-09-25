@@ -216,4 +216,20 @@ class HttpRequestHandlerTests: XCTestCase {
             }
         }
     }
+
+    func testSerializationErrorsNameTheContentTypeOfTheRequest() {
+        let request = CapacitorUrlRequest(URL(string: "https://example.com")!, method: "POST")
+        XCTAssertThrowsError(try request.getRequestDataAsFormUrlEncoded("not an object")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("[ application/x-www-form-urlencoded ]"), error.localizedDescription)
+        }
+        XCTAssertThrowsError(try request.getRequestDataAsMultipartFormData("not an object", "multipart/form-data; boundary=B")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("[ multipart/form-data ]"), error.localizedDescription)
+        }
+    }
+
+    func testCookieDecodingKeepsAMalformedPercentEscape() {
+        let manager = CapacitorCookieManager(nil)
+        XCTAssertEqual(manager.decode("a%20b"), "a b")
+        XCTAssertEqual(manager.decode("100%"), "100%")
+    }
 }

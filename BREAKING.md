@@ -78,6 +78,7 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 - Scheme tasks always complete: a request without a URL, a missing file or a non-HTTP response fails the task instead of leaving it open.
 - The `WebView` plugin methods and `CapacitorCookies.clearCookies` settle instead of never answering.
 - `CapacitorHttp` turns number and boolean `params` into strings instead of crashing, rejects a non-HTTP response, and rejects malformed FormData or non-base64 `file` data before sending anything.
+- A `CapacitorHttp` request whose `data` is not an object reports the content type it was sent with; the `application/x-www-form-urlencoded` and `multipart/form-data` messages were swapped. `CapacitorCookieManager.decode` returns a value with a malformed percent escape unchanged instead of crashing.
 - `alert`, `confirm` and `prompt` are shown from the topmost view controller. When they cannot be shown, the page gets the dismissed answer (`false` for confirm, `null` for prompt) instead of hanging.
 - Decoding a short array into a fixed-size type with `call.decode` throws `DecodingError.valueNotFound` instead of crashing, and nested decoding errors carry their coding path.
 - `call.getDate` and the `.iso8601` date strategy of `JSValueDecoder` read dates with fractional seconds, as `Date.prototype.toISOString()` writes them (`2023-11-14T22:13:20.750Z`); they returned `nil` or threw before. Dates the runtime writes still have whole seconds.

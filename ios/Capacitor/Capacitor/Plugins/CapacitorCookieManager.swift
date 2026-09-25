@@ -53,10 +53,9 @@ public class CapacitorCookieManager {
         return value.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!
     }
 
-    /// Traps when `value` has a malformed percent escape. The runtime does not call it.
+    /// Removes the percent encoding of `value`, or returns `value` unchanged when it has a malformed percent escape.
     public func decode(_ value: String) -> String {
-        // swiftlint:disable:next force_unwrapping
-        return value.removingPercentEncoding!
+        return value.removingPercentEncoding ?? value
     }
 
     public func setCookie(_ domain: String, _ action: String) {
