@@ -14,7 +14,9 @@ import Foundation
 ///     ...
 /// }
 /// ```
-public struct CAPPluginError: Error {
+///
+/// Like every `Error` it may cross threads; its data must hold JSON values only.
+public struct CAPPluginError: Error, @unchecked Sendable {
     /// The message JavaScript receives as the error's `message`.
     public var message: String
     /// The code JavaScript receives as the error's `code`.

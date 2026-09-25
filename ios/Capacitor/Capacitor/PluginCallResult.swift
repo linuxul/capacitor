@@ -3,7 +3,10 @@ import Foundation
 public typealias PluginCallResultData = [String: Any]
 
 /// A successful result of a plugin call, as the call's success handler receives it.
-public struct CAPPluginCallResult {
+///
+/// Results are immutable and hold JSON values (strings, numbers, booleans, `NSNull`, dates, arrays and dictionaries of
+/// them), so they may be passed between threads.
+public struct CAPPluginCallResult: @unchecked Sendable {
     /// The data the call was resolved with, or nil when it was resolved without data (JavaScript receives `undefined`).
     public let data: PluginCallResultData?
 
@@ -13,7 +16,9 @@ public struct CAPPluginCallResult {
 }
 
 /// A failed result of a plugin call, as the call's error handler receives it.
-public struct CAPPluginCallError {
+///
+/// Like ``CAPPluginCallResult``, it is immutable and its data holds JSON values.
+public struct CAPPluginCallError: @unchecked Sendable {
     /// The message JavaScript receives as the error's `message`.
     public let message: String
     /// The code JavaScript receives as the error's `code`.

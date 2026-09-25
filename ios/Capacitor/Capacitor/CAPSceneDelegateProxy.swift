@@ -21,11 +21,9 @@ public class SceneDelegateProxy: NSObject, UISceneDelegate {
         // Plugins haven't loaded yet on a cold start, so notifications posted here are
         // missed. Deliver them on the first capacitorViewDidAppear, once plugins are
         // registered.
-        var token: NSObjectProtocol?
-        token = NotificationCenter.default.addObserver(forName: .capacitorViewDidAppear, object: nil, queue: .main) { _ in
-            if let token {
-                NotificationCenter.default.removeObserver(token)
-            }
+        let registration = ObserverRegistration()
+        registration.token = NotificationCenter.default.addObserver(forName: .capacitorViewDidAppear, object: nil, queue: .main) { _ in
+            registration.remove()
             if !connectionOptions.urlContexts.isEmpty {
                 self.scene(scene, openURLContexts: connectionOptions.urlContexts)
             }
@@ -70,6 +68,20 @@ public class SceneDelegateProxy: NSObject, UISceneDelegate {
         NotificationCenter.default.post(name: .capacitorSceneOpenUniversalLink, object: scene, userInfo: [
             "url": url
         ])
+    }
+
+    /// The token of an observer that removes itself the first time it is called. Its block runs on the main queue, so it
+    /// cannot run before `scene(_:willConnectTo:options:)`, which runs there too, has stored the token. The token is
+    /// only used on the main queue.
+    private final class ObserverRegistration: @unchecked Sendable {
+        var token: NSObjectProtocol?
+
+        func remove() {
+            if let token {
+                NotificationCenter.default.removeObserver(token)
+                self.token = nil
+            }
+        }
     }
 
     private static func openURLOptions(from sceneOptions: UIScene.OpenURLOptions) -> [UIApplication.OpenURLOptionsKey: Any] {

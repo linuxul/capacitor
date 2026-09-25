@@ -83,7 +83,9 @@ import Foundation
 ///
 /// The throwing API should be used in cases where detailed error information is needed for logging or diagnostics. The non-throwing API should be used
 /// in cases where silent failure is preferred.
-public class KeyValueStore {
+///
+/// A store may be used from any thread. The built-in backends are thread-safe; a custom backend must be as well.
+public class KeyValueStore: @unchecked Sendable {
 
     /// The built-in storage backends
     public enum Backend {
@@ -183,7 +185,8 @@ public protocol KeyValueStoreBackend {
     func `delete`(_ key: String) throws
 }
 
-private class FileStore: KeyValueStoreBackend {
+// Thread-safe: the cache is a ConcurrentDictionary, files are written atomically, and the rest is immutable.
+private final class FileStore: KeyValueStoreBackend, @unchecked Sendable {
     private let cache = ConcurrentDictionary<Data>()
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
@@ -256,7 +259,8 @@ private class FileStore: KeyValueStoreBackend {
     }
 }
 
-private class InMemoryStore: KeyValueStoreBackend {
+// Thread-safe: the storage is a ConcurrentDictionary and the rest is immutable.
+private final class InMemoryStore: KeyValueStoreBackend, @unchecked Sendable {
     private let storage = ConcurrentDictionary<Data>()
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
@@ -276,7 +280,8 @@ private class InMemoryStore: KeyValueStoreBackend {
     }
 }
 
-class ConcurrentDictionary<Value> {
+/// A dictionary whose every access goes through a lock.
+final class ConcurrentDictionary<Value> {
     typealias StorageType = [String: Value]
     private var storage: StorageType
     private let lock = NSLock()
@@ -305,3 +310,6 @@ class ConcurrentDictionary<Value> {
         }
     }
 }
+
+// The storage is only reached under the lock, so the dictionary is as safe to share as its values.
+extension ConcurrentDictionary: @unchecked Sendable where Value: Sendable {}

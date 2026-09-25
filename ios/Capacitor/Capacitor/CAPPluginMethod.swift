@@ -48,7 +48,10 @@ import Foundation
 /// A method runs on the main thread by being `@MainActor` and registered with `async`, whether the method itself is
 /// `async` or not. A synchronous `@MainActor` method registered with `promise`, `callback` or `none` runs on the
 /// bridge queue: in the Swift 5 language mode the compiler accepts it without a warning.
-public struct CAPPluginMethod {
+///
+/// A method is immutable and safe to share between threads: what it calls captures only the method reference it was
+/// made from.
+public struct CAPPluginMethod: @unchecked Sendable {
     /// How the result of the method is returned to JavaScript. The raw values are part of the JS protocol and must not change.
     public enum ReturnType: String {
         case promise, callback, none

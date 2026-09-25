@@ -1,7 +1,9 @@
 import Foundation
 import UIKit
 
-public struct InstanceConfiguration {
+/// The configuration of a bridge. It is an immutable value (``updatingAppLocation(_:)`` returns a copy), so it may be
+/// read from any thread.
+public struct InstanceConfiguration: @unchecked Sendable {
     public let appendedUserAgentString: String?
     public let overridenUserAgentString: String?
     public let backgroundColor: UIColor?
