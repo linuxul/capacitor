@@ -90,7 +90,7 @@ class MessageHandlerTest {
         listener.onPostMessage(webView, message, mock<Uri>(), true, replyProxy)
 
         val call = argumentCaptor<PluginCall>()
-        verify(bridge, atLeastOnce()).callPluginMethod(anyOrNull(), anyOrNull(), call.capture())
+        verify(bridge, atLeastOnce()).callPluginMethod(any(), any(), call.capture())
         return call.lastValue
     }
 
@@ -120,7 +120,7 @@ class MessageHandlerTest {
     fun callAnsweredDuringDispatchStillUsesTheReplyProxy() {
         // A plugin that answers before the listener returns, e.g. on a thread that beats it.
         doAnswer { (it.arguments[2] as PluginCall).resolve() }
-            .whenever(bridge).callPluginMethod(anyOrNull(), anyOrNull(), any())
+            .whenever(bridge).callPluginMethod(any(), any(), any())
 
         withListenerBridge { listener ->
             sendFromPage(listener, "1")
@@ -129,6 +129,24 @@ class MessageHandlerTest {
 
         verify(replyProxy).postMessage(anyString())
         verify(webView, never()).evaluateJavascript(anyString(), anyOrNull())
+    }
+
+    @Test
+    fun messagesWithoutTheirIdsAreDropped() {
+        withListenerBridge { listener ->
+            for (missing in listOf("callbackId", "pluginId", "methodName")) {
+                val json =
+                    JSONObject().put("type", "message").put("callbackId", "1").put("pluginId", "Echo").put("methodName", "echo")
+                json.remove(missing)
+                val message = mock<WebMessageCompat>()
+                whenever(message.data).thenReturn(json.toString())
+
+                listener.onPostMessage(webView, message, mock<Uri>(), true, replyProxy)
+            }
+        }
+
+        verify(bridge, never()).callPluginMethod(any(), any(), any())
+        assertEquals(3, logs.entries.count { it.priority == Log.ERROR && it.message.startsWith("Dropping a plugin call") })
     }
 
     @Test

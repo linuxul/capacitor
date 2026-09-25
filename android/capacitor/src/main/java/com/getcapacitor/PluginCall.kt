@@ -17,9 +17,9 @@ import org.json.JSONObject
  */
 public class PluginCall(
     private val msgHandler: MessageHandler,
-    public val pluginId: String?,
-    public val callbackId: String?,
-    public val methodName: String?,
+    public val pluginId: String,
+    public val callbackId: String,
+    public val methodName: String,
     public val data: JSObject
 ) {
     /**

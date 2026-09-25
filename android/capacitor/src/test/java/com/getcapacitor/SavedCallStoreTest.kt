@@ -14,7 +14,7 @@ import org.mockito.kotlin.mock
 class SavedCallStoreTest {
     private val store = SavedCallStore()
 
-    private fun call(callbackId: String?, pluginId: String? = "P"): PluginCall =
+    private fun call(callbackId: String, pluginId: String = "P"): PluginCall =
         PluginCall(mock<MessageHandler>(), pluginId, callbackId, "method", JSObject())
 
     @Test
@@ -92,10 +92,14 @@ class SavedCallStoreTest {
     }
 
     @Test
-    fun savingANullPermissionCallIsIgnored() {
-        store.savePermissionCall(null)
+    fun releasingANullOrUnknownCallbackIdIsIgnored() {
+        val call = call("1")
+        store.save(call)
 
-        assertNull(store.takePermissionCall(null))
+        store.release(null)
+        store.release("2")
+
+        assertSame(call, store.get("1"))
     }
 
     @Test

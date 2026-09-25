@@ -1,10 +1,13 @@
 package com.getcapacitor
 
 import com.getcapacitor.annotation.CapacitorPlugin
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -12,7 +15,8 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 
 /**
- * Removing every listener must also release the kept-alive addListener calls the bridge saved for them.
+ * Removing every listener must also release the kept-alive addListener calls the bridge saved for them. And a
+ * listener needs an event name.
  */
 class PluginRemoveAllListenersTest {
     @get:Rule
@@ -62,5 +66,18 @@ class PluginRemoveAllListenersTest {
         verify(bridge).releaseCall(second)
         plugin.fire()
         verify(handler, never()).sendResponseMessage(any(), any(), isNull())
+    }
+
+    @Test
+    fun addListenerWithoutAnEventNameRejectsInsteadOfListening() {
+        val call = PluginCall(handler, "Events", "1", "addListener", JSObject())
+
+        plugin.addListener(call)
+
+        val error = argumentCaptor<PluginResult>()
+        verify(handler).sendResponseMessage(eq(call), isNull(), error.capture())
+        assertEquals("Must provide an eventName", JSObject(error.firstValue.toString()).getString("message"))
+        assertFalse(call.keepAlive)
+        assertFalse(plugin.listening())
     }
 }

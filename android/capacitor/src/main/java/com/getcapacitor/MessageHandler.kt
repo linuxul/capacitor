@@ -60,6 +60,16 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
                 else -> {
                     val pluginId = postData.getString("pluginId")
                     val methodName = postData.getString("methodName")
+
+                    // The bridge's JavaScript always sends all three; anything else did not come from it.
+                    if (callbackId.isNullOrEmpty() || pluginId.isNullOrEmpty() || methodName.isNullOrEmpty()) {
+                        Logger.error(
+                            "Dropping a plugin call without a callbackId, pluginId or methodName: " +
+                                "callbackId: $callbackId, pluginId: $pluginId, methodName: $methodName"
+                        )
+                        return
+                    }
+
                     // Never null: the default is non-null.
                     val methodData = postData.getJSObject("options", JSObject()) ?: JSObject()
 
@@ -68,7 +78,8 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
                         "To native (Capacitor plugin): callbackId: $callbackId, pluginId: $pluginId, methodName: $methodName"
                     )
 
-                    callPluginMethod(callbackId, pluginId, methodName, methodData)
+                    val call = PluginCall(this, pluginId, callbackId, methodName, methodData)
+                    bridge.callPluginMethod(pluginId, methodName, call)
                 }
             }
         } catch (ex: Exception) {
@@ -95,9 +106,7 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
                 }
             }
 
-            // Same as the Java original: a null callbackId throws here and is logged by the catch below.
-            val isValidCallbackId = call.callbackId!! != PluginCall.CALLBACK_ID_DANGLING
-            if (isValidCallbackId) {
+            if (call.callbackId != PluginCall.CALLBACK_ID_DANGLING) {
                 val replyProxy = javaScriptReplyProxy
                 if (bridge.config.isUsingLegacyBridge) {
                     legacySendResponseMessage(data)
@@ -139,10 +148,5 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
         val runScript = "window.Capacitor.fromNative($data)"
         val webView = this.webView
         webView.post { webView.evaluateJavascript(runScript, null) }
-    }
-
-    private fun callPluginMethod(callbackId: String?, pluginId: String?, methodName: String?, methodData: JSObject) {
-        val call = PluginCall(this, pluginId, callbackId, methodName, methodData)
-        bridge.callPluginMethod(pluginId, methodName, call)
     }
 }

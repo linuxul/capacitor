@@ -47,7 +47,7 @@ private constructor(public val pluginClass: Class<out Plugin>, private val bridg
         get() = pluginMethods.values
 
     // pluginMethods is filled while the handle is built and not changed afterwards, so any thread may read it.
-    internal fun findMethod(methodName: String?): PluginMethodHandle? = pluginMethods[methodName]
+    internal fun findMethod(methodName: String): PluginMethodHandle? = pluginMethods[methodName]
 
     public fun load(): Plugin {
         if (this::instance.isInitialized) {
@@ -80,7 +80,7 @@ private constructor(public val pluginClass: Class<out Plugin>, private val bridg
      * @param call the constructed PluginCall with parameters from the caller
      * @throws InvalidPluginMethodException if no method was found on that plugin, or it is a suspend method
      */
-    public fun invoke(methodName: String?, call: PluginCall?) {
+    public fun invoke(methodName: String, call: PluginCall) {
         if (!this::instance.isInitialized) {
             // Can throw PluginLoadException
             load()

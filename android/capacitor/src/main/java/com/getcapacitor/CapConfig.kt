@@ -65,7 +65,7 @@ public class CapConfig internal constructor(
     /**
      * The configuration of a plugin, or an empty one if the config has none for it.
      */
-    public fun getPluginConfiguration(pluginId: String?): PluginConfig = pluginsConfiguration[pluginId] ?: PluginConfig(JSONObject())
+    public fun getPluginConfiguration(pluginId: String): PluginConfig = pluginsConfiguration[pluginId] ?: PluginConfig(JSONObject())
 
     /**
      * Builds a Capacitor Configuration in code

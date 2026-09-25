@@ -543,7 +543,7 @@ public class Bridge private constructor(
         Logger.error("Plugin " + clazz.name + " failed to load", ex)
     }
 
-    public fun getPlugin(pluginId: String?): PluginHandle? = plugins[pluginId]
+    public fun getPlugin(pluginId: String): PluginHandle? = plugins[pluginId]
 
     private inline fun eachPlugin(block: (Plugin) -> Unit) {
         for (handle in plugins.values) {
@@ -557,7 +557,7 @@ public class Bridge private constructor(
      * @param methodName the name of the method to call
      * @param call the call object to pass to the method
      */
-    public fun callPluginMethod(pluginId: String?, methodName: String?, call: PluginCall) {
+    public fun callPluginMethod(pluginId: String, methodName: String, call: PluginCall) {
         try {
             val plugin = getPlugin(pluginId)
 
@@ -688,14 +688,14 @@ public class Bridge private constructor(
      *
      * @return The saved plugin call
      */
-    internal fun getPermissionCall(pluginId: String?): PluginCall? = savedCallStore.takePermissionCall(pluginId)
+    internal fun getPermissionCall(pluginId: String): PluginCall? = savedCallStore.takePermissionCall(pluginId)
 
     /**
      * Save a call to be retrieved after requesting permissions. Calls are saved in order.
      *
      * @param call The plugin call to save.
      */
-    internal fun savePermissionCall(call: PluginCall?) {
+    internal fun savePermissionCall(call: PluginCall) {
         savedCallStore.savePermissionCall(call)
     }
 
@@ -758,7 +758,7 @@ public class Bridge private constructor(
 
         if (lastPluginId != null) {
             // If we have JSON blob saved, create a new plugin call with the original options
-            if (lastOptionsJson != null) {
+            if (lastOptionsJson != null && lastPluginCallMethod != null) {
                 try {
                     val options = JSObject(lastOptionsJson)
 

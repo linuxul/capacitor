@@ -219,7 +219,7 @@ class PluginHandleContractTest {
         val handle = PluginHandle(mock<Bridge>(), SuspendingPlugin())
 
         try {
-            handle.invoke("later", null)
+            handle.invoke("later", PluginCall(mock<MessageHandler>(), "Suspending", "1", "later", JSObject()))
             fail("expected InvalidPluginMethodException")
         } catch (e: InvalidPluginMethodException) {
             assertTrue(e.message ?: "", (e.message ?: "").contains("suspend"))

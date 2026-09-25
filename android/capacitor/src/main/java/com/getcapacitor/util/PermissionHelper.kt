@@ -27,7 +27,7 @@ public object PermissionHelper {
      * @param permission A permission to check.
      * @return True if the permission has been defined in the Manifest, false if not.
      */
-    public fun hasDefinedPermission(context: Context, permission: String?): Boolean {
+    public fun hasDefinedPermission(context: Context, permission: String): Boolean {
         val requestedPermissions = getManifestPermissions(context)
         return !requestedPermissions.isNullOrEmpty() && requestedPermissions.contains(permission)
     }

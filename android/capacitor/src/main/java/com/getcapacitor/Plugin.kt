@@ -46,7 +46,7 @@ public open class Plugin {
     private val listenerLock = Any()
 
     // Stored event listeners
-    private val eventListeners: MutableMap<String?, MutableList<PluginCall>> = HashMap()
+    private val eventListeners: MutableMap<String, MutableList<PluginCall>> = HashMap()
 
     /**
      * Launchers used by the plugin to handle activity results
@@ -67,7 +67,7 @@ public open class Plugin {
 
     // Stored results of an event if an event was fired and
     // no listeners were attached yet. Only stores the last value.
-    private val retainedEventArguments: MutableMap<String?, MutableList<JSObject?>> = HashMap()
+    private val retainedEventArguments: MutableMap<String, MutableList<JSObject?>> = HashMap()
 
     /**
      * Called when the plugin has been connected to the bridge
@@ -175,7 +175,7 @@ public open class Plugin {
      * @param callbackName the name of the callback to run when the launched activity is finished
      * @since 3.0.0
      */
-    public open fun startActivityForResult(call: PluginCall, intent: Intent, callbackName: String?) {
+    public open fun startActivityForResult(call: PluginCall, intent: Intent, callbackName: String) {
         // return when null since call was rejected in getLauncherOrReject
         val activityResultLauncher = getActivityLauncherOrReject(call, callbackName) ?: return
         bridge.setPluginCallForLastActivity(call)
@@ -184,7 +184,7 @@ public open class Plugin {
         activityResultLauncher.launch(intent)
     }
 
-    private fun permissionActivityResult(call: PluginCall, permissionStrings: Array<String>, callbackName: String?) {
+    private fun permissionActivityResult(call: PluginCall, permissionStrings: Array<String>, callbackName: String) {
         // return when null since call was rejected in getLauncherOrReject
         val permissionResultLauncher = getPermissionLauncherOrReject(call, callbackName) ?: return
 
@@ -359,7 +359,7 @@ public open class Plugin {
      * @param methodName the name of the activity callback method
      * @return a launcher, or null if none found
      */
-    private fun getActivityLauncherOrReject(call: PluginCall, methodName: String?): ActivityResultLauncher<Intent>? {
+    private fun getActivityLauncherOrReject(call: PluginCall, methodName: String): ActivityResultLauncher<Intent>? {
         val activityLauncher = activityLaunchers[methodName]
 
         // if there is no registered launcher, reject the call with an error and return null
@@ -384,7 +384,7 @@ public open class Plugin {
      * @param methodName the name of the permission callback method
      * @return a launcher, or null if none found
      */
-    private fun getPermissionLauncherOrReject(call: PluginCall, methodName: String?): ActivityResultLauncher<Array<String>>? {
+    private fun getPermissionLauncherOrReject(call: PluginCall, methodName: String): ActivityResultLauncher<Array<String>>? {
         val permissionLauncher = permissionLaunchers[methodName]
 
         // if there is no registered launcher, reject the call with an error and return null
@@ -396,7 +396,7 @@ public open class Plugin {
         return permissionLauncher
     }
 
-    private fun rejectUnregisteredPermissionCallback(call: PluginCall, methodName: String?) {
+    private fun rejectUnregisteredPermissionCallback(call: PluginCall, methodName: String) {
         val registerError =
             "There is no PermissionCallback method registered for the name: $methodName. " +
                 "Please define a callback method annotated with @PermissionCallback " +
@@ -411,7 +411,7 @@ public open class Plugin {
      * @param alias the permission alias to get
      * @return the state of the provided permission alias or null
      */
-    public open fun getPermissionState(alias: String?): PermissionState? = permissionStates[alias]
+    public open fun getPermissionState(alias: String): PermissionState? = permissionStates[alias]
 
     /**
      * Helper to check all permissions defined on a plugin and see the state of each.
@@ -428,7 +428,7 @@ public open class Plugin {
     /**
      * Add a listener for the given event
      */
-    private fun addEventListener(eventName: String?, call: PluginCall) {
+    private fun addEventListener(eventName: String, call: PluginCall) {
         // The first listener takes the events retained while there was none, in the same step that adds it,
         // so they are handed out exactly once.
         val retainedArgs =
@@ -447,7 +447,7 @@ public open class Plugin {
     /**
      * Remove a listener from the given event
      */
-    private fun removeEventListener(eventName: String?, call: PluginCall) {
+    private fun removeEventListener(eventName: String, call: PluginCall) {
         synchronized(listenerLock) {
             eventListeners[eventName]?.remove(call)
         }
@@ -459,7 +459,7 @@ public open class Plugin {
      * @param retainUntilConsumed keep the event for the first listener that gets added, if there is none yet
      */
     @JvmOverloads
-    protected open fun notifyListeners(eventName: String?, data: JSObject?, retainUntilConsumed: Boolean = false) {
+    protected open fun notifyListeners(eventName: String, data: JSObject?, retainUntilConsumed: Boolean = false) {
         Logger.verbose(logTag, "Notifying listeners for event $eventName")
         val listeners =
             synchronized(listenerLock) {
@@ -488,7 +488,7 @@ public open class Plugin {
     /**
      * Check if there are any listeners for the given event
      */
-    protected open fun hasListeners(eventName: String?): Boolean = synchronized(listenerLock) {
+    protected open fun hasListeners(eventName: String): Boolean = synchronized(listenerLock) {
         !eventListeners[eventName].isNullOrEmpty()
     }
 
@@ -496,7 +496,7 @@ public open class Plugin {
      * Send the arguments retained for this event while it had no listener. This
      * is called only when the first listener for an event is added
      */
-    private fun sendRetainedArguments(eventName: String?, retainedArgs: List<JSObject?>) {
+    private fun sendRetainedArguments(eventName: String, retainedArgs: List<JSObject?>) {
         for (retained in retainedArgs) {
             // Should the new listener already be gone again, the event waits for the next one.
             notifyListeners(eventName, retained, retainUntilConsumed = true)
@@ -509,6 +509,11 @@ public open class Plugin {
     @PluginMethod(returnType = PluginMethod.RETURN_NONE)
     public open fun addListener(call: PluginCall) {
         val eventName = call.getString("eventName")
+        if (eventName == null) {
+            call.reject("Must provide an eventName")
+            return
+        }
+
         call.keepAlive = true
         addEventListener(eventName, call)
     }
@@ -522,7 +527,10 @@ public open class Plugin {
         val callbackId = call.getString("callbackId")
         val savedCall = bridge.getSavedCall(callbackId)
         if (savedCall != null) {
-            removeEventListener(eventName, savedCall)
+            // Without an eventName, addListener rejected the call instead of adding it.
+            if (eventName != null) {
+                removeEventListener(eventName, savedCall)
+            }
             bridge.releaseCall(savedCall)
         }
     }

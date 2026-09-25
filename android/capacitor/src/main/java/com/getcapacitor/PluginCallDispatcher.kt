@@ -34,7 +34,7 @@ internal class PluginCallDispatcher(
     // The calls of suspend methods that have not returned yet, so that cancelRunningCalls can answer them.
     private val runningCalls = HashSet<PluginCall>()
 
-    fun dispatch(plugin: PluginHandle, methodName: String?, call: PluginCall) {
+    fun dispatch(plugin: PluginHandle, methodName: String, call: PluginCall) {
         // A method that does not exist is reported from the plugin thread, where invoke throws for it.
         val method = plugin.findMethod(methodName)
         val onMainThread = method?.thread == PluginThread.MAIN
@@ -161,7 +161,7 @@ internal class PluginCallDispatcher(
      * method) are thrown directly; what the method throws arrives wrapped in an [InvocationTargetException] when
      * it throws before it first suspends.
      */
-    private fun rejectFailedCall(plugin: PluginHandle, methodName: String?, call: PluginCall, failure: Throwable) {
+    private fun rejectFailedCall(plugin: PluginHandle, methodName: String, call: PluginCall, failure: Throwable) {
         val cause = (failure as? InvocationTargetException)?.targetException ?: failure
 
         when {

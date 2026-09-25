@@ -9,10 +9,10 @@ package com.getcapacitor
  */
 internal class SavedCallStore {
     // Stored plugin calls that we're keeping around to call again someday
-    private val savedCalls: MutableMap<String?, PluginCall> = HashMap()
+    private val savedCalls: MutableMap<String, PluginCall> = HashMap()
 
     // The call IDs of saved plugin calls with associated plugin id for handling permissions
-    private val savedPermissionCallIds: MutableMap<String?, ArrayDeque<String?>> = HashMap()
+    private val savedPermissionCallIds: MutableMap<String, ArrayDeque<String>> = HashMap()
 
     // Store a plugin that started a new activity, in case we need to resume
     // the app and return that data back
@@ -43,7 +43,9 @@ internal class SavedCallStore {
      */
     @Synchronized
     fun release(callbackId: String?) {
-        savedCalls.remove(callbackId)
+        if (callbackId != null) {
+            savedCalls.remove(callbackId)
+        }
     }
 
     /**
@@ -58,9 +60,7 @@ internal class SavedCallStore {
      * Save a call to be retrieved after requesting permissions. Calls are saved in order.
      */
     @Synchronized
-    fun savePermissionCall(call: PluginCall?) {
-        if (call == null) return
-
+    fun savePermissionCall(call: PluginCall) {
         savedPermissionCallIds.getOrPut(call.pluginId) { ArrayDeque() }.addLast(call.callbackId)
         save(call)
     }
@@ -70,7 +70,7 @@ internal class SavedCallStore {
      * returns it.
      */
     @Synchronized
-    fun takePermissionCall(pluginId: String?): PluginCall? = get(savedPermissionCallIds[pluginId]?.removeFirstOrNull())
+    fun takePermissionCall(pluginId: String): PluginCall? = get(savedPermissionCallIds[pluginId]?.removeFirstOrNull())
 
     /**
      * The call that launched the last activity, without clearing it.
