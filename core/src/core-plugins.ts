@@ -53,7 +53,7 @@ export interface CapacitorCookiesPlugin {
   clearAllCookies(): Promise<void>;
 }
 
-interface HttpCookie {
+export interface HttpCookie {
   /**
    * The URL of the cookie.
    */
@@ -68,11 +68,11 @@ interface HttpCookie {
   value: string;
 }
 
-interface HttpCookieMap {
+export interface HttpCookieMap {
   [key: string]: string;
 }
 
-interface HttpCookieExtras {
+export interface HttpCookieExtras {
   /**
    * The path to write the cookie to.
    */

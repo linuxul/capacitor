@@ -30,9 +30,15 @@ export {
 
 // Core Plugin definitions
 export type {
+  CapacitorCookiesPlugin,
   ClearCookieOptions,
   DeleteCookieOptions,
+  GetCookieOptions,
+  HttpCookie,
+  HttpCookieExtras,
+  HttpCookieMap,
   SetCookieOptions,
+  CapacitorHttpPlugin,
   HttpHeaders,
   HttpOptions,
   HttpParams,
@@ -40,6 +46,8 @@ export type {
   HttpResponseType,
   WebViewPath,
   WebViewPlugin,
+  SystemBarsPlugin,
+  SystemBarsAnimationOptions,
   SystemBarsVisibilityOptions,
   SystemBarsStyleOptions,
 } from './core-plugins';
