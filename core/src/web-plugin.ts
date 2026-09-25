@@ -50,7 +50,7 @@ export class WebPlugin implements Plugin {
 
   protected notifyListeners(eventName: string, data: any, retainUntilConsumed?: boolean): void {
     const listeners = this.listeners[eventName];
-    if (!listeners) {
+    if (!listeners?.length) {
       if (retainUntilConsumed) {
         let args = this.retainedEventArguments[eventName];
         if (!args) {
@@ -65,7 +65,8 @@ export class WebPlugin implements Plugin {
       return;
     }
 
-    listeners.forEach((listener) => listener(data));
+    // Iterate over a copy: a listener that removes itself would otherwise make the next one be skipped.
+    [...listeners].forEach((listener) => listener(data));
   }
 
   protected hasListeners(eventName: string): boolean {
@@ -102,9 +103,11 @@ export class WebPlugin implements Plugin {
       this.listeners[eventName].splice(index, 1);
     }
 
-    // If there are no more listeners for this type of event,
+    // If there are no more listeners for this type of event, forget the event so that the next
+    // addListener counts as the first one again (retained arguments are then delivered), and
     // remove the window listener
     if (!this.listeners[eventName].length) {
+      delete this.listeners[eventName];
       this.removeWindowListener(this.windowListeners[eventName]);
     }
   }

@@ -100,10 +100,33 @@ describe('Web Plugin', () => {
       console.log(event);
     };
     const handle = await plugin.addListener('test', lf);
-    handle.remove();
+    await handle.remove();
 
-    const listener = plugin.getListeners()['test'];
-    expect(listener).toEqual([]);
+    expect(plugin.getListeners()['test']).toBeUndefined();
+  });
+
+  it('Should call every listener when one removes itself while being notified', async () => {
+    const calls: string[] = [];
+    const handle = await plugin.addListener('test', async () => {
+      calls.push('first');
+      await handle.remove();
+    });
+    await plugin.addListener('test', () => calls.push('second'));
+
+    plugin.trigger();
+
+    expect(calls).toEqual(['first', 'second']);
+  });
+
+  it('Should retain events again after the last listener was removed', async () => {
+    const first = await plugin.addListener('testRetained', jest.fn());
+    await first.remove();
+
+    plugin.triggerRetained();
+
+    const lf = jest.fn();
+    await plugin.addListener('testRetained', lf);
+    expect(lf).toHaveBeenCalledTimes(2);
   });
 
   it('Should notify listeners', async () => {
