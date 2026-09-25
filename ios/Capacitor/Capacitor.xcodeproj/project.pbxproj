@@ -70,6 +70,7 @@
 		A38C3D7B2848BE6F004B3680 /* CapacitorCookieManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38C3D7A2848BE6F004B3680 /* CapacitorCookieManager.swift */; };
 		A71289E627F380A500DADDF3 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71289E527F380A500DADDF3 /* Router.swift */; };
 		A71289EB27F380FD00DADDF3 /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71289EA27F380FD00DADDF3 /* RouterTests.swift */; };
+		346AA89EB5BC0422F309ECE1 /* NotificationRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3067ECC12CECC7C21C43C8B2 /* NotificationRouterTests.swift */; };
 		0B2D8BCCF05E29200CB5BAD6 /* ServerBasePathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE0866BD23F7D2E6FC294E7 /* ServerBasePathTests.swift */; };
 		C0B98CAC7A49DA2C2D06D507 /* KeyValueStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 506FB5E0FE043FAEB82FD403 /* KeyValueStoreTests.swift */; };
 		28D43868435733EDAD896F26 /* PluginRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D68D9F04A440E806CD7EB95 /* PluginRegistryTests.swift */; };
@@ -217,6 +218,7 @@
 		A38C3D7A2848BE6F004B3680 /* CapacitorCookieManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapacitorCookieManager.swift; sourceTree = "<group>"; };
 		A71289E527F380A500DADDF3 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
 		A71289EA27F380FD00DADDF3 /* RouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterTests.swift; sourceTree = "<group>"; };
+		3067ECC12CECC7C21C43C8B2 /* NotificationRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRouterTests.swift; sourceTree = "<group>"; };
 		CEE0866BD23F7D2E6FC294E7 /* ServerBasePathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerBasePathTests.swift; sourceTree = "<group>"; };
 		506FB5E0FE043FAEB82FD403 /* KeyValueStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyValueStoreTests.swift; sourceTree = "<group>"; };
 		1D68D9F04A440E806CD7EB95 /* PluginRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginRegistryTests.swift; sourceTree = "<group>"; };
@@ -329,6 +331,7 @@
 				62E79C712638B23300414164 /* JSExportTests.swift */,
 				62959BBD2526510200A3D7F1 /* Info.plist */,
 				A71289EA27F380FD00DADDF3 /* RouterTests.swift */,
+				3067ECC12CECC7C21C43C8B2 /* NotificationRouterTests.swift */,
 				CEE0866BD23F7D2E6FC294E7 /* ServerBasePathTests.swift */,
 				506FB5E0FE043FAEB82FD403 /* KeyValueStoreTests.swift */,
 				1D68D9F04A440E806CD7EB95 /* PluginRegistryTests.swift */,
@@ -705,6 +708,7 @@
 				62A91C3425535F5700861508 /* ConfigurationTests.swift in Sources */,
 				621ECCC3254204B700D3D615 /* BridgedTypesTests.swift in Sources */,
 				A71289EB27F380FD00DADDF3 /* RouterTests.swift in Sources */,
+				346AA89EB5BC0422F309ECE1 /* NotificationRouterTests.swift in Sources */,
 				0B2D8BCCF05E29200CB5BAD6 /* ServerBasePathTests.swift in Sources */,
 				C0B98CAC7A49DA2C2D06D507 /* KeyValueStoreTests.swift in Sources */,
 				28D43868435733EDAD896F26 /* PluginRegistryTests.swift in Sources */,
