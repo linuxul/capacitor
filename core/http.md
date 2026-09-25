@@ -98,8 +98,6 @@ Due to the nature of the bridge, parsing and transferring large amount of data f
 <docgen-api>
 <!--Update the source file JSDoc comments and rerun docgen to update the docs below-->
 
-****** HTTP PLUGIN *******
-
 ### request(...)
 
 ```typescript
