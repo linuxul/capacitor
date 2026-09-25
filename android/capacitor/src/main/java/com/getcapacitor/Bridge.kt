@@ -117,6 +117,9 @@ public class Bridge private constructor(
     // Saved plugin calls: kept alive, waiting for permissions, or waiting for an activity result
     private val savedCallStore = SavedCallStore()
 
+    // Runs plugin methods on the plugin thread. taskHandler is read when a call is posted, after init has set it.
+    private val callDispatcher = PluginCallDispatcher({ taskHandler.post(it) }, ::saveCall)
+
     /**
      * Get the URI that was used to launch the app (if any)
      */
@@ -571,29 +574,7 @@ public class Bridge private constructor(
                 )
             }
 
-            val currentThreadTask =
-                Runnable {
-                    try {
-                        plugin.invoke(methodName, call)
-
-                        if (call.keepAlive) {
-                            saveCall(call)
-                        }
-                    } catch (ex: PluginLoadException) {
-                        Logger.error("Unable to execute plugin method", ex)
-                        call.reject("Unable to load plugin $pluginId", code = "UNAVAILABLE")
-                    } catch (ex: InvalidPluginMethodException) {
-                        Logger.error("Unable to execute plugin method", ex)
-                        call.reject(ex.message ?: "No method $methodName found for plugin $pluginId", code = "UNIMPLEMENTED")
-                    } catch (ex: Exception) {
-                        Logger.error("Serious error executing plugin", ex)
-                        call.reject("Error executing plugin method $methodName", ex = ex)
-                    }
-                }
-
-            if (!taskHandler.post(currentThreadTask)) {
-                call.reject("Plugin thread is unavailable", code = "UNAVAILABLE")
-            }
+            callDispatcher.dispatch(plugin, methodName, call)
         } catch (ex: Exception) {
             Logger.error(Logger.tags("callPluginMethod"), "error : $ex", null)
             call.reject("Error calling plugin method $methodName", ex = ex)

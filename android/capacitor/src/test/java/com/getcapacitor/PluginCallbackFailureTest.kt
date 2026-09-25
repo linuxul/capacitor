@@ -47,6 +47,9 @@ class PluginCallbackFailureTest {
         private fun explode(call: PluginCall): Unit = throw IllegalStateException("boom")
 
         @PermissionCallback
+        private fun deny(call: PluginCall): Unit = throw PluginException("Denied", "DENIED", JSObject().put("alias", "camera"))
+
+        @PermissionCallback
         private fun resolveThenExplode(call: PluginCall) {
             call.resolve()
             throw IllegalStateException("late boom")
@@ -110,6 +113,19 @@ class PluginCallbackFailureTest {
         verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), anyOrNull())
         // The cause, not the reflective wrapper, is what reject logs.
         assertTrue(logs.entries.any { it.priority == Log.ERROR && it.throwable is IllegalStateException })
+    }
+
+    @Test
+    fun pluginExceptionFromACallbackRejectsWithItsCodeAndData() {
+        val call = call()
+        plugin.request(call, "deny")
+
+        deliverPermissionResult(call)
+
+        val error = rejection()
+        assertEquals("Denied", error.getString("message"))
+        assertEquals("DENIED", error.getString("code"))
+        assertEquals("camera", error.getJSObject("data")?.getString("alias"))
     }
 
     @Test

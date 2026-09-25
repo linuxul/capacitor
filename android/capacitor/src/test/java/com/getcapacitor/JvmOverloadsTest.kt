@@ -26,6 +26,14 @@ class JvmOverloadsTest {
     }
 
     @Test
+    fun pluginExceptionConstructorsWithoutTheOptionalArguments() {
+        PluginException::class.java.getConstructor(String::class.java)
+        PluginException::class.java.getConstructor(String::class.java, String::class.java)
+        PluginException::class.java.getConstructor(String::class.java, String::class.java, JSObject::class.java)
+        PluginException::class.java.getConstructor(String::class.java, String::class.java, JSObject::class.java, Throwable::class.java)
+    }
+
+    @Test
     fun getPackageInfoWithoutFlags() {
         assertEquals(
             PackageInfo::class.java,

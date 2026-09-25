@@ -128,7 +128,8 @@ public open class Plugin {
     /**
      * Runs a permission or activity result callback. The callback runs outside any plugin method, so the bridge
      * cannot catch what it throws: reject its call here instead of leaving the promise pending. reject logs the
-     * exception, and drops the rejection if the callback settled the call before throwing.
+     * exception, and drops the rejection if the callback settled the call before throwing. A [PluginException]
+     * rejects with its code and data, as it does when a plugin method throws it.
      *
      * Without a saved call (it was released, or the app was restarted) the callback still runs with a null call,
      * as it always has, for callbacks that take `PluginCall?`; what a callback throws then is only logged.
@@ -147,7 +148,11 @@ public open class Plugin {
                 Logger.error(logTag, "${method.name} failed without a saved call", cause)
                 return
             }
-            call.reject(cause.message ?: "Error in ${method.name}", ex = cause as? Exception ?: e)
+            if (cause is PluginException) {
+                call.rejectWith(cause)
+            } else {
+                call.reject(cause.message ?: "Error in ${method.name}", ex = cause as? Exception ?: e)
+            }
         } catch (e: ReflectiveOperationException) {
             // Method.invoke only declares IllegalAccessException besides InvocationTargetException.
             if (call == null) {
