@@ -498,15 +498,18 @@ public class WebViewLocalServer internal constructor(
     }
 
     private fun getStatusCode(stream: InputStream, defaultCode: Int): Int {
-        var finalStatusCode = defaultCode
-        try {
-            if (stream.available() == -1) {
-                finalStatusCode = 404
-            }
-        } catch (e: IOException) {
-            finalStatusCode = 500
+        // A handler with nothing for the request is a 404. This opens the lazy stream.
+        if (stream is LazyInputStream && !stream.exists()) {
+            return 404
         }
-        return finalStatusCode
+
+        return try {
+            // Probing the stream surfaces a broken one as a 500.
+            stream.available()
+            defaultCode
+        } catch (e: IOException) {
+            500
+        }
     }
 
     /**
@@ -633,19 +636,32 @@ public class WebViewLocalServer internal constructor(
      * loading.
      *
      * The wrapped stream is opened lazily, on first use, never in the constructor. A handler that
-     * yields nothing is retried on the next call, as it was before.
+     * yields nothing is retried on the next call, as it was before, and reads as an empty stream.
+     * [close] closes the wrapped stream if it was opened; a closed stream is never reopened.
      */
-    private class LazyInputStream(private val handler: PathHandler, private val request: WebResourceRequest) : InputStream() {
+    internal class LazyInputStream(private val handler: PathHandler, private val request: WebResourceRequest) : InputStream() {
+        // Opened on the request thread, then read and closed on the WebView's threads.
         private var inputStream: InputStream? = null
+        private var closed = false
 
+        @Synchronized
         private fun getInputStream(): InputStream? {
+            if (closed) {
+                return null
+            }
             if (inputStream == null) {
                 inputStream = handler.handle(request)
             }
             return inputStream
         }
 
-        override fun available(): Int = getInputStream()?.available() ?: -1
+        /**
+         * Whether the handler has a stream for the request. Opens it.
+         */
+        fun exists(): Boolean = getInputStream() != null
+
+        // InputStream.available() has no "missing" value, so a missing stream reports 0 like an exhausted one.
+        override fun available(): Int = getInputStream()?.available()?.coerceAtLeast(0) ?: 0
 
         override fun read(): Int = getInputStream()?.read() ?: -1
 
@@ -654,6 +670,15 @@ public class WebViewLocalServer internal constructor(
         override fun read(b: ByteArray, off: Int, len: Int): Int = getInputStream()?.read(b, off, len) ?: -1
 
         override fun skip(n: Long): Long = getInputStream()?.skip(n) ?: 0
+
+        override fun close() {
+            val opened =
+                synchronized(this) {
+                    closed = true
+                    inputStream.also { inputStream = null }
+                }
+            opened?.close()
+        }
     }
 
     private companion object {

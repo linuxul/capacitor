@@ -41,9 +41,10 @@ internal class JSInjector(globalJS: String, bridgeJS: String, pluginJS: String, 
         return ByteArrayInputStream(html.toByteArray(StandardCharsets.UTF_8))
     }
 
+    // Closes the stream: the injected copy replaces it in the response.
     private fun readAssetStream(stream: InputStream?): String = try {
         // A null stream throws here and is reported by the catch below, as in the Java original.
-        InputStreamReader(stream, StandardCharsets.UTF_8).readText()
+        InputStreamReader(stream, StandardCharsets.UTF_8).use { it.readText() }
     } catch (e: Exception) {
         Logger.error("Unable to process HTML asset file. This is a fatal error", e)
         ""
