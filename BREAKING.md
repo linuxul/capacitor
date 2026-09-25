@@ -45,7 +45,7 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 
 ### Android runtime
 
-- A call that is not kept alive settles once. The first `resolve`, `reject`, `unimplemented`, `unavailable`, `successCallback` or `errorCallback` answers JavaScript; every later one is dropped and logged as a warning ("Ignoring … already settled"), including the bridge's own rejection of a method that resolved and then threw. `keepAlive` calls still resolve any number of times.
+- A call that is not kept alive settles once. The first `resolve`, `reject`, `unimplemented`, `unavailable` or `errorCallback` answers JavaScript; every later one is dropped and logged as a warning ("Ignoring … already settled"), including the bridge's own rejection of a method that resolved and then threw. `keepAlive` calls still resolve any number of times.
 - `requestPermissionForAlias(es)` with an empty alias array rejects with "No permission alias was provided". Aliases that map to no Android permission string (`strings = []`) no longer leave the call pending: the named `@PermissionCallback` runs right away, on the main thread like a prompt result, and such aliases report `granted`.
 - An exception thrown by a `@PermissionCallback` or `@ActivityCallback` rejects the saved call instead of leaving the promise pending. Without a saved call the callback still runs with `null`; declare it `PluginCall?` if you handle that case.
 - `requestPermissions` with only unknown aliases rejects; it no longer also resolves.
@@ -57,8 +57,76 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 - Local server: a malformed or unsatisfiable `Range` header is ignored and the file is served whole with 200 instead of crashing the app. Asset, file and content streams are closed after the WebView reads them instead of leaking a file descriptor each.
 - `HttpRequestHandler.request` no longer stores the connection in `call.data` under `activeCapacitorHttpUrlConnection`, and always disconnects it.
 - `FileUtils.getFileUrlForUri` returns `null` instead of throwing when the provider gives no cursor or no display name.
-- `Bridge.logToJs` and `triggerJSEvent` quote their string arguments as JavaScript string literals, so quotes or line breaks in them no longer break or inject script. The `data` argument of `triggerJSEvent` must still be JSON.
+- `Bridge.triggerJSEvent` and the other `trigger*JSEvent` functions quote their string arguments as JavaScript string literals, so quotes or line breaks in them no longer break or inject script. The `data` argument of `triggerJSEvent` must still be JSON.
 - `Logger.error(message)`, `PluginConfig.getString(key)`, `PluginConfig.getArray(key)` and `InternalUtils.getPackageInfo(pm, packageName)` are callable from Java, as described under "API changes" below.
+
+### Kotlin plugin API
+
+A `@PluginMethod` may be a `suspend` function, may choose its thread, and may throw to reject:
+
+- `@PluginMethod(thread = PluginThread.MAIN)` runs the method on the main thread (the default, `PluginThread.PLUGIN`, is the bridge's plugin thread). What it throws rejects the call instead of crashing the app.
+- `public suspend fun name(call: PluginCall)` may return `Unit` or a `JSObject`. It starts and resumes on its thread, and returning resolves the call (with the `JSObject`, or without data if the method did not answer the call itself). Suspend methods cannot use `RETURN_CALLBACK`, which is rejected at registration; a `RETURN_NONE` suspend method is not answered. When the page reloads or the bridge is destroyed, running suspend calls are rejected with "The plugin call was cancelled"; the method itself is not interrupted and its later result is dropped.
+- `throw PluginException(message, code, data, cause)` from a plugin method, a `@PermissionCallback` or an `@ActivityCallback` rejects the call with that message, code and data.
+- `requestPermissionsFor(vararg aliases): Map<String, PermissionState>` asks for permissions from a suspend method without a `@PermissionCallback`.
+
+No kotlinx.coroutines dependency is needed: `suspendCoroutine` is in the Kotlin standard library. The callback style of 8.5.3 keeps working.
+
+Before (8.5.3):
+
+```kotlin
+@PluginMethod
+fun take(call: PluginCall) {
+    if (getPermissionState("camera") != PermissionState.GRANTED) {
+        requestPermissionForAlias("camera", call, "cameraPermsCallback")
+        return
+    }
+    capture(call)
+}
+
+@PermissionCallback
+private fun cameraPermsCallback(call: PluginCall) {
+    if (getPermissionState("camera") != PermissionState.GRANTED) {
+        call.reject("Camera permission was denied", "DENIED")
+        return
+    }
+    capture(call)
+}
+
+private fun capture(call: PluginCall) {
+    activity.runOnUiThread {
+        camera.capture { uri, error ->
+            if (error != null) call.reject("Capture failed", ex = error)
+            else call.resolve(JSObject().put("path", uri.toString()))
+        }
+    }
+}
+```
+
+After (9.0):
+
+```kotlin
+@PluginMethod(thread = PluginThread.MAIN)
+suspend fun take(call: PluginCall): JSObject {
+    if (requestPermissionsFor("camera")["camera"] != PermissionState.GRANTED) {
+        throw PluginException("Camera permission was denied", code = "DENIED")
+    }
+    val uri = suspendCoroutine { c ->
+        camera.capture { uri, error -> if (error != null) c.resumeWithException(error) else c.resume(uri) }
+    }
+    return JSObject().put("path", uri.toString())
+}
+```
+
+### Android plugin API changes
+
+- `PluginCall.callbackId`, `pluginId` and `methodName` are `String`. A message from the page without them is dropped and logged.
+- These parameters are `String` instead of `String?`: `Bridge.getPlugin`, `Bridge.callPluginMethod`, `PluginHandle.invoke` (its `call` is non-null too), `Plugin.notifyListeners` and `hasListeners` (event name), `Plugin.getPermissionState`, the callback name of `Plugin.startActivityForResult`, `CapConfig.getPluginConfiguration`, `PermissionHelper.hasDefinedPermission`. Every call site in the official and community plugins already passes a non-null value. Java callers that pass `null` get a `NullPointerException`.
+- `addListener` without an `eventName` rejects the call, as on iOS.
+- Removed, unused by the official and community plugins: `PluginCall.successCallback` (use `resolve`), `AppUUID`, `JSObject.putSafe` (use `put`), `Bridge.logToJs`, `HttpRequestHandler.ProgressEmitter`, `FileUtils.Type`, and the `AssetUtil` instance API (`getInstance`, `parse`, `getResId`, `getIconFromUri`). `AssetUtil` is an object: from Java, `AssetUtil.INSTANCE.getResourceID(...)`.
+- Deprecated, to be removed in 10.0: `PluginCall.errorCallback` (use `reject`).
+- `CapacitorHttp` declares no permissions: its `HttpWrite`/`HttpRead` aliases asked for storage permissions that apps cannot be granted on API 33 and later.
+- `SystemBars.setStyle/show/hide` run on the main thread and `CapacitorCookies.getCookies` is a suspend method; their results are unchanged.
+- `@PluginMethod` has a `thread` element; the consumer ProGuard rules keep `com.getcapacitor.PluginThread`.
 
 ### CLI
 
@@ -203,7 +271,7 @@ The runtime is written in Kotlin. The app template applies the Kotlin Gradle plu
 
 ### Writing plugins
 
-- A `@PluginMethod` function must be public and take exactly one `PluginCall`. A function whose JVM signature is anything else - `suspend`, which adds a `Continuation`, or a value class parameter - is rejected with an `InvalidPluginException` when the plugin is registered. `internal` is not rejected, because the JVM signature still matches, but Kotlin mangles the name to `yourMethod$yourModule` so JavaScript can never address it: the method is silently missing from the plugin. `@PermissionCallback` and `@ActivityCallback` functions may be private but not `internal`, for the same mangling reason.
+- A `@PluginMethod` function must be public and take exactly one `PluginCall`, or be a `suspend` function of one `PluginCall` (since 9.0, see "Kotlin plugin API"). A function whose JVM signature is anything else, for example one with a value class parameter or a second argument, is rejected with an `InvalidPluginException` when the plugin is registered. `internal` is not rejected, because the JVM signature still matches, but Kotlin mangles the name to `yourMethod$yourModule` so JavaScript can never address it: the method is silently missing from the plugin. `@PermissionCallback` and `@ActivityCallback` functions may be private but not `internal`, for the same mangling reason.
 - `@NativePlugin` and the request-code based permission and activity result flow are removed, together with `@CapacitorPlugin(requestCodes = ...)`. Use `@PermissionCallback` with `requestPermissionForAlias`/`requestAllPermissions`, and `@ActivityCallback` with `startActivityForResult(call, intent, "callbackName")`.
 - `BridgeActivity` no longer overrides `onRequestPermissionsResult` and `onActivityResult`; results always go through the AndroidX activity result registry.
 - In a module that mixes Java and Kotlin, a Java class that writes `@PluginMethod(returnType = PluginMethod.RETURN_NONE)` and is subclassed from Kotlin crashes the Kotlin compiler, because the constant lives in the companion of a Kotlin annotation. Use the literal (`"none"`, `"callback"`, `"promise"`) in the Java class, or write the class in Kotlin.
@@ -212,7 +280,7 @@ The runtime is written in Kotlin. The app template applies the Kotlin Gradle plu
 
 - `PluginCall`: the getters take an optional default (`getString(name, defaultValue = null)` and likewise for `getInt`, `getLong`, `getFloat`, `getDouble`, `getBoolean`, `getObject`, `getArray`), and `reject` is a single function, `reject(msg, code = null, ex = null, data = null)`. A call that passed an exception or a data object as the second positional argument no longer compiles; name it instead: `call.reject("msg", ex = e)`. `isKeptAlive()`/`setKeepAlive()` are the `keepAlive` property. These functions are `@JvmOverloads`, so `call.getString("x")`, `call.resolve()` and `call.reject("msg")` still work from Java.
 - `Plugin`: `notifyListeners(eventName, data, retainUntilConsumed = false)` is one function (also `@JvmOverloads`). `bridge` is a public `lateinit` property, and `getContext()`, `getActivity()`, `getConfig()`, `getAppId()` and `getLogTag()` are final properties, so they can no longer be overridden. The lifecycle hooks (`load`, `handleOnStart`, ...) are unchanged.
-- Utility classes are Kotlin objects without static methods. From Kotlin nothing changes (`Logger.debug(...)`, `JSObject.fromJSONObject(...)`); from Java they are reached through `INSTANCE` or `Companion`: `Logger.INSTANCE.debug(...)`, `JSObject.Companion.fromJSONObject(...)`. This applies to `Logger`, `FileUtils`, `AppUUID`, `JSONUtils`, `PermissionHelper`, `WebColor`, `InternalUtils`, `HostMask`, `HttpRequestHandler`, `AssetUtil`, `CapConfig.load*`, `JSObject.fromJSONObject`, `JSArray.from` and `PermissionState.byState`.
+- Utility classes are Kotlin objects without static methods. From Kotlin nothing changes (`Logger.debug(...)`, `JSObject.fromJSONObject(...)`); from Java they are reached through `INSTANCE` or `Companion`: `Logger.INSTANCE.debug(...)`, `JSObject.Companion.fromJSONObject(...)`. This applies to `Logger`, `FileUtils`, `JSONUtils`, `PermissionHelper`, `WebColor`, `InternalUtils`, `HostMask`, `HttpRequestHandler`, `AssetUtil`, `CapConfig.load*`, `JSObject.fromJSONObject`, `JSArray.from` and `PermissionState.byState`.
 - `CapConfig` is immutable and its flags are properties: `config.isHTML5Mode`, `config.isLoggingEnabled`, and so on (unchanged from Java: `config.isHTML5Mode()`). `CapConfig.Builder` is unchanged.
 - `Logger.config` and `Logger.init(config)` are replaced by `Logger.loggingEnabled`. Log output goes through `LogSink`, with `AndroidLogSink` as the default.
 - `JSObject` keys are non-null; passing a `null` key now throws instead of being ignored. `getInteger` and `getJSObject` take an optional default.
