@@ -14,12 +14,13 @@ public extension CapacitorExtensionTypeWrapper where T: UIColor {
         )
     }
 
+    /// A color from a packed `0xAARRGGBB` value.
     static func color(argb: UInt32) -> UIColor {
-        return T(
-            red: CGFloat((argb >> 16) & 0xFF),
-            green: CGFloat((argb >> 8) & 0xFF),
-            blue: CGFloat(argb & 0xFF),
-            alpha: CGFloat((argb >> 24) & 0xFF)
+        return color(
+            r: Int((argb >> 16) & 0xFF),
+            g: Int((argb >> 8) & 0xFF),
+            b: Int(argb & 0xFF),
+            a: Int((argb >> 24) & 0xFF)
         )
     }
 
