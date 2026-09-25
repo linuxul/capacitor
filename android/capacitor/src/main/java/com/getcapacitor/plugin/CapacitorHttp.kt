@@ -1,25 +1,18 @@
 package com.getcapacitor.plugin
 
-import android.Manifest
 import android.webkit.JavascriptInterface
 import com.getcapacitor.Logger
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import com.getcapacitor.annotation.Permission
 import com.getcapacitor.plugin.util.CapacitorHttpUrlConnection
 import com.getcapacitor.plugin.util.HttpRequestHandler
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-@CapacitorPlugin(
-    permissions = [
-        Permission(strings = [Manifest.permission.WRITE_EXTERNAL_STORAGE], alias = "HttpWrite"),
-        Permission(strings = [Manifest.permission.READ_EXTERNAL_STORAGE], alias = "HttpRead")
-    ]
-)
+@CapacitorPlugin
 public class CapacitorHttp : Plugin() {
     private val activeRequests: MutableMap<Runnable, PluginCall> = ConcurrentHashMap()
 

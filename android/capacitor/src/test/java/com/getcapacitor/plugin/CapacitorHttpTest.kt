@@ -7,6 +7,7 @@ import com.getcapacitor.MessageHandler
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginHandle
 import com.getcapacitor.plugin.util.CapacitorHttpUrlConnection
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -30,6 +31,15 @@ class CapacitorHttpTest {
 
         verify(connection).disconnect()
         verify(bridge).releaseCall(call)
+    }
+
+    @Test
+    fun declaresNoPermissions() {
+        // The storage permissions it declared cannot be granted to apps on API 33 and later, the minSdk.
+        val bridge = mock<Bridge>()
+        whenever(bridge.webView).thenReturn(mock<WebView>())
+
+        assertTrue(PluginHandle(bridge, CapacitorHttp()).pluginAnnotation.permissions.isEmpty())
     }
 
     @Suppress("UNCHECKED_CAST")
