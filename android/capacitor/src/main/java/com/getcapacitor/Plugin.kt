@@ -587,8 +587,8 @@ public open class Plugin {
             }
 
             if (aliasSet.isEmpty()) {
-                // Same as the Java original: the call is rejected here and resolved again below.
                 call.reject("No valid permission alias was requested of this plugin.")
+                return
             }
         }
 

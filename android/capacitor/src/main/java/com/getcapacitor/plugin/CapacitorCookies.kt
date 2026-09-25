@@ -80,14 +80,15 @@ public class CapacitorCookies : Plugin() {
 
     @PluginMethod
     public fun setCookie(call: PluginCall) {
-        // Same as the Java original: a missing key/value rejects but does not stop the method.
         val key = call.getString("key")
         if (null == key) {
             call.reject("Must provide key")
+            return
         }
         val value = call.getString("value")
         if (null == value) {
             call.reject("Must provide value")
+            return
         }
         val url = call.getString("url")
         val expires = call.getString("expires", "")
@@ -98,10 +99,10 @@ public class CapacitorCookies : Plugin() {
 
     @PluginMethod
     public fun deleteCookie(call: PluginCall) {
-        // Same as the Java original: a missing key rejects but does not stop the method.
         val key = call.getString("key")
         if (null == key) {
             call.reject("Must provide key")
+            return
         }
         val url = call.getString("url")
         cookieManager.setCookie(url, "$key=$EXPIRED_ATTRIBUTES")

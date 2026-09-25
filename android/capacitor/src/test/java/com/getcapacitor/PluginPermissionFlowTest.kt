@@ -78,6 +78,9 @@ class PluginPermissionFlowTest {
 
     private fun call(): PluginCall = PluginCall(handler, "Flow", "1", "request", JSObject())
 
+    private fun requestPermissionsCall(vararg aliases: String): PluginCall =
+        PluginCall(handler, "Flow", "1", "requestPermissions", JSObject().put("permissions", JSArray(aliases.toList())))
+
     private fun runMainThread() {
         val tasks = mainThreadTasks.toList()
         mainThreadTasks.clear()
@@ -180,6 +183,25 @@ class PluginPermissionFlowTest {
 
         assertEquals(listOf(call), plugin.callbackCalls)
         verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), isNull())
+    }
+
+    @Test
+    fun requestPermissionsWithOnlyUnknownAliasesRejectsOnce() {
+        plugin.requestPermissions(requestPermissionsCall("nope"))
+
+        assertEquals("No valid permission alias was requested of this plugin.", rejection())
+        verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), anyOrNull())
+        assertTrue(logs.entries.none { it.message.contains("already settled") })
+    }
+
+    @Test
+    fun requestPermissionsForAnAliasWithoutStringsResolvesTheStates() {
+        plugin.requestPermissions(requestPermissionsCall("photos"))
+        runMainThread()
+
+        // checkPermissions, the callback requestPermissions names, reads the states and resolves.
+        verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), isNull())
+        assertTrue(launchedLaunchers().isEmpty())
     }
 
     @Suppress("UNCHECKED_CAST")
