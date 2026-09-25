@@ -80,6 +80,10 @@ The `callbackId` that ties a native call to its JavaScript promise is a random v
 
 This is not a defence against script injection. A script that runs in the page can call plugins directly whatever the ids look like; restrict `server.allowNavigation`, set a Content-Security-Policy and do not load remote content to address that.
 
+### Bridge dispatch failures
+
+Calls to a missing plugin or method now reject their JavaScript promise with `UNIMPLEMENTED` on both platforms. Android also rejects when plugin loading or the plugin thread fails; an exception thrown by a plugin method rejects the call instead of crashing the handler thread. If the WebView cannot post a message to the native bridge, the JavaScript callback or promise receives the transport error and its saved callback is released. Handle these rejections in app code instead of relying on a call to remain pending.
+
 ## iOS plugins
 
 ### Objective-C plugins are not supported

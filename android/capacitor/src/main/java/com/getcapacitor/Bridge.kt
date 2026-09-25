@@ -554,7 +554,7 @@ public class Bridge private constructor(
 
             if (plugin == null) {
                 Logger.error("unable to find plugin : $pluginId")
-                call.errorCallback("unable to find plugin : $pluginId")
+                call.reject("unable to find plugin : $pluginId", code = "UNIMPLEMENTED")
                 return
             }
 
@@ -581,18 +581,22 @@ public class Bridge private constructor(
                         }
                     } catch (ex: PluginLoadException) {
                         Logger.error("Unable to execute plugin method", ex)
+                        call.reject("Unable to load plugin $pluginId", code = "UNAVAILABLE")
                     } catch (ex: InvalidPluginMethodException) {
                         Logger.error("Unable to execute plugin method", ex)
+                        call.reject(ex.message ?: "No method $methodName found for plugin $pluginId", code = "UNIMPLEMENTED")
                     } catch (ex: Exception) {
                         Logger.error("Serious error executing plugin", ex)
-                        throw RuntimeException(ex)
+                        call.reject("Error executing plugin method $methodName", ex = ex)
                     }
                 }
 
-            taskHandler.post(currentThreadTask)
+            if (!taskHandler.post(currentThreadTask)) {
+                call.reject("Plugin thread is unavailable", code = "UNAVAILABLE")
+            }
         } catch (ex: Exception) {
             Logger.error(Logger.tags("callPluginMethod"), "error : $ex", null)
-            call.errorCallback(ex.toString())
+            call.reject("Error calling plugin method $methodName", ex = ex)
         }
     }
 

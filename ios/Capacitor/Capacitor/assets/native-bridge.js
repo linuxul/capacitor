@@ -838,29 +838,18 @@ var nativeBridge = (function (exports) {
             if (getPlatformId(win) === 'android') {
                 // android platform
                 postToNative = (data) => {
-                    var _a;
-                    try {
-                        win.androidBridge.postMessage(JSON.stringify(data));
-                    }
-                    catch (e) {
-                        (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.error(e);
-                    }
+                    win.androidBridge.postMessage(JSON.stringify(data));
                 };
             }
             else if (getPlatformId(win) === 'ios') {
                 // ios platform
                 postToNative = (data) => {
-                    var _a;
-                    try {
-                        data.type = data.type ? data.type : 'message';
-                        win.webkit.messageHandlers.bridge.postMessage(data);
-                    }
-                    catch (e) {
-                        (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.error(e);
-                    }
+                    data.type = data.type ? data.type : 'message';
+                    win.webkit.messageHandlers.bridge.postMessage(data);
                 };
             }
             cap.handleWindowError = (msg, url, lineNo, columnNo, err) => {
+                var _a;
                 const str = msg.toLowerCase();
                 if (str.indexOf('script error') > -1) ;
                 else {
@@ -877,7 +866,12 @@ var nativeBridge = (function (exports) {
                     if (err !== null) {
                         cap.handleError(err);
                     }
-                    postToNative(errObj);
+                    try {
+                        postToNative === null || postToNative === void 0 ? void 0 : postToNative(errObj);
+                    }
+                    catch (e) {
+                        (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.error(e);
+                    }
                 }
                 return false;
             };
@@ -890,9 +884,9 @@ var nativeBridge = (function (exports) {
              */
             cap.toNative = (pluginName, methodName, options, storedCallback) => {
                 var _a, _b;
+                let callbackId = CALLBACK_ID_DANGLING;
                 try {
                     if (typeof postToNative === 'function') {
-                        let callbackId = CALLBACK_ID_DANGLING;
                         if (storedCallback &&
                             (typeof storedCallback.callback === 'function' || typeof storedCallback.resolve === 'function')) {
                             // store the call for later lookup
@@ -913,11 +907,19 @@ var nativeBridge = (function (exports) {
                         return callbackId;
                     }
                     else {
-                        (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.warn(`implementation unavailable for: ${pluginName}`);
+                        throw new CapacitorException(`implementation unavailable for: ${pluginName}`, ExceptionCode.Unavailable);
                     }
                 }
                 catch (e) {
-                    (_b = win === null || win === void 0 ? void 0 : win.console) === null || _b === void 0 ? void 0 : _b.error(e);
+                    callbacks.delete(callbackId);
+                    const error = e instanceof Error ? e : new Error(String(e));
+                    (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.error(error);
+                    if (typeof (storedCallback === null || storedCallback === void 0 ? void 0 : storedCallback.callback) === 'function') {
+                        storedCallback.callback(null, error);
+                    }
+                    else {
+                        (_b = storedCallback === null || storedCallback === void 0 ? void 0 : storedCallback.reject) === null || _b === void 0 ? void 0 : _b.call(storedCallback, error);
+                    }
                 }
                 return null;
             };

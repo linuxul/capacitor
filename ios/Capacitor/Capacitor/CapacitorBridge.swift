@@ -390,7 +390,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         }
 
         guard let plugin = plugins[call.pluginId] ?? load() else {
-            CAPLog.print("⚡️  Error loading plugin \(call.pluginId) for call. Check that the pluginId is correct")
+            rejectJSCall(call, message: "Error loading plugin \(call.pluginId) for call. Check that the pluginId is correct")
             return
         }
 
@@ -399,8 +399,8 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
             selector = NSSelectorFromString(call.method + ":")
         } else {
             guard let method = plugin.getMethod(named: call.method) else {
-                CAPLog.print("⚡️  Error calling method \(call.method) on plugin \(call.pluginId): No method found.")
                 CAPLog.print("⚡️  Ensure plugin method exists and uses @objc in its declaration, and has been defined")
+                rejectJSCall(call, message: "Error calling method \(call.method) on plugin \(call.pluginId): No method found.")
                 return
             }
 
@@ -408,9 +408,9 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
         }
 
         if !plugin.responds(to: selector) {
-            CAPLog.print("⚡️  Error: Plugin \(plugin.getId()) does not respond to method call \"\(call.method)\" using selector \"\(selector)\".")
             CAPLog.print("⚡️  Ensure plugin method exists, uses @objc in its declaration, and is listed in the pluginMethods of the plugin.")
             CAPLog.print("⚡️  Learn more: \(docLink(DocLinks.CAPPluginMethodSelector.rawValue))")
+            rejectJSCall(call, message: "Plugin \(plugin.getId()) does not respond to method \(call.method) using selector \(selector).")
             return
         }
 
@@ -430,6 +430,12 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
                 self?.saveCall(pluginCall)
             }
         }
+    }
+
+    private func rejectJSCall(_ call: JSCall, message: String) {
+        CAPLog.print("⚡️  \(message)")
+        let error = CAPPluginCallError(message: message, code: "UNIMPLEMENTED", error: nil, data: nil)
+        toJsError(error: JSResultError(call: call, callError: error))
     }
 
     func removeAllPluginListeners() {

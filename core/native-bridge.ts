@@ -12,7 +12,7 @@ import type {
   WindowCapacitor,
   CapFormDataEntry,
 } from './src/definitions-internal';
-import { CapacitorException, getPlatformId } from './src/util';
+import { CapacitorException, ExceptionCode, getPlatformId } from './src/util';
 
 // For removing exports for iOS/Android, keep let for reassignment
 // eslint-disable-next-line
@@ -932,21 +932,13 @@ const initBridge = (w: any): void => {
     if (getPlatformId(win) === 'android') {
       // android platform
       postToNative = (data) => {
-        try {
-          win.androidBridge.postMessage(JSON.stringify(data));
-        } catch (e) {
-          win?.console?.error(e);
-        }
+        win.androidBridge.postMessage(JSON.stringify(data));
       };
     } else if (getPlatformId(win) === 'ios') {
       // ios platform
       postToNative = (data) => {
-        try {
-          data.type = data.type ? data.type : 'message';
-          win.webkit.messageHandlers.bridge.postMessage(data);
-        } catch (e) {
-          win?.console?.error(e);
-        }
+        data.type = data.type ? data.type : 'message';
+        win.webkit.messageHandlers.bridge.postMessage(data);
       };
     }
 
@@ -971,7 +963,11 @@ const initBridge = (w: any): void => {
           cap.handleError(err);
         }
 
-        postToNative(errObj);
+        try {
+          postToNative?.(errObj);
+        } catch (e) {
+          win?.console?.error(e);
+        }
       }
 
       return false;
@@ -987,10 +983,9 @@ const initBridge = (w: any): void => {
      * Send a plugin method call to the native layer
      */
     cap.toNative = (pluginName, methodName, options, storedCallback) => {
+      let callbackId = CALLBACK_ID_DANGLING;
       try {
         if (typeof postToNative === 'function') {
-          let callbackId = CALLBACK_ID_DANGLING;
-
           if (
             storedCallback &&
             (typeof storedCallback.callback === 'function' || typeof storedCallback.resolve === 'function')
@@ -1016,10 +1011,17 @@ const initBridge = (w: any): void => {
 
           return callbackId;
         } else {
-          win?.console?.warn(`implementation unavailable for: ${pluginName}`);
+          throw new CapacitorException(`implementation unavailable for: ${pluginName}`, ExceptionCode.Unavailable);
         }
       } catch (e) {
-        win?.console?.error(e);
+        callbacks.delete(callbackId);
+        const error = e instanceof Error ? e : new Error(String(e));
+        win?.console?.error(error);
+        if (typeof storedCallback?.callback === 'function') {
+          storedCallback.callback(null, error);
+        } else {
+          storedCallback?.reject?.(error);
+        }
       }
 
       return null;
