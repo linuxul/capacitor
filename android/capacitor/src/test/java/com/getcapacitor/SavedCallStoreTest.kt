@@ -63,32 +63,46 @@ class SavedCallStoreTest {
         val first = call("1", "A")
         val second = call("2", "A")
         val other = call("3", "B")
-        store.savePermissionCall(first)
-        store.savePermissionCall(second)
-        store.savePermissionCall(other)
+        store.savePermissionCall(first, "cb")
+        store.savePermissionCall(second, "cb")
+        store.savePermissionCall(other, "cb")
 
-        assertSame(first, store.takePermissionCall("A"))
-        assertSame(second, store.takePermissionCall("A"))
-        assertNull(store.takePermissionCall("A"))
-        assertSame(other, store.takePermissionCall("B"))
-        assertNull(store.takePermissionCall("unknown"))
+        assertSame(first, store.takePermissionCall("A", "cb"))
+        assertSame(second, store.takePermissionCall("A", "cb"))
+        assertNull(store.takePermissionCall("A", "cb"))
+        assertSame(other, store.takePermissionCall("B", "cb"))
+        assertNull(store.takePermissionCall("unknown", "cb"))
+    }
+
+    @Test
+    fun permissionResultsGoToTheCallsWaitingOnTheirCallback() {
+        // getPhoto waits on the camera prompt; requestPermissions starts a second request, which Android answers
+        // first. Its result must not answer getPhoto.
+        val photo = call("1", "A")
+        val request = call("2", "A")
+        store.savePermissionCall(photo, "cameraPermissionsCallback")
+        store.savePermissionCall(request, "checkPermissions")
+
+        assertSame(request, store.takePermissionCall("A", "checkPermissions"))
+        assertNull(store.takePermissionCall("A", "checkPermissions"))
+        assertSame(photo, store.takePermissionCall("A", "cameraPermissionsCallback"))
     }
 
     @Test
     fun permissionCallStaysSavedUntilReleased() {
         val call = call("1", "A")
-        store.savePermissionCall(call)
-        store.takePermissionCall("A")
+        store.savePermissionCall(call, "cb")
+        store.takePermissionCall("A", "cb")
 
         assertSame(call, store.get("1"))
     }
 
     @Test
     fun releasedPermissionCallIsNotHandedOut() {
-        store.savePermissionCall(call("1", "A"))
+        store.savePermissionCall(call("1", "A"), "cb")
         store.release("1")
 
-        assertNull(store.takePermissionCall("A"))
+        assertNull(store.takePermissionCall("A", "cb"))
     }
 
     @Test
@@ -129,7 +143,7 @@ class SavedCallStoreTest {
                     start.await()
                     repeat(perThread) { i ->
                         val call = PluginCall(handler, "P", "$thread-$i", "method", JSObject())
-                        store.savePermissionCall(call)
+                        store.savePermissionCall(call, "cb")
                         store.save(PluginCall(handler, "Q", "kept-$thread-$i", "method", JSObject()))
                         store.release("kept-$thread-$i")
                     }
@@ -142,7 +156,7 @@ class SavedCallStoreTest {
                     start.await()
                     var misses = 0
                     while (misses < 10_000) {
-                        val call = store.takePermissionCall("P")
+                        val call = store.takePermissionCall("P", "cb")
                         if (call == null) {
                             misses++
                         } else {
@@ -162,7 +176,7 @@ class SavedCallStoreTest {
 
         // Whatever the takers missed while the savers were still running is still queued.
         while (true) {
-            taken.add(store.takePermissionCall("P") ?: break)
+            taken.add(store.takePermissionCall("P", "cb") ?: break)
         }
         assertEquals(threads * perThread, taken.size)
         assertEquals(taken.size, taken.map { it.callbackId }.toSet().size)

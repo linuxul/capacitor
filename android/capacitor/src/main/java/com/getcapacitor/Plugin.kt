@@ -128,7 +128,7 @@ public open class Plugin {
     }
 
     private fun triggerPermissionCallback(method: Method, permissionResultMap: Map<String, Boolean>) {
-        val savedCall = bridge.getPermissionCall(handle.id)
+        val savedCall = bridge.getPermissionCall(handle.id, method.name)
 
         // validate permissions and invoke the permission result callback
         if (bridge.validatePermissions(savedCall, permissionResultMap)) {
@@ -206,7 +206,7 @@ public open class Plugin {
         // return when null since call was rejected in getLauncherOrReject
         val permissionResultLauncher = getPermissionLauncherOrReject(call, callbackName) ?: return
 
-        bridge.savePermissionCall(call)
+        bridge.savePermissionCall(call, callbackName)
         permissionResultLauncher.launch(permissionStrings)
     }
 

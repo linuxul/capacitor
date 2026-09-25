@@ -118,7 +118,7 @@ class PluginPermissionFlowTest {
         assertEquals(listOf(call), plugin.callbackCalls)
         verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), isNull())
         assertTrue(launchedLaunchers().isEmpty())
-        verify(bridge, never()).savePermissionCall(any())
+        verify(bridge, never()).savePermissionCall(any(), any())
     }
 
     @Test
@@ -150,7 +150,7 @@ class PluginPermissionFlowTest {
         @Suppress("UNCHECKED_CAST")
         verify(launched as ActivityResultLauncher<Any>).launch(permissions.capture())
         assertEquals(listOf(CAMERA), (permissions.firstValue as Array<*>).toList())
-        verify(bridge).savePermissionCall(call)
+        verify(bridge).savePermissionCall(call, "done")
         // Nothing is settled until the permission result comes back.
         assertTrue(plugin.callbackCalls.isEmpty())
         verify(handler, never()).sendResponseMessage(any(), anyOrNull(), anyOrNull())
@@ -176,7 +176,7 @@ class PluginPermissionFlowTest {
     fun permissionResultRunsTheCallbackWithTheSavedCall() {
         val call = call()
         plugin.request(arrayOf("camera"), call)
-        whenever(bridge.getPermissionCall("Flow")).thenReturn(call)
+        whenever(bridge.getPermissionCall("Flow", "done")).thenReturn(call)
         whenever(bridge.validatePermissions(anyOrNull(), any())).thenReturn(true)
 
         permissionResultCallback().onActivityResult(mapOf(CAMERA to true))

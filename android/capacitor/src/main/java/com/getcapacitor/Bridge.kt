@@ -574,15 +574,18 @@ public class Bridge private constructor(
      *
      * @return The saved plugin call
      */
-    internal fun getPermissionCall(pluginId: String): PluginCall? = savedCallStore.takePermissionCall(pluginId)
+    internal fun getPermissionCall(pluginId: String, callbackName: String): PluginCall? =
+        savedCallStore.takePermissionCall(pluginId, callbackName)
 
     /**
-     * Save a call to be retrieved after requesting permissions. Calls are saved in order.
+     * Save a call to be retrieved when the permission request it launched through [callbackName] returns. Calls
+     * waiting on the same callback are saved in order.
      *
      * @param call The plugin call to save.
+     * @param callbackName The permission callback whose result answers the call.
      */
-    internal fun savePermissionCall(call: PluginCall) {
-        savedCallStore.savePermissionCall(call)
+    internal fun savePermissionCall(call: PluginCall, callbackName: String) {
+        savedCallStore.savePermissionCall(call, callbackName)
     }
 
     /**

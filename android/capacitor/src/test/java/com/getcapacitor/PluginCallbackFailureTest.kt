@@ -19,6 +19,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.mockingDetails
@@ -92,7 +93,7 @@ class PluginCallbackFailureTest {
     }
 
     private fun deliverPermissionResult(savedCall: PluginCall?) {
-        whenever(bridge.getPermissionCall("Failing")).thenReturn(savedCall)
+        whenever(bridge.getPermissionCall(eq("Failing"), any())).thenReturn(savedCall)
         launchedCallback<Map<String, Boolean>>().onActivityResult(mapOf("android.permission.CAMERA" to true))
     }
 
