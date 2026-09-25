@@ -624,6 +624,11 @@ export interface CapacitorConfig {
      * This is intended for use with live-reload servers where unencrypted HTTP
      * traffic is often used.
      *
+     * In this fork it only affects debug builds, through the
+     * `android/app/src/debug/AndroidManifest.xml` that new projects get. Release
+     * builds are not changed by it: declare `android:usesCleartextTraffic` in
+     * the app's own manifest if a release build needs cleartext traffic.
+     *
      * **This is not intended for use in production.**
      *
      * @since 1.5.0
