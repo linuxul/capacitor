@@ -25,12 +25,13 @@ internal struct ByteRange: Equatable {
 
     /// What to do with a request that carries a `Range` header.
     enum Resolution: Equatable {
-        /// Ignore the header and answer with the whole resource (200). Used for range units other than `bytes` and for
-        /// requests for several ranges, which would need a `multipart/byteranges` response.
+        /// Ignore the header and answer with the whole resource (200). Used for a syntactically invalid header, which
+        /// RFC 7233 (section 2.1) requires a recipient to ignore, for range units other than `bytes`, and for requests
+        /// for several ranges, which would need a `multipart/byteranges` response.
         case whole
         /// Answer with this part of the resource (206).
         case partial(ByteRange)
-        /// The header is malformed or no byte of the resource is in the range: answer with 416 and
+        /// The range is well formed but no byte of the resource is in it: answer with 416 and
         /// `Content-Range: bytes */size`.
         case unsatisfiable
     }
@@ -41,7 +42,7 @@ internal struct ByteRange: Equatable {
     /// the resource is clamped to the last byte, and a suffix longer than the resource selects all of it.
     static func resolve(_ header: String, size: Int) -> Resolution {
         guard let equals = header.firstIndex(of: "=") else {
-            return .unsatisfiable
+            return .whole
         }
         let unit = header[..<equals].trimmingCharacters(in: .whitespaces)
         // A server must ignore a range unit it does not understand.
@@ -54,26 +55,23 @@ internal struct ByteRange: Equatable {
         }
         let spec = specs[0].trimmingCharacters(in: .whitespaces)
         guard let dash = spec.firstIndex(of: "-") else {
-            return .unsatisfiable
+            return .whole
         }
         let firstText = spec[..<dash]
         let lastText = spec[spec.index(after: dash)...]
 
         if firstText.isEmpty {
-            // suffix range: the final `count` bytes
-            guard let count = offset(lastText), count > 0, size > 0 else {
-                return .unsatisfiable
-            }
-            return .partial(ByteRange(first: max(size - count, 0), last: size - 1))
+            return resolveSuffix(lastText, size: size)
         }
 
         guard let first = offset(firstText) else {
-            return .unsatisfiable
+            return .whole
         }
         var last = size - 1
         if !lastText.isEmpty {
+            // a last offset before the first one makes the range syntactically invalid, not unsatisfiable
             guard let requestedLast = offset(lastText), requestedLast >= first else {
-                return .unsatisfiable
+                return .whole
             }
             last = min(requestedLast, size - 1)
         }
@@ -81,6 +79,17 @@ internal struct ByteRange: Equatable {
             return .unsatisfiable
         }
         return .partial(ByteRange(first: first, last: last))
+    }
+
+    /// Resolves the suffix form `bytes=-count`, which selects the final `count` bytes.
+    private static func resolveSuffix(_ countText: Substring, size: Int) -> Resolution {
+        guard let count = offset(countText) else {
+            return .whole
+        }
+        guard count > 0, size > 0 else {
+            return .unsatisfiable
+        }
+        return .partial(ByteRange(first: max(size - count, 0), last: size - 1))
     }
 
     /// Parses a byte offset. Offsets have no sign, and one too large for `Int` is past the end of any file.

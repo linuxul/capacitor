@@ -49,9 +49,10 @@ class ByteRangeTests: XCTestCase {
         XCTAssertEqual(resolve("bytes=-10", size: 0), .unsatisfiable)
     }
 
-    func testMalformedRangesAreUnsatisfiable() {
+    // RFC 7233, section 2.1: a recipient must ignore a Range header with a syntactically invalid byte-range-spec.
+    func testMalformedRangesAreIgnored() {
         for header in ["bytes", "bytes=", "bytes=-", "bytes=abc-", "bytes=1-abc", "bytes=5-3", "bytes=+1-2", "bytes=1--2", "bytes=1 2-3", "bytes=0x10-"] {
-            XCTAssertEqual(resolve(header), .unsatisfiable, header)
+            XCTAssertEqual(resolve(header), .whole, header)
         }
     }
 

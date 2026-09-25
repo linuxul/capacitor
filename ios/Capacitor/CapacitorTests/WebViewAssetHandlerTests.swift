@@ -160,12 +160,22 @@ class WebViewAssetHandlerTests: XCTestCase {
         XCTAssertEqual(String(decoding: task.body, as: UTF8.self), "89")
     }
 
-    func testAnswersUnsatisfiableAndMalformedRangesWith416() {
-        for header in ["bytes=10-", "bytes=5-3", "bytes", "bytes=abc-"] {
+    func testAnswersUnsatisfiableRangesWith416() {
+        for header in ["bytes=10-", "bytes=10-12", "bytes=-0"] {
             let task = range(header)
             XCTAssertEqual(task.httpResponse?.statusCode, 416, header)
             XCTAssertEqual(task.httpResponse?.value(forHTTPHeaderField: "Content-Range"), "bytes */10", header)
             XCTAssertTrue(task.body.isEmpty, header)
+            XCTAssertTrue(task.finished, header)
+        }
+    }
+
+    // RFC 7233, section 2.1: a syntactically invalid Range header is ignored, as on Android.
+    func testServesTheWholeFileForMalformedRanges() {
+        for header in ["bytes=5-3", "bytes", "bytes=abc-"] {
+            let task = range(header)
+            XCTAssertEqual(task.httpResponse?.statusCode, 200, header)
+            XCTAssertEqual(String(decoding: task.body, as: UTF8.self), "0123456789", header)
             XCTAssertTrue(task.finished, header)
         }
     }
