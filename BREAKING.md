@@ -2,6 +2,44 @@
 
 This fork of Capacitor 8 narrows what the runtime supports so that its internals can be plain Kotlin and Swift. Apps and plugins written for upstream Capacitor need the changes below.
 
+## 9.0: changes from fork 8.5.3
+
+This section is for apps and plugins that already run on fork 8.5.3. The sections after it describe how the fork differs from upstream Capacitor.
+
+### CapacitorHttp in the WebView
+
+With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. Their behaviour is now closer to the browser's:
+
+- `fetch` no longer modifies the `init` object or the headers passed to it, and a `Request` object with a body can be fetched from the local server.
+- An aborted `AbortSignal` rejects `fetch` with an `AbortError`. The native request itself is not cancelled.
+- Responses with status 204, 205 or 304 (and 101, 103) have a `null` body instead of making `fetch` throw. A status a `Response` cannot represent is reported as a `TypeError`, like a network error.
+- `Blob` bodies are sent base64 encoded, the same way as `File`. `ArrayBuffer` and other binary views are sent like a `Uint8Array`. They were serialized as JSON before.
+- `XMLHttpRequest` is a subclass of the WebView's implementation, so `xhr instanceof XMLHttpRequest` holds again and the shared prototype is no longer rewritten.
+- A synchronous `XMLHttpRequest` (`open(method, url, false)`) keeps the WebView implementation instead of silently becoming asynchronous. `open()` accepts a `URL` object and can be called twice.
+- A request that fails in native (or whose body cannot be read) ends with an `error` event and status `0`, instead of hanging or reporting `undefined`. A response that arrives after `abort()` is ignored.
+- `getResponseHeader()` is case-insensitive and returns `null` for a missing header. `getAllResponseHeaders()` returns lower-cased, sorted names without `Set-Cookie`. A request header set twice is combined (`a, b`) instead of overwritten.
+
+### Web implementations
+
+- A `WebPlugin` listener that removes itself while it is being notified no longer makes the next listener be skipped.
+- After the last listener of an event is removed, events sent with `retainUntilConsumed` are retained again and delivered to the next listener.
+- `CapacitorHttp` on web joins array URL parameters correctly (`tag=a&tag=b&page=2`, not `tag=a&tag=b&&page=2`).
+- `CapacitorCookies.getCookies()` on web no longer throws on a cookie without `=`; it is reported with an empty value.
+
+### iOS console and window errors
+
+- An `Error` logged on iOS reaches the Xcode console as `Name: message` and its stack instead of `{}`. An object that refers to itself no longer drops the whole message.
+- `window.onerror` reports errors whose first argument is an `Event` (for example a failed resource load) instead of throwing inside the handler.
+
+### CLI
+
+- The CLI collects and sends no usage data. Upstream Capacitor sends metrics, including the dependency specs of the app (which for this fork are the release tarball URLs), to an upstream service. `npx cap telemetry` is kept so scripts that call it keep working, but it only reports that nothing is collected.
+- `npx cap init` no longer offers to create an Ionic account.
+- The hidden `create` and `plugin:generate` commands are removed. They only pointed at the upstream `npm init` templates, which install upstream Capacitor.
+- The generated `ios/App/CapApp-SPM/Package.swift` declares at least iOS 17, even if the Xcode project still targets an older version, because SwiftPM refuses to link the runtime otherwise.
+- `npx cap migrate` removes the installed `@capacitor/*` packages (except the CLI) before reinstalling them, as it was meant to. The removal silently did nothing before.
+- The repository no longer contains the npm, Maven Central and CocoaPods publishing scripts and workflows. Releases are the GitHub release tarballs described under [Installing](#installing).
+
 ## Installing
 
 The fork is not published to npm. Its packages keep the `@capacitor/*` names, and each version is attached to a GitHub release as tarballs, which an app installs by URL:
