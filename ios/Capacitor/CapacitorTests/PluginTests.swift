@@ -136,6 +136,27 @@ class PluginTests: XCTestCase {
         XCTAssertFalse(plugin.hasListeners("ping"))
     }
 
+    func testRemoveAllListenersReleasesTheSavedListenerCalls() {
+        let bridge = RecordingBridge(delegate: TestBridgeDelegate())
+        bridge.registerPluginInstance(TestFixturePlugin())
+        let send = { (method: String, options: [String: Any], callbackId: String) in
+            bridge.handleJSCall(call: JSCall(options: options, pluginId: "TestFixture", method: method, callbackId: callbackId))
+            bridge.dispatchQueue.sync {}
+        }
+        send("addListener", ["eventName": "ping"], "listener-1")
+        send("addListener", ["eventName": "pong"], "listener-2")
+        send("watch", [:], "watch-1")
+        XCTAssertNotNil(bridge.savedCall(withID: "listener-1"))
+        XCTAssertNotNil(bridge.savedCall(withID: "listener-2"))
+
+        send("removeAllListeners", [:], "remove-all")
+        XCTAssertNil(bridge.savedCall(withID: "listener-1"))
+        XCTAssertNil(bridge.savedCall(withID: "listener-2"))
+        XCTAssertNotNil(bridge.savedCall(withID: "watch-1"), "calls that are not listeners stay saved")
+        XCTAssertEqual(bridge.messages.last?.callbackId, "remove-all")
+        XCTAssertEqual(bridge.messages.last?.success, true)
+    }
+
     func testListenersAreThreadSafe() {
         let plugin = TestFixturePlugin()
         DispatchQueue.concurrentPerform(iterations: 500) { index in

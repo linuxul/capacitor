@@ -140,10 +140,20 @@ open class CAPPlugin: NSObject {
     /// The reset path calls this directly instead of dispatching `removeAllListeners:` with a nil call the way the
     /// Obj-C bridge did, so an override of ``removeAllListeners(_:)`` runs for the JavaScript call only.
     ///
+    /// The bridge saved each listener call when ``addListener(_:)`` kept it alive, so the removed calls are released
+    /// from the bridge as well; otherwise they stayed in its saved calls until the next navigation.
+    ///
     /// Same as the Obj-C original: retained event arguments are *not* dropped here, so a payload retained with
     /// `retainUntilConsumed` before a navigation is still delivered to the first listener the next page adds.
     internal func removeAllListeners() {
-        withListenerLock { lockedEventListeners.removeAll() }
+        let removed: [CAPPluginCall] = withListenerLock {
+            let listeners = lockedEventListeners.values.flatMap { $0 }
+            lockedEventListeners.removeAll()
+            return listeners
+        }
+        for listener in removed {
+            bridge?.releaseCall(listener)
+        }
     }
 
     // MARK: - Permissions
