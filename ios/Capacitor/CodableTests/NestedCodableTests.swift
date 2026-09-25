@@ -9,7 +9,24 @@
 import XCTest
 import Capacitor
 
+/// Records the coding path of the unkeyed container it nests under "items".
+private struct NestedArrayPath: Encodable {
+    enum Keys: String, CodingKey { case items }
+    static var recordedPath: [String] = []
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: Keys.self)
+        let nested = container.nestedUnkeyedContainer(forKey: .items)
+        Self.recordedPath = nested.codingPath.map(\.stringValue)
+    }
+}
+
 final class NestedCodableTests: XCTestCase {
+    func testANestedUnkeyedContainerIncludesItsKeyInTheCodingPath() throws {
+        _ = try JSValueEncoder().encode(NestedArrayPath())
+        XCTAssertEqual(NestedArrayPath.recordedPath, ["items"])
+    }
+
     private let nestedData: JSObject = [
         "id": 1,
         "user": [

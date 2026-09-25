@@ -156,7 +156,7 @@ extension JSValueEncoderImpl.KeyedContainer: KeyedEncodingContainerProtocol {
         var newPath = codingPath
         newPath.append(key)
         let nestedContainer = JSValueEncoderImpl.UnkeyedContainer(
-            codingPath: codingPath,
+            codingPath: newPath,
             userInfo: userInfo,
             options: options
         )
