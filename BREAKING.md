@@ -2,6 +2,16 @@
 
 This fork of Capacitor 8 narrows what the runtime supports so that its internals can be plain Kotlin and Swift. Apps and plugins written for upstream Capacitor need the changes below.
 
+## Unreleased: changes after 9.0.0
+
+These changes are on the `refactor/kotlin-swift` branch and ship with the next release.
+
+### CLI
+
+- `npx cap migrate` moves an app to the fork instead of upstream Capacitor 8. `@capacitor/core`, `@capacitor/cli`, `@capacitor/ios` and `@capacitor/android` that come from the npm registry (a version range or a dist-tag), or from an older fork release tarball, are set to the release tarball of the running CLI's version, `https://github.com/linuxul/capacitor/releases/download/<version>/capacitor-<pkg>-<version>.tgz`. A fork release that is not older, and `file:`, `link:`, git or other URL specs, are kept.
+- `npx cap migrate` sets the official plugins that the fork releases (the 20 plugins of the [linuxul/capacitor-plugins](https://github.com/linuxul/capacitor-plugins/releases) 9.0.0 release) to their fork release tarball when they come from the registry or from an older fork plugin release. Other `@capacitor/*` plugins from the registry (`filesystem`, `geolocation`, `google-maps`, `barcode-scanner`, `haptics`, `keyboard`, …) are no longer pinned to `^8.0.0`: they are left unchanged, with a warning that they are the upstream npm packages and not built for the fork.
+- `npx cap migrate` names the fork and its version in its messages and links to the fork's `BREAKING.md` for that version. The upstream Capacitor 8 guides are still linked for apps coming from Capacitor 7.
+
 ## 9.0: changes from fork 8.5.3
 
 This section is for apps and plugins that already run on fork 8.5.3. The sections after it describe how the fork differs from upstream Capacitor.
@@ -259,7 +269,7 @@ The fork is not published to npm. Its packages keep the `@capacitor/*` names, an
 }
 ```
 
-Installing `@capacitor/*` by version from npm gets upstream Capacitor instead. `npx cap migrate` leaves a Capacitor package alone when it points at a tarball, a `file:` path or git, and only pins the ones that come from the registry.
+Installing `@capacitor/*` by version from npm gets upstream Capacitor instead. `npx cap migrate` moves Capacitor packages that come from the registry, or from an older fork release, to the fork's release tarballs, and leaves `file:` paths, git and other URLs alone.
 
 ### Official plugins
 

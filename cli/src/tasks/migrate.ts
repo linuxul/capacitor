@@ -1,7 +1,7 @@
 import { writeFileSync, readFileSync, existsSync } from 'fs-extra';
 import { join } from 'path';
 import { rimraf } from 'rimraf';
-import { coerce, gte, lt, validRange } from 'semver';
+import { coerce, gte, lt, valid, validRange } from 'semver';
 
 import { cleanupLegacyCordovaAndroid } from '../android/cordova-cleanup';
 import c from '../colors';
@@ -18,35 +18,37 @@ import { migrateToUIScene } from './migrate-uiscene';
 // eslint-disable-next-line prefer-const
 let allDependencies: { [key: string]: any } = {};
 const libs = ['@capacitor/core', '@capacitor/cli', '@capacitor/ios', '@capacitor/android'];
-const plugins = [
-  '@capacitor/action-sheet',
-  '@capacitor/app',
-  '@capacitor/app-launcher',
-  '@capacitor/browser',
-  '@capacitor/camera',
-  '@capacitor/clipboard',
-  '@capacitor/device',
-  '@capacitor/dialog',
-  '@capacitor/filesystem',
-  '@capacitor/geolocation',
-  '@capacitor/google-maps',
-  '@capacitor/haptics',
-  '@capacitor/keyboard',
-  '@capacitor/local-notifications',
-  '@capacitor/motion',
-  '@capacitor/network',
-  '@capacitor/preferences',
-  '@capacitor/push-notifications',
-  '@capacitor/screen-orientation',
-  '@capacitor/screen-reader',
-  '@capacitor/share',
-  '@capacitor/splash-screen',
-  '@capacitor/status-bar',
-  '@capacitor/text-zoom',
-  '@capacitor/toast',
+// The fork is not on npm. Its runtime packages are released at the version of this CLI, and its
+// official plugins separately, as tarballs attached to GitHub releases of these repositories.
+const forkRuntimeRepository = 'https://github.com/linuxul/capacitor';
+const forkPluginsRepository = 'https://github.com/linuxul/capacitor-plugins';
+// The current official plugin release of the fork and the plugins it contains. The fork release
+// process updates both whenever it publishes a new release of linuxul/capacitor-plugins.
+export const forkPluginsVersion = '9.0.0';
+export const forkPlugins = [
+  'action-sheet',
+  'app',
+  'app-launcher',
+  'browser',
+  'camera',
+  'clipboard',
+  'device',
+  'dialog',
+  'local-notifications',
+  'motion',
+  'network',
+  'preferences',
+  'push-notifications',
+  'screen-orientation',
+  'screen-reader',
+  'share',
+  'splash-screen',
+  'status-bar',
+  'text-zoom',
+  'toast',
 ];
-const coreVersion = '^8.0.0';
-const pluginVersion = '^8.0.0';
+// @capacitor/* packages that are build tools, not plugins, so migrate does not warn about them.
+const capacitorTools = ['@capacitor/assets', '@capacitor/docgen'];
 const gradleVersion = '8.14.3';
 const iOSVersion = '17';
 const kotlinVersion = '2.2.20';
@@ -54,6 +56,7 @@ let installFailed = false;
 
 export async function migrateCommand(config: Config, noprompt: boolean, packagemanager: string): Promise<void> {
   installFailed = false;
+  const cliVersion = config.cli.package.version;
 
   const capMajor = await checkCapacitorMajorVersion(config);
   if (capMajor < 7) {
@@ -63,7 +66,7 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
   const jdkMajor = await checkJDKMajorVersion();
 
   if (jdkMajor < 21) {
-    logger.warn('Capacitor 8 requires JDK 21 or higher. Some steps may fail.');
+    logger.warn(`The Capacitor fork ${cliVersion} requires JDK 21 or higher. Some steps may fail.`);
   }
 
   const variablesAndClasspaths:
@@ -84,14 +87,16 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
   };
 
   const monorepoWarning =
-    'Please note this tool is not intended for use in a mono-repo environment, you should migrate manually instead. Refer to https://capacitorjs.com/docs/next/updating/8-0';
+    'Please note this tool is not intended for use in a mono-repo environment, you should migrate manually instead. ' +
+    `Refer to ${forkBreakingChangesUrl(cliVersion)} for the Capacitor fork, ` +
+    'and to https://capacitorjs.com/docs/next/updating/8-0 when coming from Capacitor 7.';
 
   logger.info(monorepoWarning);
 
   const { migrateconfirm } = noprompt
     ? { migrateconfirm: 'y' }
     : await logPrompt(
-        `Capacitor 8 sets a deployment target of iOS ${iOSVersion} and a minimum of Android 13 (SDK 33). \n`,
+        `The Capacitor fork ${cliVersion} sets a deployment target of iOS ${iOSVersion} and a minimum of Android 13 (SDK 33). \n`,
         {
           type: 'text',
           name: 'migrateconfirm',
@@ -308,14 +313,14 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
 
       // Write all breaking changes
       await runTask(`Writing breaking changes.`, () => {
-        return writeBreakingChanges();
+        return writeBreakingChanges(cliVersion);
       });
 
       if (!installFailed) {
-        logSuccess(`Migration to Capacitor ${coreVersion} is complete. Run and test your app!`);
+        logSuccess(`Migration to the Capacitor fork ${cliVersion} is complete. Run and test your app!`);
       } else {
         logger.warn(
-          `Migration to Capacitor ${coreVersion} is incomplete. Check the log messages for more information.`,
+          `Migration to the Capacitor fork ${cliVersion} is incomplete. Check the log messages for more information.`,
         );
       }
     } catch (err) {
@@ -333,11 +338,58 @@ async function checkCapacitorMajorVersion(config: Config): Promise<number> {
   return majorVersion;
 }
 
-// Only a version range or a dist-tag is resolved from the npm registry. A file:, link:, tarball URL
-// or git spec points at a build of this fork, and pinning it to a range would install upstream
-// Capacitor from npm instead.
+// Only a version range or a dist-tag is resolved from the npm registry, which for @capacitor/* means
+// upstream Capacitor. A file:, link:, tarball URL or git spec may point at a build of this fork, so
+// migrate only replaces it when it is an older release tarball of the fork.
 export function isRegistrySpec(spec: string): boolean {
   return validRange(spec) !== null || /^[a-z][a-z0-9._-]*$/i.test(spec);
+}
+
+function forkBreakingChangesUrl(version: string): string {
+  return `${forkRuntimeRepository}/blob/${version}/BREAKING.md`;
+}
+
+/**
+ * The URL of the tarball of `@capacitor/<pkg>` in the `version` release of a fork repository, such as
+ * `https://github.com/linuxul/capacitor/releases/download/9.0.0/capacitor-core-9.0.0.tgz`.
+ */
+function forkReleaseUrl(repository: string, name: string, version: string): string {
+  const pkg = name.slice('@capacitor/'.length);
+  return `${repository}/releases/download/${version}/capacitor-${pkg}-${version}.tgz`;
+}
+
+/**
+ * The version of `spec` when it is the tarball of `name` in a release of the fork repository, or
+ * undefined for any other spec.
+ */
+function forkReleaseVersion(repository: string, name: string, spec: string): string | undefined {
+  const prefix = `${repository}/releases/download/`;
+  if (!spec.startsWith(prefix)) {
+    return undefined;
+  }
+  const version = valid(spec.slice(prefix.length).split('/')[0]);
+  return version && spec === forkReleaseUrl(repository, name, version) ? version : undefined;
+}
+
+/**
+ * Moves a registry spec, or a fork release older than `version`, to the `version` release tarball.
+ * Every other spec (a newer fork release, file:, link:, git or another URL) is kept.
+ */
+function toForkRelease(repository: string, name: string, spec: string, version: string): string {
+  const url = forkReleaseUrl(repository, name, version);
+  if (isRegistrySpec(spec)) {
+    return url;
+  }
+  const current = forkReleaseVersion(repository, name, spec);
+  if (!current) {
+    logger.info(`Kept ${name} at ${spec}, which does not come from the npm registry.`);
+    return spec;
+  }
+  if (lt(current, version)) {
+    return url;
+  }
+  logger.info(`Kept ${name} at ${spec}, a Capacitor fork release that is not older than ${version}.`);
+  return spec;
 }
 
 export async function installLatestLibs(dependencyManager: string, runInstall: boolean, config: Config): Promise<void> {
@@ -347,19 +399,28 @@ export async function installLatestLibs(dependencyManager: string, runInstall: b
     return;
   }
   const pkgJson: any = JSON.parse(pkgJsonFile);
+  const cliVersion = config.cli.package.version;
 
   for (const depsKey of ['devDependencies', 'dependencies']) {
     const deps = pkgJson[depsKey] || {};
     for (const name of Object.keys(deps)) {
-      const version = libs.includes(name) ? coreVersion : plugins.includes(name) ? pluginVersion : undefined;
-      if (!version) {
+      const spec: string = deps[name];
+      if (!name.startsWith('@capacitor/') || capacitorTools.includes(name)) {
         continue;
       }
-      if (!isRegistrySpec(deps[name])) {
-        logger.info(`Kept ${name} at ${deps[name]}, which does not come from the npm registry.`);
-        continue;
+      if (libs.includes(name)) {
+        deps[name] = toForkRelease(forkRuntimeRepository, name, spec, cliVersion);
+      } else if (forkPlugins.includes(name.slice('@capacitor/'.length))) {
+        deps[name] = toForkRelease(forkPluginsRepository, name, spec, forkPluginsVersion);
+      } else if (isRegistrySpec(spec)) {
+        logger.warn(
+          `Left ${name} at ${spec}. The Capacitor fork does not release ${name}, so this is the upstream npm ` +
+            `package, which is not built for the Capacitor fork ${cliVersion}. Check that it works with the fork ` +
+            `or replace it.`,
+        );
+      } else {
+        logger.info(`Kept ${name} at ${spec}, which does not come from the npm registry.`);
       }
-      deps[name] = version;
     }
   }
 
@@ -381,7 +442,7 @@ export async function installLatestLibs(dependencyManager: string, runInstall: b
   }
 }
 
-async function writeBreakingChanges() {
+async function writeBreakingChanges(cliVersion: string) {
   const breaking = [
     '@capacitor/action-sheet',
     '@capacitor/barcode-scanner',
@@ -400,9 +461,12 @@ async function writeBreakingChanges() {
       broken.push(lib);
     }
   }
+  logger.info(
+    `IMPORTANT: Review ${forkBreakingChangesUrl(cliVersion)} for the changes in the Capacitor fork ${cliVersion}.`,
+  );
   if (broken.length > 0) {
     logger.info(
-      `IMPORTANT: Review https://capacitorjs.com/docs/next/updating/8-0#plugins for breaking changes in these plugins that you use: ${broken.join(
+      `IMPORTANT: If you are coming from Capacitor 7, review https://capacitorjs.com/docs/next/updating/8-0#plugins for breaking changes in these plugins that you use: ${broken.join(
         ', ',
       )}.`,
     );

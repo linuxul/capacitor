@@ -97,6 +97,7 @@ describe('migrateCommand on Android', () => {
       cli: {
         assetsDirAbs: join(rootDir, 'cli-assets'),
         assets: { android: { platformTemplateArchiveAbs: TEMPLATE_ARCHIVE } },
+        package: { version: '9.0.0' },
       },
     } as unknown as Config;
 
