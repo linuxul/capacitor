@@ -7,9 +7,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
 
-        window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
-        window?.makeKeyAndVisible()
+        // Info.plist names Main.storyboard for this scene, so UIKit has already created the window with the view
+        // controller the storyboard sets (CAPBridgeViewController, or a subclass of it). Create one only without it.
+        if window == nil {
+            window = UIWindow(windowScene: windowScene)
+            window?.rootViewController = CAPBridgeViewController()
+            window?.makeKeyAndVisible()
+        }
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
     }

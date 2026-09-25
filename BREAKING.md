@@ -83,6 +83,7 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 - Decoding a short array into a fixed-size type with `call.decode` throws `DecodingError.valueNotFound` instead of crashing, and nested decoding errors carry their coding path.
 - `call.getDate` and the `.iso8601` date strategy of `JSValueDecoder` read dates with fractional seconds, as `Date.prototype.toISOString()` writes them (`2023-11-14T22:13:20.750Z`); they returned `nil` or threw before. Dates the runtime writes still have whole seconds.
 - `UIColor.capacitor.color(argb:)` scales each channel to 0...1; it used to pass 0–255 through, so every non-zero channel came out at full intensity.
+- New iOS apps run in the view controller that `Main.storyboard` sets, so a `CAPBridgeViewController` subclass named there (for example one that registers local plugins in `capacitorDidLoad`) is used again. The 8.5.3 template's `SceneDelegate` replaced the window UIKit had created from the storyboard with a plain `CAPBridgeViewController`. In an existing app, wrap the three lines that create the window in `SceneDelegate.scene(_:willConnectTo:options:)` in `if window == nil { … }`.
 - Strings in the scripts the bridge evaluates (callback ids, plugin and method names, messages) are JSON-encoded, so quotes or line breaks in them no longer break the script.
 
 ### Kotlin plugin API
