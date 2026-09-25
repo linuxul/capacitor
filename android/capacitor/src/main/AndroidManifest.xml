@@ -1,3 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+    BridgeWebChromeClient answers <input type="file" capture> with the camera app. Since Android 11 an app only
+    sees the activities it declares here, so without these entries it finds no camera app and falls back to the
+    file picker. They merge into the app's manifest.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.VIDEO_CAPTURE" />
+        </intent>
+    </queries>
 </manifest>

@@ -1,7 +1,6 @@
 package com.getcapacitor
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
@@ -328,8 +327,8 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         }
     }
 
-    @SuppressLint("QueryPermissionsNeeded")
     private fun showImageCapturePicker(filePathCallback: ValueCallback<Array<Uri>>): Boolean {
+        // The library manifest declares this intent in <queries>, so that a camera app is visible to resolveActivity.
         val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         if (takePictureIntent.resolveActivity(bridge.activity.packageManager) == null) {
             return false
@@ -344,42 +343,48 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         }
         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageFileUri)
         takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        activityListener =
-            ActivityResultListener { activityResult ->
-                var result: Array<Uri>? = null
-                if (activityResult.resultCode == Activity.RESULT_OK) {
-                    result = arrayOf(imageFileUri)
-                }
-                filePathCallback.onReceiveValue(result)
+        return launchCapture(takePictureIntent) { activityResult ->
+            var result: Array<Uri>? = null
+            if (activityResult.resultCode == Activity.RESULT_OK) {
+                result = arrayOf(imageFileUri)
             }
-        activityLauncher.launch(takePictureIntent)
-
-        return true
+            filePathCallback.onReceiveValue(result)
+        }
     }
 
-    @SuppressLint("QueryPermissionsNeeded")
     private fun showVideoCapturePicker(filePathCallback: ValueCallback<Array<Uri>>): Boolean {
+        // The library manifest declares this intent in <queries>, so that a camera app is visible to resolveActivity.
         val takeVideoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
         if (takeVideoIntent.resolveActivity(bridge.activity.packageManager) == null) {
             return false
         }
 
-        activityListener =
-            ActivityResultListener { activityResult ->
-                var result: Array<Uri>? = null
-                if (activityResult.resultCode == Activity.RESULT_OK) {
-                    // The Java original threw on a missing result intent and reported { null } for a missing uri;
-                    // both now report "no file".
-                    val videoUri = activityResult.data?.data
-                    if (videoUri != null) {
-                        result = arrayOf(videoUri)
-                    }
+        return launchCapture(takeVideoIntent) { activityResult ->
+            var result: Array<Uri>? = null
+            if (activityResult.resultCode == Activity.RESULT_OK) {
+                // The Java original threw on a missing result intent and reported { null } for a missing uri;
+                // both now report "no file".
+                val videoUri = activityResult.data?.data
+                if (videoUri != null) {
+                    result = arrayOf(videoUri)
                 }
-                filePathCallback.onReceiveValue(result)
             }
-        activityLauncher.launch(takeVideoIntent)
+            filePathCallback.onReceiveValue(result)
+        }
+    }
 
-        return true
+    /**
+     * Launches the camera app with [intent] and answers the file chooser in [onResult]. False when the app cannot
+     * be started after all (it went away since it was resolved); the caller falls back to the file picker then.
+     */
+    private fun launchCapture(intent: Intent, onResult: ActivityResultListener): Boolean {
+        activityListener = onResult
+        return try {
+            activityLauncher.launch(intent)
+            true
+        } catch (e: ActivityNotFoundException) {
+            false
+        }
     }
 
     private fun showFilePicker(filePathCallback: ValueCallback<Array<Uri>>, fileChooserParams: FileChooserParams) {
