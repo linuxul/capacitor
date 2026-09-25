@@ -123,7 +123,7 @@ public class WebViewLocalServer internal constructor(
         }
 
         if (isLocalFile(loadingUrl) || isMainUrl(loadingUrl) || !isAllowedUrl(loadingUrl) || isErrorUrl(loadingUrl)) {
-            Logger.debug("Handling local request: " + request.url.toString())
+            Logger.debug("Handling local request: ${request.url}")
             return handleLocalRequest(request, handler)
         } else {
             return handleProxyRequest(request, handler)
@@ -481,29 +481,22 @@ public class WebViewLocalServer internal constructor(
         }
     }
 
-    private fun getMimeType(path: String?, stream: InputStream?): String? {
-        var mimeType: String? = null
-        try {
-            // A null path is reported by the catch below, and the type stays unknown.
-            val name = path!!
-            mimeType = URLConnection.guessContentTypeFromName(name) // Does not recognize *.js
-            if (mimeType != null && name.endsWith(".js") && mimeType == "image/x-icon") {
-                Logger.debug("We shouldn't be here")
+    private fun getMimeType(path: String?, stream: InputStream?): String? = try {
+        // A null path is reported by the catch below, and the type stays unknown.
+        val name = path!!
+        // guessContentTypeFromName does not know *.js
+        URLConnection.guessContentTypeFromName(name)
+            ?: when {
+                // Make sure JS files get the proper mimetype to support ES modules
+                name.endsWith(".js") || name.endsWith(".mjs") -> "application/javascript"
+
+                name.endsWith(".wasm") -> "application/wasm"
+
+                else -> URLConnection.guessContentTypeFromStream(stream)
             }
-            if (mimeType == null) {
-                if (name.endsWith(".js") || name.endsWith(".mjs")) {
-                    // Make sure JS files get the proper mimetype to support ES modules
-                    mimeType = "application/javascript"
-                } else if (name.endsWith(".wasm")) {
-                    mimeType = "application/wasm"
-                } else {
-                    mimeType = URLConnection.guessContentTypeFromStream(stream)
-                }
-            }
-        } catch (ex: Exception) {
-            Logger.error("Unable to get mime type$path", ex)
-        }
-        return mimeType
+    } catch (ex: Exception) {
+        Logger.error("Unable to get mime type$path", ex)
+        null
     }
 
     private fun getStatusCode(stream: InputStream, defaultCode: Int): Int {
@@ -583,7 +576,6 @@ public class WebViewLocalServer internal constructor(
         val handler: PathHandler =
             object : PathHandler() {
                 override fun handle(url: Uri): InputStream? {
-                    val stream: InputStream?
                     var path = url.path
 
                     // Pass path to routeProcessor if present
@@ -596,29 +588,20 @@ public class WebViewLocalServer internal constructor(
                         ignoreAssetPath = processedRoute.ignoreAssetPath
                     }
 
-                    try {
-                        // Not null for a matched URI (see isLocalFile); a RouteProcessor must return a path too.
-                        if (path!!.startsWith(CAPACITOR_CONTENT_START)) {
-                            stream = protocolHandler.openContentUrl(url)
-                        } else if (path.startsWith(CAPACITOR_FILE_START)) {
-                            stream = protocolHandler.openFile(path)
-                        } else if (!isAsset) {
-                            if (routeProcessor == null) {
-                                path = basePath + url.path
-                            }
-
-                            stream = protocolHandler.openFile(path)
-                        } else if (ignoreAssetPath) {
-                            stream = protocolHandler.openAsset(path)
-                        } else {
-                            stream = protocolHandler.openAsset(assetPath + path)
+                    // Not null for a matched URI (see isLocalFile); a RouteProcessor must return a path too.
+                    val routedPath = path!!
+                    return try {
+                        when {
+                            routedPath.startsWith(CAPACITOR_CONTENT_START) -> protocolHandler.openContentUrl(url)
+                            routedPath.startsWith(CAPACITOR_FILE_START) -> protocolHandler.openFile(routedPath)
+                            !isAsset -> protocolHandler.openFile(if (routeProcessor == null) basePath + url.path else routedPath)
+                            ignoreAssetPath -> protocolHandler.openAsset(routedPath)
+                            else -> protocolHandler.openAsset(assetPath + routedPath)
                         }
                     } catch (e: IOException) {
                         Logger.error("Unable to open asset URL: $url")
-                        return null
+                        null
                     }
-
-                    return stream
                 }
             }
 

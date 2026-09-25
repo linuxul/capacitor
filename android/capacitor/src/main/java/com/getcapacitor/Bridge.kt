@@ -98,7 +98,7 @@ public class Bridge private constructor(
     public val allowedOriginRules: MutableSet<String> = HashSet()
 
     private val navigationPolicy: NavigationPolicy
-    private var miscJSFileInjections = ArrayList<String>()
+    private var miscJSFileInjections = mutableListOf<String>()
     private var canInjectJS = true
 
     /**
@@ -304,10 +304,8 @@ public class Bridge private constructor(
     public fun handleAppUrlLoadError(ex: Exception?) {
         if (ex is SocketTimeoutException) {
             Logger.error(
-                "Unable to load app. Ensure the server is running at " +
-                    appUrl +
-                    ", or modify the " +
-                    "appUrl setting in capacitor.config.json (make sure to npx cap copy after to commit changes).",
+                "Unable to load app. Ensure the server is running at $appUrl, or modify the appUrl setting in " +
+                    "capacitor.config.json (make sure to npx cap copy after to commit changes).",
                 ex
             )
         }
@@ -473,16 +471,7 @@ public class Bridge private constructor(
             }
 
             if (Logger.shouldLog()) {
-                Logger.verbose(
-                    "callback: " +
-                        call.callbackId +
-                        ", pluginId: " +
-                        plugin.id +
-                        ", methodName: " +
-                        methodName +
-                        ", methodData: " +
-                        call.data.toString()
-                )
+                Logger.verbose("callback: ${call.callbackId}, pluginId: ${plugin.id}, methodName: $methodName, methodData: ${call.data}")
             }
 
             callDispatcher.dispatch(plugin, methodName, call)
@@ -625,7 +614,7 @@ public class Bridge private constructor(
             val localUrlJS = "window.WEBVIEW_SERVER_URL = ${JsStrings.literal(localUrl)};"
             val miscJS = JSExport.getMiscFileJS(miscJSFileInjections, activity)
 
-            miscJSFileInjections = ArrayList()
+            miscJSFileInjections = mutableListOf()
             canInjectJS = false
 
             return JSInjector(globalJS, bridgeJS, pluginJS, localUrlJS, miscJS)
@@ -681,7 +670,7 @@ public class Bridge private constructor(
         if (pluginState != null) {
             InstanceStateCodec.write(outState, call, pluginState)
         } else {
-            Logger.error("Couldn't save last " + call.pluginId + "'s Plugin " + call.methodName + " call")
+            Logger.error("Couldn't save last ${call.pluginId}'s Plugin ${call.methodName} call")
         }
     }
 

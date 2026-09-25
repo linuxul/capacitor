@@ -119,14 +119,16 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
     override fun onPermissionRequest(request: PermissionRequest?) {
         if (request == null) return
 
-        val permissionList = ArrayList<String>()
-        if (request.resources.contains("android.webkit.resource.VIDEO_CAPTURE")) {
-            permissionList.add(Manifest.permission.CAMERA)
-        }
-        if (request.resources.contains("android.webkit.resource.AUDIO_CAPTURE")) {
-            permissionList.add(Manifest.permission.MODIFY_AUDIO_SETTINGS)
-            permissionList.add(Manifest.permission.RECORD_AUDIO)
-        }
+        val permissionList =
+            buildList {
+                if (request.resources.contains("android.webkit.resource.VIDEO_CAPTURE")) {
+                    add(Manifest.permission.CAMERA)
+                }
+                if (request.resources.contains("android.webkit.resource.AUDIO_CAPTURE")) {
+                    add(Manifest.permission.MODIFY_AUDIO_SETTINGS)
+                    add(Manifest.permission.RECORD_AUDIO)
+                }
+            }
         if (permissionList.isNotEmpty()) {
             requestPermissions(permissionList.toTypedArray()) { isGranted ->
                 if (isGranted) {
@@ -338,7 +340,7 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         try {
             imageFileUri = createImageFileUri()
         } catch (ex: Exception) {
-            Logger.error("Unable to create temporary media capture file: " + ex.message)
+            Logger.error("Unable to create temporary media capture file: ${ex.message}")
             return false
         }
         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageFileUri)
@@ -434,24 +436,12 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
         val tag = Logger.tags("Console")
         val message: String? = consoleMessage.message()
         if (message != null && isValidMsg(message)) {
-            // The FORMAT default locale is what String.format(String, ...) used implicitly.
-            val msg =
-                String.format(
-                    Locale.getDefault(Locale.Category.FORMAT),
-                    "File: %s - Line %d - Msg: %s",
-                    consoleMessage.sourceId(),
-                    consoleMessage.lineNumber(),
-                    consoleMessage.message()
-                )
-            val level = consoleMessage.messageLevel().name
-            if ("ERROR".equals(level, ignoreCase = true)) {
-                Logger.error(tag, msg, null)
-            } else if ("WARNING".equals(level, ignoreCase = true)) {
-                Logger.warn(tag, msg)
-            } else if ("TIP".equals(level, ignoreCase = true)) {
-                Logger.debug(tag, msg)
-            } else {
-                Logger.info(tag, msg)
+            val msg = "File: ${consoleMessage.sourceId()} - Line ${consoleMessage.lineNumber()} - Msg: $message"
+            when (consoleMessage.messageLevel()?.name) {
+                "ERROR" -> Logger.error(tag, msg, null)
+                "WARNING" -> Logger.warn(tag, msg)
+                "TIP" -> Logger.debug(tag, msg)
+                else -> Logger.info(tag, msg)
             }
         }
         return true
@@ -463,14 +453,14 @@ public open class BridgeWebChromeClient(private val bridge: Bridge) : WebChromeC
     private fun createImageFileUri(): Uri {
         val activity: Activity = bridge.activity
         val photoFile = createImageFile(activity)
-        return FileProvider.getUriForFile(activity, bridge.context.packageName + ".fileprovider", photoFile)
+        return FileProvider.getUriForFile(activity, "${bridge.context.packageName}.fileprovider", photoFile)
     }
 
     private fun createImageFile(activity: Activity): File {
         // Create an image file name
         // The FORMAT default locale is what the single-argument SimpleDateFormat constructor used implicitly.
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault(Locale.Category.FORMAT)).format(Date())
-        val imageFileName = "JPEG_" + timeStamp + "_"
+        val imageFileName = "JPEG_${timeStamp}_"
         val storageDir = activity.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
 
         return File.createTempFile(imageFileName, ".jpg", storageDir)
