@@ -374,7 +374,8 @@ export async function installLatestLibs(dependencyManager: string, runInstall: b
   });
 
   if (runInstall) {
-    rimraf.sync(join(config.app.rootDir, 'node_modules/@capacitor/!(cli)'));
+    // rimraf 4+ only expands patterns when asked to; without `glob` this removed nothing
+    rimraf.sync(join(config.app.rootDir, 'node_modules/@capacitor/!(cli)'), { glob: true });
     await runCommand(dependencyManager, ['install']);
     if (dependencyManager == 'yarn') {
       await runCommand(dependencyManager, ['upgrade']);
