@@ -565,16 +565,16 @@ open class WebViewAssetHandler: NSObject, WKURLSchemeHandler {
     ]
 }
 
-private var stoppedKey: UInt8 = 0
+private let stoppedKey: StaticString = "Capacitor.WKURLSchemeTask.stopped" // the literal's constant address is the key
 
 private extension WKURLSchemeTask {
     /// Set once WebKit has stopped the task; a stopped task must not be messaged again.
     var stopped: Bool {
         get {
-            return (objc_getAssociatedObject(self, &stoppedKey) as? NSNumber)?.boolValue ?? false
+            return (objc_getAssociatedObject(self, stoppedKey.utf8Start) as? NSNumber)?.boolValue ?? false
         }
         set {
-            objc_setAssociatedObject(self, &stoppedKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(self, stoppedKey.utf8Start, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 }

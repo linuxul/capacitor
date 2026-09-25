@@ -168,6 +168,35 @@ class PluginTests: XCTestCase {
         }
     }
 
+    func testTheKeyboardFlagIsKeptPerWebView() {
+        let first = WKWebView(frame: .zero)
+        let second = WKWebView(frame: .zero)
+        XCTAssertNil(first.capacitor.keyboardShouldRequireUserInteraction)
+        first.capacitor.setKeyboardShouldRequireUserInteraction(true)
+        second.capacitor.setKeyboardShouldRequireUserInteraction(false)
+        XCTAssertEqual(first.capacitor.keyboardShouldRequireUserInteraction, true)
+        XCTAssertEqual(second.capacitor.keyboardShouldRequireUserInteraction, false)
+        first.capacitor.setKeyboardShouldRequireUserInteraction(nil)
+        XCTAssertNil(first.capacitor.keyboardShouldRequireUserInteraction)
+        XCTAssertEqual(second.capacitor.keyboardShouldRequireUserInteraction, false)
+    }
+
+    func testLoggingCanBeSwitchedFromAnyThread() {
+        let enabled = CAPLog.enableLogging
+        defer { CAPLog.enableLogging = enabled }
+        DispatchQueue.concurrentPerform(iterations: 200) { index in
+            if index.isMultiple(of: 2) {
+                CAPLog.enableLogging = index.isMultiple(of: 4)
+            } else {
+                _ = CAPLog.enableLogging
+            }
+        }
+        CAPLog.enableLogging = false
+        XCTAssertFalse(CAPLog.enableLogging)
+        CAPLog.enableLogging = true
+        XCTAssertTrue(CAPLog.enableLogging)
+    }
+
     func testRuntimeHooksInstallOnlyOnce() throws {
         let selector = NSSelectorFromString("handleTapAction:")
         _ = CapacitorRuntimeHooks.install

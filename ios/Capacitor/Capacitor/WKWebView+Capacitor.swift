@@ -18,7 +18,9 @@ public extension CapacitorExtensionTypeWrapper where T == WKWebView {
     }
 }
 
-private var associatedKeyboardFlagHandle: UInt8 = 0
+/// The key of the keyboard flag's associated object: the address of this string literal, which is constant and used
+/// for nothing else.
+private let associatedKeyboardFlagKey: StaticString = "Capacitor.WKWebView.keyboardShouldRequireUserInteraction"
 
 /// Runtime hooks that used to be installed from Obj-C `+load` methods. Swift has no equivalent, so they are installed lazily, exactly
 /// once, before the first web view or bridge is created (see `CAPBridgeViewController.loadView()` and `CapacitorBridge.init`).
@@ -104,10 +106,10 @@ internal enum CapacitorRuntimeHooks {
 internal extension WKWebView {
     var associatedKeyboardFlagValue: Any? {
         get {
-            return objc_getAssociatedObject(self, &associatedKeyboardFlagHandle)
+            return objc_getAssociatedObject(self, associatedKeyboardFlagKey.utf8Start)
         }
         set {
-            objc_setAssociatedObject(self, &associatedKeyboardFlagHandle, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(self, associatedKeyboardFlagKey.utf8Start, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 }
