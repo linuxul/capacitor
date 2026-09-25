@@ -36,7 +36,6 @@ import com.getcapacitor.util.PermissionHelper
 import com.getcapacitor.util.WebColor
 import java.io.File
 import java.net.SocketTimeoutException
-import java.net.URL
 import org.json.JSONException
 
 /**
@@ -77,14 +76,25 @@ public class Bridge private constructor(
 
     public lateinit var localServer: WebViewLocalServer
         private set
-    public var localUrl: String? = null
-        private set
-    public var appUrl: String? = null
-        private set
+
+    // Resolved from the config in init, before anything reads them.
+    private val appUrls: AppUrls
+
+    /**
+     * The origin the web assets are served from: `scheme://hostname`, or the origin of `server.url`.
+     */
+    public val localUrl: String
+        get() = appUrls.localUrl
+
+    /**
+     * The URL the WebView loads the app from: `server.url` or [localUrl], followed by `server.startPath`.
+     */
+    public val appUrl: String
+        get() = appUrls.appUrl
+
     public lateinit var appAllowNavigationMask: HostMask
         private set
     public val allowedOriginRules: MutableSet<String> = HashSet()
-    private val authorities = ArrayList<String?>()
     private var miscJSFileInjections = ArrayList<String>()
     private var canInjectJS = true
 
@@ -140,6 +150,9 @@ public class Bridge private constructor(
         this.config = config ?: CapConfig.loadDefault(activity)
         Logger.loggingEnabled = this.config.isLoggingEnabled
 
+        // An invalid server.url stops the app here: there is nothing to load.
+        appUrls = AppUrls.resolve(this.config)
+
         // Initialize web view and message handler for it
         initWebView()
         setAllowedOriginRules()
@@ -168,7 +181,6 @@ public class Bridge private constructor(
                     allowedOriginRules.add(allowNavigation)
                 }
             }
-            authorities.addAll(appAllowNavigationConfig)
         }
         appAllowNavigationMask = HostMask.Parser.parse(appAllowNavigationConfig)
     }
@@ -179,17 +191,17 @@ public class Bridge private constructor(
         // Start the local web server
         var injector = getJSInjector()
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            // Same as the Java original: a missing appUrl (invalid server.url) throws here.
-            val allowedOrigin = Uri.parse(appUrl!!).buildUpon().path(null).fragment(null).clearQuery().build().toString()
+            val allowedOrigin = Uri.parse(appUrl).buildUpon().path(null).fragment(null).clearQuery().build().toString()
+            // getJSInjector logged why there is no injector; without the bridge JS the app cannot run.
+            val script = checkNotNull(injector) { "Unable to export Capacitor JS" }.scriptString
             try {
-                // Same as the Java original: a missing injector throws here.
-                WebViewCompat.addDocumentStartJavaScript(webView, injector!!.scriptString, setOf(allowedOrigin))
+                WebViewCompat.addDocumentStartJavaScript(webView, script, setOf(allowedOrigin))
                 injector = null
             } catch (ex: IllegalArgumentException) {
                 Logger.warn("Invalid url, using fallback")
             }
         }
-        localServer = WebViewLocalServer(activity, this, injector, authorities, html5mode)
+        localServer = WebViewLocalServer(activity, this, injector, appUrls.authorities, html5mode)
         localServer.hostAssets(DEFAULT_WEB_ASSET_DIR)
 
         Logger.debug("Loading app at $appUrl")
@@ -234,9 +246,7 @@ public class Bridge private constructor(
                 serverBasePath = serverPath.path
             }
         } else {
-            // Get to work
-            // Same as the Java original: a missing appUrl (invalid server.url) throws here.
-            webView.loadUrl(appUrl!!)
+            webView.loadUrl(appUrl)
         }
     }
 
@@ -273,8 +283,7 @@ public class Bridge private constructor(
             return false
         }
 
-        // Same as the Java original: a missing appUrl (invalid server.url) throws here.
-        val appUri = Uri.parse(appUrl!!)
+        val appUri = Uri.parse(appUrl)
         if (!(appUri.host == url.host && url.scheme == appUri.scheme) && !appAllowNavigationMask.matches(url.host)) {
             try {
                 val openIntent = Intent(Intent.ACTION_VIEW, url)
@@ -420,36 +429,6 @@ public class Bridge private constructor(
         }
 
         WebView.setWebContentsDebuggingEnabled(config.isWebContentsDebuggingEnabled)
-
-        val appUrlConfig = serverUrl
-        val authority = host
-        authorities.add(authority)
-        val scheme = scheme
-
-        localUrl = "$scheme://$authority"
-
-        if (appUrlConfig != null) {
-            try {
-                val appUrlObject = URL(appUrlConfig)
-                authorities.add(appUrlObject.authority)
-                localUrl = appUrlObject.protocol + "://" + appUrlObject.authority
-            } catch (ex: Exception) {
-                Logger.error("Provided server url is invalid: " + ex.message)
-                return
-            }
-            appUrl = appUrlConfig
-        } else {
-            appUrl = localUrl
-            // custom URL schemes requires path ending with /
-            if (scheme != CAPACITOR_HTTP_SCHEME && scheme != CAPACITOR_HTTPS_SCHEME) {
-                appUrl += "/"
-            }
-        }
-
-        val appUrlPath = config.startPath
-        if (appUrlPath != null && appUrlPath.trim { it <= ' ' }.isNotEmpty()) {
-            appUrl += appUrlPath
-        }
     }
 
     /**
@@ -997,9 +976,8 @@ public class Bridge private constructor(
         loadAppUrl()
     }
 
-    // Same as the Java original: appUrl is read when the posted task runs, and a missing appUrl throws there.
     private fun loadAppUrl() {
-        webView.post { webView.loadUrl(appUrl!!) }
+        webView.post { webView.loadUrl(appUrl) }
     }
 
     /**

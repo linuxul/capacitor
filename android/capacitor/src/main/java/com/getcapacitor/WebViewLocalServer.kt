@@ -44,7 +44,7 @@ public class WebViewLocalServer internal constructor(
     context: Context,
     private val bridge: Bridge,
     private val jsInjector: JSInjector?,
-    private val authorities: ArrayList<String?>,
+    private val authorities: List<String?>,
     // Whether to route all requests to paths without extensions back to `index.html`
     private val html5mode: Boolean
 ) {
