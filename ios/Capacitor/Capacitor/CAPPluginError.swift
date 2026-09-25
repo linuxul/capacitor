@@ -62,7 +62,7 @@ public extension CAPPluginCall {
 
 extension CAPPluginCallError {
     /// The error result for a call that is rejected with `error`.
-    convenience init(rejecting error: Error) {
+    init(rejecting error: Error) {
         switch error {
         case let pluginError as CAPPluginError:
             self.init(message: pluginError.message, code: pluginError.code, error: pluginError.underlyingError ?? pluginError, data: pluginError.data)

@@ -53,7 +53,7 @@ class BridgeMessageTests: XCTestCase {
     }
 
     func testFromNativeKeepsHostileIdentifiersIntact() throws {
-        let result = JSResult(call: call(hostile, hostile, hostile), result: .dictionary(["value": hostile]))
+        let result = JSResult(call: call(hostile, hostile, hostile), data: ["value": hostile])
         let script = BridgeScript.fromNative(result, success: true, save: true, payload: result.jsonPayload())
         XCTAssertTrue(script.hasPrefix("window.Capacitor.fromNative({"))
 
@@ -67,7 +67,7 @@ class BridgeMessageTests: XCTestCase {
     }
 
     func testFromNativeWithoutDataSendsUndefined() throws {
-        let result = JSResult(call: call("id", "Plugin", "method"), result: nil)
+        let result = JSResult(call: call("id", "Plugin", "method"), data: nil)
         let received = try evaluate(BridgeScript.fromNative(result, success: true, save: false, payload: result.jsonPayload()))
         let message = try XCTUnwrap(received.first)
         XCTAssertEqual(message["save"] as? Bool, false)
@@ -85,6 +85,23 @@ class BridgeMessageTests: XCTestCase {
         let payload = try XCTUnwrap(message["error"] as? [String: Any])
         XCTAssertEqual(payload["message"] as? String, hostile)
         XCTAssertEqual(payload["code"] as? String, "E'1")
+    }
+
+    func testAnErrorSendsItsDataUnderData() throws {
+        let rejected = RecordedCall()
+        rejected.call.reject("failed", "E1", nil, ["reason": "test"])
+        let error = try XCTUnwrap(rejected.rejections.first)
+        XCTAssertEqual(error.data?["reason"] as? String, "test", "the error keeps the data it was rejected with")
+
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(JSResultError(call: call("id", "Plugin", "method"), callError: error).jsonPayload().utf8)) as? [String: Any])
+        XCTAssertEqual(payload["message"] as? String, "failed")
+        XCTAssertEqual(payload["errorMessage"] as? String, "failed")
+        XCTAssertEqual(payload["code"] as? String, "E1")
+        XCTAssertEqual((payload["data"] as? [String: Any])?["reason"] as? String, "test")
+
+        let withoutData = JSResultError(call: call("id", "Plugin", "method"), callError: CAPPluginCallError(message: "m", code: nil, error: nil, data: nil))
+        let bare = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(withoutData.jsonPayload().utf8)) as? [String: Any])
+        XCTAssertEqual(Set(bare.keys), ["message", "errorMessage"])
     }
 
     func testEventLogAndPluginScriptsKeepHostileStringsIntact() throws {

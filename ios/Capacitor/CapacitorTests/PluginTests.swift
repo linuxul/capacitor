@@ -28,10 +28,7 @@ private class TestFixturePlugin: CAPPlugin, CAPBridgedPlugin {
 
 private extension CAPPluginCallResult {
     func string(_ key: String) -> String? {
-        guard case .dictionary(let data)? = resultData else {
-            return nil
-        }
-        return data[key] as? String
+        data?[key] as? String
     }
 }
 

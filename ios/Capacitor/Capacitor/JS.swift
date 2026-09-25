@@ -44,17 +44,18 @@ private enum SerializationResult: String {
 
 internal struct JSResult: JSResultProtocol {
     let call: JSCall
-    let result: PluginCallResult?
+    /// The data the call was resolved with; nil sends `undefined`.
+    let data: PluginCallResultData?
 
     func jsonPayload() -> String {
-        guard let result = result else {
+        guard let data = data else {
             return SerializationResult.undefined.rawValue
         }
         do {
-            if let payload = try result.jsonRepresentation() {
+            if let payload = try PluginCallResultJSON.serialize(data) {
                 return payload
             }
-        } catch PluginCallResult.SerializationError.invalidObject {
+        } catch PluginCallResultJSON.SerializationError.invalidObject {
             CAPLog.print("[Capacitor Plugin Error] - \(call.pluginId) - \(call.method) - Unable to serialize plugin response as JSON." +
                             "Ensure that all data passed to success callback from module method is JSON serializable!")
         } catch {
@@ -67,7 +68,7 @@ internal struct JSResult: JSResultProtocol {
 internal extension JSResult {
     init(call: JSCall, callResult: CAPPluginCallResult) {
         self.call = call
-        self.result = callResult.resultData
+        self.data = callResult.data
     }
 }
 
@@ -76,7 +77,8 @@ internal struct JSResultError: JSResultProtocol {
     let errorMessage: String
     let errorDescription: String
     let errorCode: String?
-    let result: PluginCallResult
+    /// The members of the error besides its message and code: `data`, when the call was rejected with data.
+    let result: PluginCallResultData
 
     func jsonPayload() -> String {
         var errorDictionary: [String: Any] = [
@@ -86,11 +88,11 @@ internal struct JSResultError: JSResultProtocol {
         errorDictionary["code"] = self.errorCode
 
         do {
-            if let payload = try result.jsonRepresentation(includingFields: errorDictionary) {
+            if let payload = try PluginCallResultJSON.serialize(result, includingFields: errorDictionary) {
                 CAPLog.print("ERROR MESSAGE: ", payload.prefix(512))
                 return payload
             }
-        } catch PluginCallResult.SerializationError.invalidObject {
+        } catch PluginCallResultJSON.SerializationError.invalidObject {
             CAPLog.print("[Capacitor Plugin Error] - \(call.pluginId) - \(call.method) - Unable to serialize plugin response as JSON." +
                             "Ensure that all data passed to success callback from module method is JSON serializable!")
         } catch {
@@ -106,7 +108,7 @@ internal extension JSResultError {
         errorMessage = callError.message
         errorDescription = callError.error?.localizedDescription ?? ""
         errorCode = callError.code
-        result = callError.resultData ?? .dictionary([:])
+        result = callError.data.map { ["data": $0] } ?? [:]
     }
 }
 

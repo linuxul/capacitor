@@ -19,8 +19,8 @@ open class CAPPluginCall: NSObject {
     public let options: JSObject
     /// The raw handlers behind ``resolve()`` and ``reject(_:_:_:_:)``. Calling them directly bypasses the rule that a
     /// call settles once; ``CAPPlugin/notifyListeners(_:data:)`` does so to deliver every event to a listener.
-    @objc public let successHandler: CAPPluginCallSuccessHandler
-    @objc public let errorHandler: CAPPluginCallErrorHandler
+    public let successHandler: CAPPluginCallSuccessHandler
+    public let errorHandler: CAPPluginCallErrorHandler
 
     /// The JavaScript name of the plugin the call was made to, set by the bridge for diagnostics.
     internal var pluginName: String?
