@@ -218,6 +218,27 @@ private func pick(_ call: CAPPluginCall) async throws -> JSObject {
 - `npx cap migrate` removes the installed `@capacitor/*` packages (except the CLI) before reinstalling them, as it was meant to. The removal silently did nothing before.
 - The repository no longer contains the npm, Maven Central and CocoaPods publishing scripts and workflows. Releases are the GitHub release tarballs described under [Installing](#installing).
 
+### Deprecated in 9.0, removed in 10.0
+
+Apps compile their plugins against the app's runtime, so API that community plugins use stays for one major version. These keep working in 9.0 and produce a deprecation warning:
+
+| Deprecated | Use instead |
+|---|---|
+| iOS `CAPPluginMethod(name:returnType:)` and `CAPPluginMethod(_:returnType:)` | `.promise("name", MyPlugin.name)`, `.callback(...)`, `.none(...)` or `.async(...)` |
+| iOS `CAPPluginMethod.selector` | Nothing: a method registered by reference has no selector |
+| Android `PluginCall.errorCallback(msg)` | `reject(msg)` |
+
+### Moving a plugin from 8.5.3 to 9.0
+
+A plugin built for fork 8.5.3 compiles against 9.0 unchanged, apart from the removed API listed above that no official or community plugin used. To adopt 9.0:
+
+1. Install the 9.0 tarballs in `devDependencies` (see [Installing](#installing)) and widen `peerDependencies["@capacitor/core"]` to include 9.0. During the beta that is `>=9.0.0-beta.1`, because a range such as `^9.0.0` does not match prerelease versions.
+2. iOS: register each method by reference and drop its `@objc`. Methods that present UI or touch UIKit become `@MainActor` and are registered with `.async`; completion-handler APIs are awaited through `withCheckedThrowingContinuation`. Replace `guard … else { call.reject(…); return }` with `throw CAPPluginError(…)` where it reads better. Run `/contract-check`: it reports a synchronous `@MainActor` method registered with `.promise`.
+3. Android: replace `activity.runOnUiThread`/`Handler(Looper.getMainLooper())` at the top of a method with `@PluginMethod(thread = PluginThread.MAIN)`. Permission and activity-result flows can become `suspend` methods with `requestPermissionsFor(...)`. Throw `PluginException` instead of rejecting and returning. Replace `errorCallback` with `reject`.
+4. Web: declare the events of the web implementation with `WebPlugin<{ … }>`, and stop calling `remove()` on the promise that `addListener` returns.
+5. Look for "already settled" warnings in the native logs while exercising the plugin. Each one is a path that answered a call twice; 8.5.3 sent both answers to JavaScript.
+6. Check with `python3 .claude/skills/port-plugin/scripts/compat_scan.py <plugin>` and the plugin's `npm run verify:ios`/`verify:android`/`verify:web`.
+
 ## Installing
 
 The fork is not published to npm. Its packages keep the `@capacitor/*` names, and each version is attached to a GitHub release as tarballs, which an app installs by URL:
