@@ -5,7 +5,9 @@ import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.io.InputStream
+import java.nio.file.Files
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -138,6 +140,25 @@ class WebViewLocalServerTest {
     }
 
     @Test
+    fun aPathOfOnlySlashesIsARouteInHtml5Mode() {
+        val appDir = Files.createTempDirectory("app").toFile()
+        File(appDir, "index.html").writeText("<html><head></head></html>")
+
+        // It has no last segment; reading it threw a NullPointerException out of shouldInterceptRequest.
+        assertNotNull(intercept("//", html5mode = true, appDir = appDir))
+
+        val arguments = responseArguments.single()
+        assertEquals("text/html", arguments[0])
+        assertEquals(200, arguments[2])
+    }
+
+    @Test
+    fun aPathOfOnlySlashesIsNotServedWithoutHtml5Mode() {
+        assertNull(intercept("//"))
+        assertNull(intercept("///"))
+    }
+
+    @Test
     fun rangeOnAMissingFileIsA404() {
         handler.missing = true
 
@@ -146,43 +167,63 @@ class WebViewLocalServerTest {
         assertEquals(404, response.statusCode)
     }
 
-    class Response(val statusCode: Int, val headers: Map<*, *>, val stream: InputStream)
+    class Response(val mimeType: String?, val statusCode: Int, val headers: Map<*, *>, val stream: InputStream)
 
     /**
      * Runs a GET for [path] on the app's own host through [WebViewLocalServer.shouldInterceptRequest], with the
      * given request headers, and returns what the WebResourceResponse was built from.
      */
     private fun serve(path: String, headers: Map<String, String> = emptyMap()): Response {
+        assertNotNull(intercept(path, headers))
+
+        // WebResourceResponse(mimeType, encoding, statusCode, reasonPhrase, responseHeaders, data)
+        val arguments = responseArguments.single()
+        return Response(arguments[0] as String?, arguments[2] as Int, arguments[4] as Map<*, *>, arguments[5] as InputStream)
+    }
+
+    /**
+     * Runs a GET for [path] through [WebViewLocalServer.shouldInterceptRequest] and returns its response. In
+     * [html5mode], the app's index.html is read from [appDir].
+     */
+    private fun intercept(
+        path: String,
+        headers: Map<String, String> = emptyMap(),
+        html5mode: Boolean = false,
+        appDir: File? = null
+    ): WebResourceResponse? {
         val context = mock<Context>()
         whenever(context.applicationContext).thenReturn(context)
         val bridge = mock<Bridge>()
         whenever(bridge.host).thenReturn(HOST)
 
-        val server = WebViewLocalServer(context, bridge, null, arrayListOf<String?>(HOST), false)
-        val root = mock<Uri>()
-        whenever(root.scheme).thenReturn("https")
-        whenever(root.authority).thenReturn(HOST)
-        whenever(root.path).thenReturn("/**")
-        server.register(root, handler)
+        // No authorities: hosting files registers nothing, and the handler below serves every path.
+        val server = WebViewLocalServer(context, bridge, null, emptyList(), html5mode)
+        appDir?.let { server.hostFiles(it.path) }
+        // Like the registrations of hostAssets: the host itself, which a path without segments ("/") matches, and
+        // everything under it.
+        for (rootPath in listOf(null, "/**")) {
+            val root = mock<Uri>()
+            whenever(root.scheme).thenReturn("https")
+            whenever(root.authority).thenReturn(HOST)
+            whenever(root.path).thenReturn(rootPath)
+            server.register(root, handler)
+        }
 
         val url = mock<Uri>()
         whenever(url.scheme).thenReturn("https")
         whenever(url.authority).thenReturn(HOST)
         whenever(url.host).thenReturn(HOST)
         whenever(url.path).thenReturn(path)
-        val segments = path.removePrefix("/").split("/")
+        // Like android.net.Uri, empty segments are left out.
+        val segments = path.split("/").filter { it.isNotEmpty() }
         whenever(url.pathSegments).thenReturn(segments)
-        whenever(url.lastPathSegment).thenReturn(segments.last())
+        whenever(url.lastPathSegment).thenReturn(segments.lastOrNull())
         whenever(url.toString()).thenReturn("https://$HOST$path")
         whenever(request.url).thenReturn(url)
         whenever(request.method).thenReturn("GET")
         whenever(request.requestHeaders).thenReturn(headers)
 
-        assertNotNull(server.shouldInterceptRequest(request))
-
-        // WebResourceResponse(mimeType, encoding, statusCode, reasonPhrase, responseHeaders, data)
-        val arguments = responseArguments.single()
-        return Response(arguments[2] as Int, arguments[4] as Map<*, *>, arguments[5] as InputStream)
+        return server.shouldInterceptRequest(request)
     }
 
     private companion object {

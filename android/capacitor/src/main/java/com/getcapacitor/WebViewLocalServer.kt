@@ -308,8 +308,9 @@ public class WebViewLocalServer internal constructor(
             )
         }
 
-        // Same as the Java original: a path without any segment (other than "/") throws here.
-        if (path == "/" || (!request.url.lastPathSegment!!.contains(".") && html5mode)) {
+        // In html5mode a path whose last segment has no extension is a route of the app. A path made only of
+        // slashes ("//") has no segment at all, and is a route too.
+        if (path == "/" || (html5mode && request.url.lastPathSegment?.contains('.') != true)) {
             var responseStream: InputStream
             try {
                 var startPath: String? = this.basePath + "/index.html"
