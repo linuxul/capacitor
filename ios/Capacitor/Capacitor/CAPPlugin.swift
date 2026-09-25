@@ -27,12 +27,14 @@ open class CAPPlugin: NSObject {
     private var lockedEventListeners: [String: [CAPPluginCall]] = [:]
     private var lockedRetainedEventArguments: [String: [PluginCallResultData?]] = [:]
 
-    public var eventListeners: [String: [CAPPluginCall]]? {
+    // Internal: plugins go through addEventListener, removeEventListener, notifyListeners, getListeners and hasListeners,
+    // which keep the two dictionaries consistent. The bridge resets both when it loads the plugin, and tests read them.
+    var eventListeners: [String: [CAPPluginCall]]? {
         get { return withListenerLock { lockedEventListeners } }
         set { withListenerLock { lockedEventListeners = newValue ?? [:] } }
     }
 
-    public var retainedEventArguments: [String: [PluginCallResultData?]]? {
+    var retainedEventArguments: [String: [PluginCallResultData?]]? {
         get { return withListenerLock { lockedRetainedEventArguments } }
         set { withListenerLock { lockedRetainedEventArguments = newValue ?? [:] } }
     }
