@@ -117,7 +117,8 @@ public class Bridge private constructor(
     // Saved plugin calls: kept alive, waiting for permissions, or waiting for an activity result
     private val savedCallStore = SavedCallStore()
 
-    // Runs plugin methods on the plugin or the main thread. taskHandler is read when a call is posted, after init has set it.
+    // Runs plugin methods, plain and suspend, on the plugin or the main thread. taskHandler is read when a call is
+    // posted, after init has set it.
     private val callDispatcher = PluginCallDispatcher({ taskHandler.post(it) }, { mainHandler.post(it) }, ::saveCall)
 
     /**
@@ -367,7 +368,12 @@ public class Bridge private constructor(
             return null
         }
 
+    /**
+     * Forget the calls of the page that is going away: its listeners, saved calls and running suspend methods,
+     * whose calls are rejected.
+     */
     public fun reset() {
+        callDispatcher.cancelRunningCalls()
         savedCallStore.reset()
         eachPlugin { it.removeAllListeners() }
     }
@@ -954,6 +960,7 @@ public class Bridge private constructor(
      * Handle onDestroy lifecycle event and notify the plugins
      */
     public fun onDestroy() {
+        callDispatcher.cancelRunningCalls()
         eachPlugin { it.dispatchOnDestroy() }
 
         handlerThread.quitSafely()

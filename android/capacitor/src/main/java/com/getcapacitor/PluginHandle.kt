@@ -73,9 +73,12 @@ private constructor(public val pluginClass: Class<out Plugin>, private val bridg
 
     /**
      * Call a method on a plugin.
+     *
+     * A suspend method is not called here: the bridge starts it, because it answers the call when it returns.
+     *
      * @param methodName the name of the method to call
      * @param call the constructed PluginCall with parameters from the caller
-     * @throws InvalidPluginMethodException if no method was found on that plugin
+     * @throws InvalidPluginMethodException if no method was found on that plugin, or it is a suspend method
      */
     public fun invoke(methodName: String?, call: PluginCall?) {
         if (!this::instance.isInitialized) {
@@ -86,6 +89,12 @@ private constructor(public val pluginClass: Class<out Plugin>, private val bridg
         val methodMeta =
             pluginMethods[methodName]
                 ?: throw InvalidPluginMethodException("No method " + methodName + " found for plugin " + pluginClass.name)
+
+        if (methodMeta.isSuspend) {
+            throw InvalidPluginMethodException(
+                "Method $methodName of plugin ${pluginClass.name} is a suspend function; the bridge starts it"
+            )
+        }
 
         methodMeta.method.invoke(instance, call)
     }
@@ -100,12 +109,21 @@ private constructor(public val pluginClass: Class<out Plugin>, private val bridg
         for (methodReflect in methods) {
             val method = methodReflect.getAnnotation(PluginMethod::class.java) ?: continue
 
-            // Fail early instead of at invoke() time: the bridge always calls method(PluginCall).
-            val parameterTypes = methodReflect.parameterTypes
-            if (parameterTypes.size != 1 || parameterTypes[0] != PluginCall::class.java) {
+            // Fail early instead of at invoke() time: the bridge calls method(PluginCall), or starts a suspend
+            // method(PluginCall, Continuation).
+            val isSuspend = PluginMethodHandle.isSuspendSignature(methodReflect)
+            if (!isSuspend && !PluginMethodHandle.isPlainSignature(methodReflect)) {
                 throw InvalidPluginException(
                     "Invalid @PluginMethod " + pluginClass.name + "." + methodReflect.name +
-                        ": it must be a public function taking a single PluginCall (not suspend/internal)"
+                        ": it must be a public function or suspend function taking a single PluginCall"
+                )
+            }
+
+            if (isSuspend && method.returnType == PluginMethod.RETURN_CALLBACK) {
+                throw InvalidPluginException(
+                    "Invalid @PluginMethod " + pluginClass.name + "." + methodReflect.name +
+                        ": a suspend function answers its call once when it returns, so it cannot use RETURN_CALLBACK." +
+                        " Use a function that sets call.keepAlive instead"
                 )
             }
 

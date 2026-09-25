@@ -68,6 +68,15 @@ class PluginHandleContractTest {
     class SuspendingPlugin : Plugin() {
         @PluginMethod
         suspend fun later(call: PluginCall) {}
+
+        @PluginMethod(returnType = PluginMethod.RETURN_NONE, thread = PluginThread.MAIN)
+        suspend fun result(call: PluginCall): JSObject = JSObject()
+    }
+
+    @CapacitorPlugin(name = "SuspendingCallback")
+    class SuspendingCallbackPlugin : Plugin() {
+        @PluginMethod(returnType = PluginMethod.RETURN_CALLBACK)
+        suspend fun watch(call: PluginCall) {}
     }
 
     class UnannotatedPlugin : Plugin()
@@ -182,9 +191,39 @@ class PluginHandleContractTest {
     }
 
     @Test
-    fun suspendPluginMethodIsRejected() {
-        // suspend adds a Continuation parameter, so the JVM signature is no longer (PluginCall).
-        assertInvalidPlugin(SuspendingPlugin(), "later")
+    fun suspendPluginMethodsAreIndexed() {
+        // suspend adds a Continuation parameter: the JVM signature is (PluginCall, Continuation).
+        val methods = PluginHandle(mock<Bridge>(), SuspendingPlugin()).methods.associateBy { it.name }
+
+        assertTrue(methods.getValue("later").isSuspend)
+        assertTrue(methods.getValue("result").isSuspend)
+        assertEquals(PluginMethod.RETURN_NONE, methods.getValue("result").returnType)
+        assertEquals(PluginThread.MAIN, methods.getValue("result").thread)
+        assertFalse(methods.getValue("addListener").isSuspend)
+    }
+
+    @Test
+    fun suspendCallbackMethodIsRejected() {
+        try {
+            PluginHandle(mock<Bridge>(), SuspendingCallbackPlugin())
+            fail("expected InvalidPluginException")
+        } catch (e: InvalidPluginException) {
+            val message = e.message ?: ""
+            assertTrue(message, message.contains("SuspendingCallbackPlugin.watch"))
+            assertTrue(message, message.contains("RETURN_CALLBACK"))
+        }
+    }
+
+    @Test
+    fun invokeRefusesSuspendMethods() {
+        val handle = PluginHandle(mock<Bridge>(), SuspendingPlugin())
+
+        try {
+            handle.invoke("later", null)
+            fail("expected InvalidPluginMethodException")
+        } catch (e: InvalidPluginMethodException) {
+            assertTrue(e.message ?: "", (e.message ?: "").contains("suspend"))
+        }
     }
 
     @Test

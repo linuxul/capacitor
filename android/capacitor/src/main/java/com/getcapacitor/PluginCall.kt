@@ -49,6 +49,22 @@ public class PluginCall(
         return false
     }
 
+    /**
+     * Whether a call that is not kept alive has answered the web layer.
+     */
+    internal val isSettled: Boolean
+        get() = settled.get()
+
+    /**
+     * Resolves without data, unless the call has settled or is kept alive; then it does nothing, and logs nothing.
+     * The bridge's answer for a suspend plugin method that returned without answering its call itself.
+     */
+    internal fun resolveIfUnsettled() {
+        if (keepAlive || !settled.compareAndSet(false, true)) return
+
+        msgHandler.sendResponseMessage(this, null, null)
+    }
+
     public fun successCallback(successResult: PluginResult?) {
         if (CALLBACK_ID_DANGLING == callbackId) {
             // don't send back response if the callbackId was "-1"
