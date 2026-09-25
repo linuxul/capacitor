@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 
+import { webcrypto } from 'crypto';
+
 import { initBridge } from '../../native-bridge';
 import type { CapacitorGlobal, Plugin } from '../definitions';
 import type { WindowCapacitor, CapacitorInstance } from '../definitions-internal';
@@ -14,7 +16,8 @@ describe('plugin', () => {
   let cap: CapacitorGlobal;
 
   beforeEach(() => {
-    win = {};
+    // a WebView always has window.crypto, which the bridge needs for callback ids
+    win = { crypto: webcrypto as unknown as Crypto };
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     global.setImmediate = global.setTimeout;
@@ -280,7 +283,7 @@ describe('plugin', () => {
     });
   });
 
-  it('sync addListener on android', async () => {
+  it('addListener on android returns a promise of the handle, without the removed synchronous remove()', async () => {
     mockAndroidBridge();
     initBridge(win);
     mockAndroidPlugin('Awesome', 'mph');
@@ -293,8 +296,9 @@ describe('plugin', () => {
       // ignore
     });
 
-    expect(rtn).toBeDefined();
-    expect(typeof (rtn as any).remove === 'function').toBe(true);
+    expect(rtn).toBeInstanceOf(Promise);
+    expect((rtn as any).remove).toBeUndefined();
+    expect(typeof (await rtn).remove).toBe('function');
   });
 
   it('async addListener on android', async () => {

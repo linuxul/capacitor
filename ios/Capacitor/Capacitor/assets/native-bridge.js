@@ -844,7 +844,7 @@ var nativeBridge = (function (exports) {
         };
         function initNativeBridge(win) {
             const cap = win.Capacitor || {};
-            // keep a collection of callbacks for native response data
+            // keep a collection of callbacks for native response data, with the call each one belongs to
             const callbacks = new Map();
             const webviewServerUrl = typeof win.WEBVIEW_SERVER_URL === 'string' ? win.WEBVIEW_SERVER_URL : '';
             cap.getServerUrl = () => webviewServerUrl;
@@ -931,11 +931,25 @@ var nativeBridge = (function (exports) {
                 let callbackId = CALLBACK_ID_DANGLING;
                 try {
                     if (typeof postToNative === 'function') {
+                        if (methodName === 'removeListener' && typeof (options === null || options === void 0 ? void 0 : options.callbackId) === 'string') {
+                            // Native releases its side of the listener and never answers removeListener, so the
+                            // listener's callback is released here, and the call itself gets no callback to keep.
+                            callbacks.delete(options.callbackId);
+                            storedCallback = undefined;
+                        }
+                        else if (methodName === 'removeAllListeners') {
+                            // native drops every listener of the plugin; release their callbacks too
+                            for (const [id, stored] of callbacks) {
+                                if (stored.pluginId === pluginName && stored.methodName === 'addListener') {
+                                    callbacks.delete(id);
+                                }
+                            }
+                        }
                         if (storedCallback &&
                             (typeof storedCallback.callback === 'function' || typeof storedCallback.resolve === 'function')) {
                             // store the call for later lookup
                             callbackId = createCallbackId();
-                            callbacks.set(callbackId, storedCallback);
+                            callbacks.set(callbackId, Object.assign(Object.assign({}, storedCallback), { pluginId: pluginName, methodName }));
                         }
                         const callData = {
                             callbackId: callbackId,
@@ -958,6 +972,11 @@ var nativeBridge = (function (exports) {
                     callbacks.delete(callbackId);
                     const error = e instanceof Error ? e : new Error(String(e));
                     (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.error(error);
+                    if (methodName === 'addListener') {
+                        // The callback of addListener is the event listener, which expects events, not this
+                        // error: let the addListener call reject instead.
+                        throw error;
+                    }
                     if (typeof (storedCallback === null || storedCallback === void 0 ? void 0 : storedCallback.callback) === 'function') {
                         storedCallback.callback(null, error);
                     }
@@ -1034,14 +1053,7 @@ var nativeBridge = (function (exports) {
                 delete result.data;
                 delete result.error;
             };
-            cap.nativeCallback = (pluginName, methodName, options, callback) => {
-                if (typeof options === 'function') {
-                    console.warn(`Using a callback as the 'options' parameter of 'nativeCallback()' is deprecated.`);
-                    callback = options;
-                    options = null;
-                }
-                return cap.toNative(pluginName, methodName, options, { callback });
-            };
+            cap.nativeCallback = (pluginName, methodName, options, callback) => cap.toNative(pluginName, methodName, options, { callback });
             cap.nativePromise = (pluginName, methodName, options) => {
                 return new Promise((resolve, reject) => {
                     cap.toNative(pluginName, methodName, options, {

@@ -6,6 +6,13 @@ This fork of Capacitor 8 narrows what the runtime supports so that its internals
 
 This section is for apps and plugins that already run on fork 8.5.3. The sections after it describe how the fork differs from upstream Capacitor.
 
+### Plugin listeners
+
+- Removing a listener releases its callback in the bridge. Before, the callback stayed registered for the lifetime of the page, and each `remove()` registered another one, so events that native still sent to a removed listener were delivered to it. `removeAllListeners()` releases the callbacks of all listeners of that plugin.
+- `removeListener` is sent to native as a call that expects no answer (native never answered it).
+- When a listener cannot be registered because the call cannot reach native, `addListener()` rejects. Before, the event listener was called with `(null, error)` and the returned promise never settled.
+- Removed, deprecated since Capacitor 3: the synchronous `remove()` on the promise returned by `addListener()` (await the promise, then call `remove()` on the handle), and passing a callback as the `options` argument of `Capacitor.nativeCallback()`.
+
 ### CapacitorHttp in the WebView
 
 With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. Their behaviour is now closer to the browser's:

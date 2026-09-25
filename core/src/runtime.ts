@@ -1,4 +1,4 @@
-import type { CapacitorGlobal, PluginImplementations } from './definitions';
+import type { CapacitorGlobal, PluginImplementations, PluginListenerHandle } from './definitions';
 import type {
   CapacitorCustomPlatformInstance,
   CapacitorInstance,
@@ -98,15 +98,12 @@ export const createCapacitor = (win: WindowCapacitor): CapacitorInstance => {
     };
 
     const createPluginMethodWrapper = (prop: PropertyKey) => {
-      let remove: (() => void) | undefined;
-      const wrapper = (...args: any[]) => {
-        const p = loadPluginImplementation().then((impl) => {
+      const wrapper = (...args: any[]) =>
+        loadPluginImplementation().then((impl) => {
           const fn = createPluginMethod(impl, prop);
 
           if (fn) {
-            const p = fn(...args);
-            remove = p?.remove;
-            return p;
+            return fn(...args);
           } else {
             throw new CapacitorException(
               `"${pluginName}.${prop as any}()" is not implemented on ${platform}`,
@@ -114,13 +111,6 @@ export const createCapacitor = (win: WindowCapacitor): CapacitorInstance => {
             );
           }
         });
-
-        if (prop === 'addListener') {
-          (p as any).remove = async () => remove();
-        }
-
-        return p;
-      };
 
       // Some flair ✨
       wrapper.toString = () => `${prop.toString()}() { [capacitor code] }`;
@@ -135,28 +125,16 @@ export const createCapacitor = (win: WindowCapacitor): CapacitorInstance => {
 
     const addListener = createPluginMethodWrapper('addListener');
     const removeListener = createPluginMethodWrapper('removeListener');
-    const addListenerNative = (eventName: string, callback: any) => {
+    const addListenerNative = (eventName: string, callback: any): Promise<PluginListenerHandle> => {
       const call = addListener({ eventName }, callback);
       const remove = async () => {
         const callbackId = await call;
-
-        removeListener(
-          {
-            eventName,
-            callbackId,
-          },
-          callback,
-        );
+        // the bridge releases the listener's callback; removeListener itself needs none
+        await removeListener({ eventName, callbackId });
       };
 
-      const p = new Promise((resolve) => call.then(() => resolve({ remove })));
-
-      (p as any).remove = async () => {
-        console.warn(`Using addListener() without 'await' is deprecated.`);
-        await remove();
-      };
-
-      return p;
+      // rejects when the call cannot be sent to native
+      return call.then(() => ({ remove }));
     };
 
     const proxy = new Proxy(
