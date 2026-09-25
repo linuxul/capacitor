@@ -129,11 +129,23 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     // Array of block based observers
     var observers: [NSObjectProtocol] = []
 
+    /// Serves the web app from `path` from now on. Callable from any thread; plugins call it from the bridge queue.
+    ///
+    /// The configuration is updated right away, so `config.appLocation` reads the new path as soon as this returns. The
+    /// asset handler's router is only used on the main thread, where WebKit starts scheme tasks, so it is updated there;
+    /// a reload scheduled on the main queue after this call already loads from the new path.
     public func setServerBasePath(_ path: String) {
         let url = URL(fileURLWithPath: path, isDirectory: true)
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         config = config.updatingAppLocation(url)
-        webViewAssetHandler.setAssetPath(url.path)
+        let assetPath = url.path
+        if Thread.isMainThread {
+            webViewAssetHandler.setAssetPath(assetPath)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.webViewAssetHandler.setAssetPath(assetPath)
+            }
+        }
     }
 
     // MARK: - Static Methods
