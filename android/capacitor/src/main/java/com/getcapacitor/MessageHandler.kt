@@ -11,6 +11,8 @@ import androidx.webkit.WebViewFeature
  * to plugins.
  */
 public class MessageHandler(private val bridge: Bridge, private val webView: WebView) {
+    // Set on the main thread by the message listener, read by whichever thread answers a call.
+    @Volatile
     private var javaScriptReplyProxy: JavaScriptReplyProxy? = null
 
     init {
@@ -18,8 +20,9 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
             val capListener =
                 WebViewCompat.WebMessageListener { _, message, _, isMainFrame, replyProxy ->
                     if (isMainFrame) {
-                        postMessage(message.data)
+                        // Keep the proxy before dispatching: a plugin may answer before postMessage returns.
                         javaScriptReplyProxy = replyProxy
+                        postMessage(message.data)
                     } else {
                         Logger.warn("Plugin execution is allowed in Main Frame only")
                     }
@@ -99,7 +102,7 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
                 if (bridge.config.isUsingLegacyBridge) {
                     legacySendResponseMessage(data)
                 } else if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) && replyProxy != null) {
-                    replyProxy.postMessage(data.toString())
+                    postReply(replyProxy, data.toString())
                 } else {
                     legacySendResponseMessage(data)
                 }
@@ -111,6 +114,24 @@ public class MessageHandler(private val bridge: Bridge, private val webView: Web
         }
         if (!call.keepAlive) {
             call.release(bridge)
+        }
+    }
+
+    /**
+     * JavaScriptReplyProxy must be used on the main thread, and calls are answered from any thread. The reply is
+     * always posted, even from the main thread, so replies reach the page in the order they were sent, like the
+     * legacy path's.
+     */
+    private fun postReply(replyProxy: JavaScriptReplyProxy, message: String) {
+        webView.post {
+            try {
+                // The caller checked this already; lint wants the check next to the call.
+                if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+                    replyProxy.postMessage(message)
+                }
+            } catch (ex: Exception) {
+                Logger.error("sendResponseMessage: error: $ex")
+            }
         }
     }
 
