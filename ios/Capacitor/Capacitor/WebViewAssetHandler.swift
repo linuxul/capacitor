@@ -31,85 +31,95 @@ open class WebViewAssetHandler: NSObject, WKURLSchemeHandler {
     }
 
     open func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
-        let startPath: String
-        let url = urlSchemeTask.request.url!
+        guard let url = urlSchemeTask.request.url else {
+            urlSchemeTask.didFailWithError(URLError(.badURL))
+            return
+        }
         let stringToLoad = url.path
-        let localUrl = URL.init(string: url.absoluteString)!
 
-        if url.path.starts(with: CapacitorBridge.httpInterceptorStartIdentifier) {
+        if stringToLoad.starts(with: CapacitorBridge.httpInterceptorStartIdentifier) {
             // Only serve the proxy when CapacitorHttp is on. A scheme task can't tell a document from
             // a subresource, so keeping documents out relies on the check in decidePolicyFor.
             if configuration?.getPluginConfig("CapacitorHttp").getBoolean("enabled", false) == true {
-                handleCapacitorHttpRequest(urlSchemeTask, localUrl, false)
+                handleCapacitorHttpRequest(urlSchemeTask, url, false)
             } else {
                 urlSchemeTask.didFailWithError(URLError(.unsupportedURL))
             }
             return
         }
 
+        let startPath: String
         if stringToLoad.starts(with: CapacitorBridge.fileStartIdentifier) {
             startPath = stringToLoad.replacingOccurrences(of: CapacitorBridge.fileStartIdentifier, with: "")
         } else {
             startPath = router.route(for: stringToLoad)
         }
 
-        let fileUrl = URL.init(fileURLWithPath: startPath)
-
+        // Build the whole response before telling WebKit anything, so a failure is reported with
+        // didFailWithError alone instead of after a response.
+        let response: URLResponse
+        let data: Data
         do {
-            var data = Data()
-            let mimeType = mimeTypeForExtension(pathExtension: url.pathExtension)
-            var headers =  [
-                "Content-Type": mimeType,
-                "Cache-Control": "no-cache"
-            ]
-
-            // if using live reload, then set CORS headers
-            if isUsingLiveReload(localUrl) {
-                headers["Access-Control-Allow-Origin"] = self.serverUrl?.absoluteString
-                headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS, TRACE"
-            }
-
-            if let rangeString = urlSchemeTask.request.value(forHTTPHeaderField: "Range"),
-               let totalSize = try fileUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize,
-               case let resolution = ByteRange.resolve(rangeString, size: totalSize), resolution != .whole {
-                headers["Accept-Ranges"] = "bytes"
-                let statusCode: Int
-                if case let .partial(range) = resolution {
-                    let fileHandle = try FileHandle(forReadingFrom: fileUrl)
-                    defer { try? fileHandle.close() }
-                    try fileHandle.seek(toOffset: UInt64(range.first))
-                    data = try fileHandle.read(upToCount: range.length) ?? Data()
-                    statusCode = 206
-                    headers["Content-Range"] = range.contentRange(of: totalSize)
-                } else {
-                    statusCode = 416
-                    headers["Content-Range"] = ByteRange.unsatisfiedContentRange(of: totalSize)
-                }
-                headers["Content-Length"] = String(data.count)
-                let response = HTTPURLResponse(url: localUrl, statusCode: statusCode, httpVersion: nil, headerFields: headers)
-                urlSchemeTask.didReceive(response!)
-            } else {
-                if !stringToLoad.contains("cordova.js") {
-                    if isMediaExtension(pathExtension: url.pathExtension) {
-                        data = try Data(contentsOf: fileUrl, options: Data.ReadingOptions.mappedIfSafe)
-                    } else {
-                        data = try Data(contentsOf: fileUrl)
-                    }
-                }
-                let urlResponse = URLResponse(url: localUrl, mimeType: mimeType, expectedContentLength: data.count, textEncodingName: nil)
-                let httpResponse = HTTPURLResponse(url: localUrl, statusCode: 200, httpVersion: nil, headerFields: headers)
-                if isMediaExtension(pathExtension: url.pathExtension) {
-                    urlSchemeTask.didReceive(urlResponse)
-                } else {
-                    urlSchemeTask.didReceive(httpResponse!)
-                }
-            }
-            urlSchemeTask.didReceive(data)
-        } catch let error as NSError {
+            (response, data) = try fileResponse(for: urlSchemeTask.request, url: url, fileUrl: URL(fileURLWithPath: startPath))
+        } catch {
             urlSchemeTask.didFailWithError(error)
             return
         }
+        urlSchemeTask.didReceive(response)
+        urlSchemeTask.didReceive(data)
         urlSchemeTask.didFinish()
+    }
+
+    private func fileResponse(for request: URLRequest, url: URL, fileUrl: URL) throws -> (URLResponse, Data) {
+        let mimeType = mimeTypeForExtension(pathExtension: url.pathExtension)
+        var headers = [
+            "Content-Type": mimeType,
+            "Cache-Control": "no-cache"
+        ]
+
+        // if using live reload, then set CORS headers
+        if isUsingLiveReload(url) {
+            headers["Access-Control-Allow-Origin"] = self.serverUrl?.absoluteString
+            headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS, TRACE"
+        }
+
+        if let rangeString = request.value(forHTTPHeaderField: "Range"),
+           let totalSize = try fileUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           case let resolution = ByteRange.resolve(rangeString, size: totalSize), resolution != .whole {
+            headers["Accept-Ranges"] = "bytes"
+            var data = Data()
+            let statusCode: Int
+            if case let .partial(range) = resolution {
+                let fileHandle = try FileHandle(forReadingFrom: fileUrl)
+                defer { try? fileHandle.close() }
+                try fileHandle.seek(toOffset: UInt64(range.first))
+                data = try fileHandle.read(upToCount: range.length) ?? Data()
+                statusCode = 206
+                headers["Content-Range"] = range.contentRange(of: totalSize)
+            } else {
+                statusCode = 416
+                headers["Content-Range"] = ByteRange.unsatisfiedContentRange(of: totalSize)
+            }
+            headers["Content-Length"] = String(data.count)
+            return (try httpResponse(url: url, statusCode: statusCode, headers: headers), data)
+        }
+
+        let isMedia = isMediaExtension(pathExtension: url.pathExtension)
+        var data = Data()
+        if !url.path.contains("cordova.js") {
+            data = try Data(contentsOf: fileUrl, options: isMedia ? .mappedIfSafe : [])
+        }
+        if isMedia {
+            return (URLResponse(url: url, mimeType: mimeType, expectedContentLength: data.count, textEncodingName: nil), data)
+        }
+        return (try httpResponse(url: url, statusCode: 200, headers: headers), data)
+    }
+
+    private func httpResponse(url: URL, statusCode: Int, headers: [String: String]) throws -> HTTPURLResponse {
+        guard let response = HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: headers) else {
+            throw URLError(.cannotParseResponse)
+        }
+        return response
     }
 
     open func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
@@ -143,60 +153,66 @@ open class WebViewAssetHandler: NSObject, WKURLSchemeHandler {
 
     func handleCapacitorHttpRequest(_ urlSchemeTask: WKURLSchemeTask, _ localUrl: URL, _ isHttpsRequest: Bool) {
         var urlRequest = urlSchemeTask.request
-        guard let url = urlRequest.url else { return }
+        guard let url = urlRequest.url else {
+            urlSchemeTask.didFailWithError(URLError(.badURL))
+            return
+        }
 
         let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
         if let targetUrl = urlComponents?.queryItems?.first(where: { $0.name == CapacitorBridge.httpInterceptorUrlParam })?.value,
            !targetUrl.isEmpty {
-            urlRequest.url = URL(string: targetUrl)
+            guard let target = URL(string: targetUrl) else {
+                urlSchemeTask.didFailWithError(URLError(.badURL))
+                return
+            }
+            urlRequest.url = target
         }
 
         let urlSession = URLSession.shared
         let task = urlSession.dataTask(with: urlRequest) { (data, response, error) in
             DispatchQueue.main.async {
+                // WebKit raises if a stopped task is messaged
                 guard !urlSchemeTask.stopped else { return }
                 if let error = error {
                     urlSchemeTask.didFailWithError(error)
                     return
                 }
-
-                if let response = response as? HTTPURLResponse {
-                    let existingHeaders = response.allHeaderFields
-                    var newHeaders: [AnyHashable: Any] = [:]
-
-                    // Nothing should render this. If anything does, sandbox keeps it inert.
-                    newHeaders["Content-Security-Policy"] = "sandbox; frame-ancestors 'none'"
-
-                    // if using live reload, then set CORS headers
-                    if self.isUsingLiveReload(url) {
-                        newHeaders["Access-Control-Allow-Origin"] = self.serverUrl?.absoluteString ?? ""
-                        newHeaders["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS, TRACE"
-                    }
-
-                    if let mergedHeaders = existingHeaders.merging(newHeaders, uniquingKeysWith: { (_, newHeaders) in newHeaders }) as? [String: String] {
-
-                        if let responseUrl = response.url {
-                            if let modifiedResponse = HTTPURLResponse(
-                                url: responseUrl,
-                                statusCode: response.statusCode,
-                                httpVersion: nil,
-                                headerFields: mergedHeaders
-                            ) {
-                                urlSchemeTask.didReceive(modifiedResponse)
-                            }
-                        }
-
-                        if let data = data {
-                            urlSchemeTask.didReceive(data)
-                        }
-                    }
+                guard let response = response as? HTTPURLResponse else {
+                    urlSchemeTask.didFailWithError(URLError(.badServerResponse))
+                    return
+                }
+                guard let proxiedResponse = self.proxiedResponse(for: response, requestUrl: url) else {
+                    urlSchemeTask.didFailWithError(URLError(.cannotParseResponse))
+                    return
+                }
+                urlSchemeTask.didReceive(proxiedResponse)
+                if let data = data {
+                    urlSchemeTask.didReceive(data)
                 }
                 urlSchemeTask.didFinish()
-                return
             }
         }
 
         task.resume()
+    }
+
+    /// The remote response with the headers the proxy adds to it.
+    private func proxiedResponse(for response: HTTPURLResponse, requestUrl: URL) -> HTTPURLResponse? {
+        var headers: [String: String] = [:]
+        for (key, value) in response.allHeaderFields {
+            headers[key.base as? String ?? String(describing: key)] = value as? String ?? String(describing: value)
+        }
+
+        // Nothing should render this. If anything does, sandbox keeps it inert.
+        headers["Content-Security-Policy"] = "sandbox; frame-ancestors 'none'"
+
+        // if using live reload, then set CORS headers
+        if isUsingLiveReload(requestUrl) {
+            headers["Access-Control-Allow-Origin"] = serverUrl?.absoluteString ?? ""
+            headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS, TRACE"
+        }
+
+        return HTTPURLResponse(url: response.url ?? requestUrl, statusCode: response.statusCode, httpVersion: nil, headerFields: headers)
     }
 
     public let mimeTypes = [
@@ -549,15 +565,16 @@ open class WebViewAssetHandler: NSObject, WKURLSchemeHandler {
     ]
 }
 
-private var stoppedKey = malloc(1)
+private var stoppedKey: UInt8 = 0
 
 private extension WKURLSchemeTask {
+    /// Set once WebKit has stopped the task; a stopped task must not be messaged again.
     var stopped: Bool {
         get {
-            return objc_getAssociatedObject(self, &stoppedKey) as? Bool ?? false
+            return (objc_getAssociatedObject(self, &stoppedKey) as? NSNumber)?.boolValue ?? false
         }
         set {
-            objc_setAssociatedObject(self, &stoppedKey, newValue, .OBJC_ASSOCIATION_ASSIGN)
+            objc_setAssociatedObject(self, &stoppedKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 }
