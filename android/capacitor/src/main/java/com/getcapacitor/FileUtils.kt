@@ -182,27 +182,27 @@ public object FileUtils {
         return path ?: getCopyFilePath(uri, context)
     }
 
+    /**
+     * Copies the content behind [uri] into the app's files directory under its display name.
+     *
+     * @return the path of the copy, or null when the provider reports no display name or the copy fails
+     */
     private fun getCopyFilePath(uri: Uri, context: Context): String? {
-        // Same as the Java original: a null cursor throws here.
-        val cursor = context.contentResolver.query(uri, null, null, null, null)!!
-        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        cursor.moveToFirst()
-        val name: String = cursor.getString(nameIndex)
-        val fileName = sanitizeFilename(name)
-        val file = File(context.filesDir, fileName)
-        try {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            FileOutputStream(file).use { output ->
-                // The Java original hit a NullPointerException here, caught below as "return null".
-                if (inputStream == null) return null
-                inputStream.use { it.copyTo(output) }
-            }
+        val name =
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+            } ?: return null
+
+        val file = File(context.filesDir, sanitizeFilename(name))
+        return try {
+            val input = context.contentResolver.openInputStream(uri) ?: return null
+            input.use { FileOutputStream(file).use { output -> input.copyTo(output) } }
+            file.path
         } catch (e: Exception) {
-            return null
-        } finally {
-            cursor.close()
+            Logger.error("Unable to copy $uri", e)
+            null
         }
-        return file.path
     }
 
     /**

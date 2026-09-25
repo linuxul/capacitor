@@ -2,6 +2,7 @@ package com.getcapacitor.plugin
 
 import android.Manifest
 import android.webkit.JavascriptInterface
+import com.getcapacitor.Logger
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
@@ -21,6 +22,9 @@ import java.util.concurrent.Executors
 )
 public class CapacitorHttp : Plugin() {
     private val activeRequests: MutableMap<Runnable, PluginCall> = ConcurrentHashMap()
+
+    // The connection each running request has open, so that handleOnDestroy can abort it.
+    private val activeConnections: MutableMap<PluginCall, CapacitorHttpUrlConnection> = ConcurrentHashMap()
     private val executor: ExecutorService = Executors.newCachedThreadPool()
 
     override fun load() {
@@ -32,13 +36,11 @@ public class CapacitorHttp : Plugin() {
         super.handleOnDestroy()
 
         for ((_, call) in activeRequests) {
-            if (call.data.has("activeCapacitorHttpUrlConnection")) {
-                try {
-                    val connection = call.data.get("activeCapacitorHttpUrlConnection") as CapacitorHttpUrlConnection
-                    connection.disconnect()
-                    call.data.remove("activeCapacitorHttpUrlConnection")
-                } catch (ignored: Exception) {
-                }
+            val connection = activeConnections.remove(call)
+            try {
+                connection?.disconnect()
+            } catch (e: Exception) {
+                Logger.debug(logTag, "Unable to abort the request: $e")
             }
 
             bridge.releaseCall(call)
@@ -53,7 +55,7 @@ public class CapacitorHttp : Plugin() {
             object : Runnable {
                 override fun run() {
                     try {
-                        val response = HttpRequestHandler.request(call, httpMethod, bridge)
+                        val response = HttpRequestHandler.request(call, httpMethod, bridge, activeConnections)
                         call.resolve(response)
                     } catch (e: Exception) {
                         call.reject(e.localizedMessage, e.javaClass.simpleName, e)

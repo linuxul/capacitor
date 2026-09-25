@@ -73,12 +73,11 @@ public class AssetUtil private constructor(private val context: Context) {
         val file = getTmpFile(fileName) ?: return Uri.EMPTY
 
         try {
-            val assets = context.assets
-            val input = assets.open(resPath)
-            val out = FileOutputStream(file)
-            copyFile(input, out)
+            context.assets.open(resPath).use { input ->
+                FileOutputStream(file).use { out -> copyFile(input, out) }
+            }
         } catch (e: Exception) {
-            Logger.error("File not found: assets/$resPath")
+            Logger.error(Logger.tags("Asset"), "File not found: assets/$resPath", e)
             return Uri.EMPTY
         }
 
@@ -120,22 +119,24 @@ public class AssetUtil private constructor(private val context: Context) {
     private fun getUriFromRemote(path: String): Uri {
         val file = getTmpFile() ?: return Uri.EMPTY
 
+        // This may run on the main thread, where StrictMode forbids network access. Lift that for this download
+        // only: the caller's policy is restored afterwards.
+        val callerPolicy = StrictMode.getThreadPolicy()
+        var connection: HttpURLConnection? = null
         try {
             val url = URL(path)
-            val connection = url.openConnection() as HttpURLConnection
+            val remote = url.openConnection() as HttpURLConnection
+            connection = remote
 
-            val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+            StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().permitAll().build())
 
-            StrictMode.setThreadPolicy(policy)
+            remote.setRequestProperty("Connection", "close")
+            remote.connectTimeout = 5000
+            remote.connect()
 
-            connection.setRequestProperty("Connection", "close")
-            connection.connectTimeout = 5000
-            connection.connect()
-
-            val input = connection.inputStream
-            val out = FileOutputStream(file)
-
-            copyFile(input, out)
+            remote.inputStream.use { input ->
+                FileOutputStream(file).use { out -> copyFile(input, out) }
+            }
             return getUriFromFile(file)
         } catch (e: MalformedURLException) {
             Logger.error(Logger.tags("Asset"), "Incorrect URL", e)
@@ -143,25 +144,25 @@ public class AssetUtil private constructor(private val context: Context) {
             Logger.error(Logger.tags("Asset"), "Failed to create new File from HTTP Content", e)
         } catch (e: IOException) {
             Logger.error(Logger.tags("Asset"), "No Input can be created from http Stream", e)
+        } finally {
+            connection?.disconnect()
+            StrictMode.setThreadPolicy(callerPolicy)
         }
 
         return Uri.EMPTY
     }
 
     /**
-     * Copy content from input stream into output stream.
+     * Copy content from input stream into output stream. The caller owns and closes both streams.
+     *
+     * A failure propagates, so the caller logs it and reports no URI instead of one for a partial file.
      *
      * @param input The input stream.
      * @param out The output stream.
      */
     private fun copyFile(input: InputStream, out: FileOutputStream) {
-        try {
-            input.copyTo(out)
-            out.flush()
-            out.close()
-        } catch (e: Exception) {
-            Logger.error("Error copying", e)
-        }
+        input.copyTo(out)
+        out.flush()
     }
 
     /**
@@ -212,9 +213,8 @@ public class AssetUtil private constructor(private val context: Context) {
      *
      * @param uri Internal image URI
      */
-    public fun getIconFromUri(uri: Uri): Bitmap? {
-        val input = context.contentResolver.openInputStream(uri)
-        return BitmapFactory.decodeStream(input)
+    public fun getIconFromUri(uri: Uri): Bitmap? = context.contentResolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(input)
     }
 
     /**

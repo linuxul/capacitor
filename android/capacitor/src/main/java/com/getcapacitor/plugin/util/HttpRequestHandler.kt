@@ -333,7 +333,18 @@ public object HttpRequestHandler {
      * @throws URISyntaxException thrown when the URI is malformed
      * @throws JSONException thrown when the incoming JSON is malformed
      */
-    public fun request(call: PluginCall, httpMethod: String?, bridge: Bridge?): JSObject {
+    public fun request(call: PluginCall, httpMethod: String?, bridge: Bridge?): JSObject = request(call, httpMethod, bridge, null)
+
+    /**
+     * [request], with the open connection kept in [activeConnections] under [call] while the request runs, so the
+     * owner can disconnect it to abort the request. The connection is always disconnected when this returns.
+     */
+    internal fun request(
+        call: PluginCall,
+        httpMethod: String?,
+        bridge: Bridge?,
+        activeConnections: MutableMap<PluginCall, CapacitorHttpUrlConnection>?
+    ): JSObject {
         val urlString = call.getString("url", "")
         // getObject/getBoolean/getString return the given default when the key is absent, so these never fall through.
         val headers = call.getObject("headers", JSObject()) ?: JSObject()
@@ -377,29 +388,30 @@ public object HttpRequestHandler {
 
         // Never null after openConnection().
         val connection = connectionBuilder.build()!!
+        activeConnections?.put(call, connection)
 
-        if (null != bridge && !isDomainExcludedFromSSL(bridge, url)) {
-            connection.setSSLSocketFactory(bridge)
-        }
-
-        // Set HTTP body on a non GET or HEAD request
-        if (isHttpMutate) {
-            val data = JSValue(call, "data")
-            if (data.value != null) {
-                connection.setDoOutput(true)
-                connection.setRequestBody(call, data, dataType)
+        // Whatever fails below (the body, the connection, reading the response), the connection is released.
+        try {
+            if (null != bridge && !isDomainExcludedFromSSL(bridge, url)) {
+                connection.setSSLSocketFactory(bridge)
             }
+
+            // Set HTTP body on a non GET or HEAD request
+            if (isHttpMutate) {
+                val data = JSValue(call, "data")
+                if (data.value != null) {
+                    connection.setDoOutput(true)
+                    connection.setRequestBody(call, data, dataType)
+                }
+            }
+
+            connection.connect()
+
+            return buildResponse(connection, responseType)
+        } finally {
+            activeConnections?.remove(call)
+            connection.disconnect()
         }
-
-        call.data.put("activeCapacitorHttpUrlConnection", connection)
-        connection.connect()
-
-        val response = buildResponse(connection, responseType)
-
-        connection.disconnect()
-        call.data.remove("activeCapacitorHttpUrlConnection")
-
-        return response
     }
 
     public fun isDomainExcludedFromSSL(bridge: Bridge?, url: URL?): Boolean = try {
