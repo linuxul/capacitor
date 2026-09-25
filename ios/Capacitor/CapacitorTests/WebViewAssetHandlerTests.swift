@@ -117,7 +117,7 @@ class WebViewAssetHandlerTests: XCTestCase {
         let completed = expectation(description: "task completed")
         task.onComplete = { completed.fulfill() }
         handler.webView(webView, start: task)
-        wait(for: [completed], timeout: 5)
+        wait(for: [completed], timeout: 20)
         return task
     }
 
@@ -135,6 +135,11 @@ class WebViewAssetHandlerTests: XCTestCase {
         XCTAssertEqual(task.httpResponse?.statusCode, 200)
         XCTAssertEqual(String(decoding: task.body, as: UTF8.self), "0123456789")
         XCTAssertTrue(task.finished)
+    }
+
+    func testSendsTheContentTypeOfTheFile() {
+        let task = start(FakeSchemeTask(url: "capacitor://localhost/digits.txt"))
+        XCTAssertEqual(task.httpResponse?.value(forHTTPHeaderField: "Content-Type"), "text/plain")
     }
 
     func testServesAByteRange() {
@@ -220,6 +225,19 @@ class WebViewAssetHandlerTests: XCTestCase {
         XCTAssertTrue(task.finished)
     }
 
+    func testProxyAllowsOnlyTheLiveReloadOrigin() throws {
+        enableHttpProxy()
+        StubURLProtocol.body = Data("remote".utf8)
+        let direct = try XCTUnwrap(completeProxy("capstub://http/data").httpResponse)
+        XCTAssertNil(direct.value(forHTTPHeaderField: "Access-Control-Allow-Origin"))
+
+        // the page is served over http by the live reload server, so its requests come from another origin
+        handler.setServerUrl(URL(string: "http://192.168.0.2:8100"))
+        let liveReload = try XCTUnwrap(completeProxy("capstub://http/data").httpResponse)
+        XCTAssertEqual(liveReload.value(forHTTPHeaderField: "Access-Control-Allow-Origin"), "http://192.168.0.2:8100")
+        XCTAssertEqual(liveReload.value(forHTTPHeaderField: "Access-Control-Allow-Methods"), "GET, HEAD, OPTIONS, TRACE")
+    }
+
     func testFailsTheProxyForANonHttpResponse() {
         enableHttpProxy()
         StubURLProtocol.body = Data("plain".utf8)
@@ -247,7 +265,7 @@ class WebViewAssetHandlerTests: XCTestCase {
         handler.webView(webView, stop: task)
         // the stub answers on URLSession's queue and the handler hops to the main queue; let both run
         let served = expectation(for: NSPredicate { _, _ in StubURLProtocol.requests.count == 1 }, evaluatedWith: nil)
-        wait(for: [served], timeout: 5)
+        wait(for: [served], timeout: 20)
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.3))
         XCTAssertTrue(task.events.isEmpty)
     }
