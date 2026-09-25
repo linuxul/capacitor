@@ -93,11 +93,12 @@ export class CapacitorCookiesPluginWeb extends WebPlugin implements CapacitorCoo
     const cookies = document.cookie;
     const cookieMap: HttpCookieMap = {};
     cookies.split(';').forEach((cookie) => {
-      if (cookie.length <= 0) return;
-      // Replace first "=" with CAP_COOKIE to prevent splitting on additional "="
-      let [key, value] = cookie.replace(/=/, 'CAP_COOKIE').split('CAP_COOKIE');
-      key = decode(key).trim();
-      value = decode(value).trim();
+      if (cookie.trim().length <= 0) return;
+      // Split on the first "=" only; a value may contain more. A cookie without "=" is kept as a
+      // key with an empty value instead of throwing.
+      const separator = cookie.indexOf('=');
+      const key = decode(separator < 0 ? cookie : cookie.slice(0, separator)).trim();
+      const value = separator < 0 ? '' : decode(cookie.slice(separator + 1)).trim();
       cookieMap[key] = value;
     });
     return cookieMap;
@@ -333,7 +334,7 @@ const buildUrlParams = (params?: HttpParams, shouldEncode = true): string | null
         item += `${key}=${encodedValue}&`;
       });
       // last character will always be "&" so slice it off
-      item.slice(0, -1);
+      item = item.slice(0, -1);
     } else {
       encodedValue = shouldEncode ? encodeURIComponent(value) : value;
       item = `${key}=${encodedValue}`;
