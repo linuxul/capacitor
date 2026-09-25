@@ -43,6 +43,23 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 - An `Error` logged on iOS reaches the Xcode console as `Name: message` and its stack instead of `{}`. An object that refers to itself no longer drops the whole message.
 - `window.onerror` reports errors whose first argument is an `Event` (for example a failed resource load) instead of throwing inside the handler.
 
+### Android runtime
+
+- A call that is not kept alive settles once. The first `resolve`, `reject`, `unimplemented`, `unavailable`, `successCallback` or `errorCallback` answers JavaScript; every later one is dropped and logged as a warning ("Ignoring … already settled"), including the bridge's own rejection of a method that resolved and then threw. `keepAlive` calls still resolve any number of times.
+- `requestPermissionForAlias(es)` with an empty alias array rejects with "No permission alias was provided". Aliases that map to no Android permission string (`strings = []`) no longer leave the call pending: the named `@PermissionCallback` runs right away, on the main thread like a prompt result, and such aliases report `granted`.
+- An exception thrown by a `@PermissionCallback` or `@ActivityCallback` rejects the saved call instead of leaving the promise pending. Without a saved call the callback still runs with `null`; declare it `PluginCall?` if you handle that case.
+- `requestPermissions` with only unknown aliases rejects; it no longer also resolves.
+- `CapacitorCookies.setCookie` without `key` or `value`, and `deleteCookie` without `key`, only reject; they no longer write a cookie named `null` and resolve.
+- `removeAllListeners` (the plugin method, and the reset of the bridge) releases the saved `addListener` calls.
+- Plugin listeners and saved calls are safe to use from several threads (for example a network callback thread and the main thread) at once.
+- Replies to JavaScript are posted on the main thread, as `WebMessage` requires, instead of being sent from whatever thread settled the call.
+- WebView permission prompts (camera, microphone, geolocation, file-input capture) are queued so that each one is answered; a second prompt no longer makes the first one hang. A cancelled system request denies the prompt instead of granting it.
+- Local server: a malformed or unsatisfiable `Range` header is ignored and the file is served whole with 200 instead of crashing the app. Asset, file and content streams are closed after the WebView reads them instead of leaking a file descriptor each.
+- `HttpRequestHandler.request` no longer stores the connection in `call.data` under `activeCapacitorHttpUrlConnection`, and always disconnects it.
+- `FileUtils.getFileUrlForUri` returns `null` instead of throwing when the provider gives no cursor or no display name.
+- `Bridge.logToJs` and `triggerJSEvent` quote their string arguments as JavaScript string literals, so quotes or line breaks in them no longer break or inject script. The `data` argument of `triggerJSEvent` must still be JSON.
+- `Logger.error(message)`, `PluginConfig.getString(key)`, `PluginConfig.getArray(key)` and `InternalUtils.getPackageInfo(pm, packageName)` are callable from Java, as described under "API changes" below.
+
 ### CLI
 
 - The CLI collects and sends no usage data. Upstream Capacitor sends metrics, including the dependency specs of the app (which for this fork are the release tarball URLs), to an upstream service. `npx cap telemetry` is kept so scripts that call it keep working, but it only reports that nothing is collected.
