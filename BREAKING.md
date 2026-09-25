@@ -12,6 +12,10 @@ These changes are on the `refactor/kotlin-swift` branch and ship with the next r
 - `npx cap migrate` sets the official plugins that the fork releases (the 20 plugins of the [linuxul/capacitor-plugins](https://github.com/linuxul/capacitor-plugins/releases) 9.0.0 release) to their fork release tarball when they come from the registry or from an older fork plugin release. Other `@capacitor/*` plugins from the registry (`filesystem`, `geolocation`, `google-maps`, `barcode-scanner`, `haptics`, `keyboard`, …) are no longer pinned to `^8.0.0`: they are left unchanged, with a warning that they are the upstream npm packages and not built for the fork.
 - `npx cap migrate` names the fork and its version in its messages and links to the fork's `BREAKING.md` for that version. The upstream Capacitor 8 guides are still linked for apps coming from Capacitor 7.
 
+### iOS runtime
+
+- The scripts injected at document start (`window.WEBVIEW_SERVER_URL` and the plugin proxies in `window.Capacitor.Plugins`) write the server URL and plugin and method names as JSON string literals, so a quote, backslash or line break in `server.hostname`/`server.iosScheme`, a `jsName` or a method name no longer breaks the script or injects code. The generated source uses double quotes (`t["echo"] = …`, `nativePromise("Echo", "echo", _options)`); the values are unchanged.
+
 ## 9.0: changes from fork 8.5.3
 
 This section is for apps and plugins that already run on fork 8.5.3. The sections after it describe how the fork differs from upstream Capacitor.

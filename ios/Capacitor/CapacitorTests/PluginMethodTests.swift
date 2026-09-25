@@ -209,9 +209,9 @@ class PluginMethodTests: XCTestCase {
         let contentController = WKUserContentController()
         JSExport.exportJS(for: plugin, in: contentController)
         let source = contentController.userScripts.map(\.source).joined(separator: "\n")
-        XCTAssertTrue(source.contains("t['echo'] = function(_options) {\nreturn w.Capacitor.nativePromise('Reference', 'echo', _options);"), source)
-        XCTAssertTrue(source.contains("t['watch'] = function(_options, _callback) {"), source)
-        XCTAssertTrue(source.contains("return w.Capacitor.nativeCallback('Reference', 'fire', _options);"), source)
+        XCTAssertTrue(source.contains(#"t["echo"] = function(_options) {"# + "\n" + #"return w.Capacitor.nativePromise("Reference", "echo", _options);"#), source)
+        XCTAssertTrue(source.contains(#"t["watch"] = function(_options, _callback) {"#), source)
+        XCTAssertTrue(source.contains(#"return w.Capacitor.nativeCallback("Reference", "fire", _options);"#), source)
 
         let header = try XCTUnwrap(source.components(separatedBy: "h.push(").last?.components(separatedBy: ");").first)
         let methods = try JSONDecoder().decode(PluginHeader.self, from: Data(header.utf8)).methods

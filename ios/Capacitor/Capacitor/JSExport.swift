@@ -13,13 +13,18 @@ internal struct PluginHeader: Codable {
 
 /**
  JSExport handles defining JS APIs that map to registered plugins and are responsible for proxying calls to our bridge.
+
+ Every string these scripts take from Swift (the server URL, plugin and method names) is written with
+ `BridgeScript.literal`, like the scripts the bridge evaluates, so a quote, a backslash or a line break in it cannot end
+ the literal early.
  */
 internal class JSExport {
     static let catchallOptionsParameter = "_options"
     static let callbackParameter = "_callback"
 
     static func exportCapacitorGlobalJS(userContentController: WKUserContentController, isDebug: Bool, loggingEnabled: Bool, localUrl: String) throws {
-        let data = "window.Capacitor = { DEBUG: \(isDebug), isLoggingEnabled: \(loggingEnabled), Plugins: {} }; window.WEBVIEW_SERVER_URL = '\(localUrl)';"
+        let serverUrl = BridgeScript.literal(localUrl)
+        let data = "window.Capacitor = { DEBUG: \(isDebug), isLoggingEnabled: \(loggingEnabled), Plugins: {} }; window.WEBVIEW_SERVER_URL = \(serverUrl);"
         let userScript = WKUserScript(source: data, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         userContentController.addUserScript(userScript)
     }
@@ -57,17 +62,18 @@ internal class JSExport {
      */
     static func exportJS(for plugin: CapacitorPlugin, in userContentController: WKUserContentController) {
         var lines = [String]()
+        let jsName = BridgeScript.literal(plugin.jsName)
 
         lines.append("""
                     (function(w) {
                     var a = (w.Capacitor = w.Capacitor || {});
                     var p = (a.Plugins = a.Plugins || {});
-                    var t = (p['\(plugin.jsName)'] = {});
+                    var t = (p[\(jsName)] = {});
                     t.addListener = function(eventName, callback) {
-                    return w.Capacitor.addListener('\(plugin.jsName)', eventName, callback);
+                    return w.Capacitor.addListener(\(jsName), eventName, callback);
                     }
                     t.removeAllListeners = function() {
-                    return w.Capacitor.nativePromise('\(plugin.jsName)', 'removeAllListeners');
+                    return w.Capacitor.nativePromise(\(jsName), "removeAllListeners");
                     }
                     """)
 
@@ -78,6 +84,7 @@ internal class JSExport {
         lines.append("""
             })(window);
             """)
+        // the header is JSON, which is already a JavaScript literal
         if let data = try? JSONEncoder().encode(createPluginHeader(for: plugin)),
            let header = String(data: data, encoding: .utf8) {
             lines.append("""
@@ -114,7 +121,8 @@ internal class JSExport {
     }
 
     private static func generateMethod(pluginClassName: String, method: CAPPluginMethod) -> String {
-        let methodName = method.name
+        let pluginName = BridgeScript.literal(pluginClassName)
+        let methodName = BridgeScript.literal(method.name)
         let returnType = method.returnType
         var paramList = [String]()
 
@@ -137,24 +145,24 @@ internal class JSExport {
         var lines = [String]()
 
         // Create the function declaration
-        lines.append("t['\(methodName)'] = function(\(paramString)) {")
+        lines.append("t[\(methodName)] = function(\(paramString)) {")
 
         // Create the call to Capacitor ...
         switch returnType {
         case .none:
             // ...using none
             lines.append("""
-                    return w.Capacitor.nativeCallback('\(pluginClassName)', '\(methodName)', \(argObjectString));
+                    return w.Capacitor.nativeCallback(\(pluginName), \(methodName), \(argObjectString));
                     """)
         case .promise:
             // ...using a promise
             lines.append("""
-                    return w.Capacitor.nativePromise('\(pluginClassName)', '\(methodName)', \(argObjectString));
+                    return w.Capacitor.nativePromise(\(pluginName), \(methodName), \(argObjectString));
                     """)
         case .callback:
             // ...using a callback
             lines.append("""
-                    return w.Capacitor.nativeCallback('\(pluginClassName)', '\(methodName)', \(argObjectString), \(callbackParameter));
+                    return w.Capacitor.nativeCallback(\(pluginName), \(methodName), \(argObjectString), \(callbackParameter));
                     """)
         }
 
