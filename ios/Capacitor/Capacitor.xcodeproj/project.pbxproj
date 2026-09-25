@@ -81,6 +81,7 @@
 		A5B3ACEF0BF29A6C2C0EFDBB /* WebViewAssetHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5625872C48EE642E7AE79B5 /* WebViewAssetHandlerTests.swift */; };
 		6076129E1756570151700E18 /* ByteRangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E3C4F6EFF6CDF9FC96899F /* ByteRangeTests.swift */; };
 		998807272EC140DF9A723327 /* PluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0A1EB33995406E9F64BD64 /* PluginTests.swift */; };
+		8D1A76AAEF4913C39A5393F4 /* PluginMethodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97BC3A3F3CBEF13AFA413064 /* PluginMethodTests.swift */; };
 		AA01F00D0000000000000002 /* HttpInterceptorNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01F00D0000000000000001 /* HttpInterceptorNavigationTests.swift */; };
 		A7187FD22BD1CB7D00093C45 /* CAPPluginMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7187FD12BD1CB7D00093C45 /* CAPPluginMethod.swift */; };
 		A76739792B98E09700795F7B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A76739782B98E09700795F7B /* PrivacyInfo.xcprivacy */; };
@@ -223,6 +224,7 @@
 		F5625872C48EE642E7AE79B5 /* WebViewAssetHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewAssetHandlerTests.swift; sourceTree = "<group>"; };
 		37E3C4F6EFF6CDF9FC96899F /* ByteRangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteRangeTests.swift; sourceTree = "<group>"; };
 		2A0A1EB33995406E9F64BD64 /* PluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginTests.swift; sourceTree = "<group>"; };
+		97BC3A3F3CBEF13AFA413064 /* PluginMethodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginMethodTests.swift; sourceTree = "<group>"; };
 		AA01F00D0000000000000001 /* HttpInterceptorNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpInterceptorNavigationTests.swift; sourceTree = "<group>"; };
 		A7187FD12BD1CB7D00093C45 /* CAPPluginMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAPPluginMethod.swift; sourceTree = "<group>"; };
 		A76739782B98E09700795F7B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -332,6 +334,7 @@
 				F5625872C48EE642E7AE79B5 /* WebViewAssetHandlerTests.swift */,
 				37E3C4F6EFF6CDF9FC96899F /* ByteRangeTests.swift */,
 				2A0A1EB33995406E9F64BD64 /* PluginTests.swift */,
+				97BC3A3F3CBEF13AFA413064 /* PluginMethodTests.swift */,
 				AA01F00D0000000000000001 /* HttpInterceptorNavigationTests.swift */,
 			);
 			path = CapacitorTests;
@@ -701,6 +704,7 @@
 				A5B3ACEF0BF29A6C2C0EFDBB /* WebViewAssetHandlerTests.swift in Sources */,
 				6076129E1756570151700E18 /* ByteRangeTests.swift in Sources */,
 				998807272EC140DF9A723327 /* PluginTests.swift in Sources */,
+				8D1A76AAEF4913C39A5393F4 /* PluginMethodTests.swift in Sources */,
 				AA01F00D0000000000000002 /* HttpInterceptorNavigationTests.swift in Sources */,
 				6263686025F6EC0100576C1C /* PluginCallAccessorTests.swift in Sources */,
 			);

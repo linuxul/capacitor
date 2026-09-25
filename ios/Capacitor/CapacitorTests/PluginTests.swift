@@ -9,9 +9,10 @@ private class TestFixturePlugin: CAPPlugin, CAPBridgedPlugin {
     let identifier = "CAPTestFixturePlugin"
     let jsName = "TestFixture"
     let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "echo", returnType: .promise),
-        CAPPluginMethod(name: "watch", returnType: .callback),
-        CAPPluginMethod(#selector(TestFixturePlugin.fire(_:)), returnType: .none)
+        // registered by selector, as in fork 8.5.3
+        selectorMethod("echo", .promise),
+        selectorMethod("watch", .callback),
+        selectorMethod(#selector(TestFixturePlugin.fire(_:)), .none)
     ]
 
     @objc func echo(_ call: CAPPluginCall) {
@@ -44,7 +45,7 @@ class PluginTests: XCTestCase {
     func testPluginMethodContract() {
         let plugin = TestFixturePlugin()
         XCTAssertEqual(plugin.pluginMethods.map(\.name), ["echo", "watch", "fire"])
-        XCTAssertEqual(plugin.pluginMethods.map { NSStringFromSelector($0.selector) }, ["echo:", "watch:", "fire:"])
+        XCTAssertEqual(plugin.pluginMethods.map { registeredSelector($0).map(NSStringFromSelector) }, ["echo:", "watch:", "fire:"])
         // these strings are part of the JS protocol
         XCTAssertEqual(plugin.pluginMethods.map(\.returnType.rawValue), ["promise", "callback", "none"])
         XCTAssertEqual(plugin.getMethod(named: "watch")?.returnType, .callback)
@@ -54,7 +55,6 @@ class PluginTests: XCTestCase {
     func testPluginIsLoadableThroughTheObjCRuntime() throws {
         XCTAssertEqual(NSStringFromClass(CAPPlugin.self), "CAPPlugin")
         XCTAssertEqual(NSStringFromClass(CAPPluginCall.self), "CAPPluginCall")
-        XCTAssertEqual(NSStringFromClass(CAPPluginMethod.self), "CAPPluginMethod")
         let type = try XCTUnwrap(NSClassFromString("CAPTestFixturePlugin") as? CAPPlugin.Type)
         let plugin = try XCTUnwrap(type.init() as? CAPPlugin & CAPBridgedPlugin)
         XCTAssertEqual(plugin.jsName, "TestFixture")

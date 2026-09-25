@@ -5,11 +5,11 @@ public class CAPCookiesPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPCookiesPlugin"
     public let jsName = "CapacitorCookies"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "getCookies", returnType: .promise),
-        CAPPluginMethod(name: "setCookie", returnType: .promise),
-        CAPPluginMethod(name: "deleteCookie", returnType: .promise),
-        CAPPluginMethod(name: "clearCookies", returnType: .promise),
-        CAPPluginMethod(name: "clearAllCookies", returnType: .promise)
+        .promise("getCookies", CAPCookiesPlugin.getCookies),
+        .promise("setCookie", CAPCookiesPlugin.setCookie),
+        .promise("deleteCookie", CAPCookiesPlugin.deleteCookie),
+        .promise("clearCookies", CAPCookiesPlugin.clearCookies),
+        .promise("clearAllCookies", CAPCookiesPlugin.clearAllCookies)
     ]
 
     var cookieManager: CapacitorCookieManager?
@@ -18,13 +18,13 @@ public class CAPCookiesPlugin: CAPPlugin, CAPBridgedPlugin {
         cookieManager = CapacitorCookieManager(bridge?.config)
     }
 
-    @objc func getCookies(_ call: CAPPluginCall) {
+    func getCookies(_ call: CAPPluginCall) {
         guard let cookieManager = cookieManager(for: call) else { return }
         guard let url = cookieManager.getServerUrl(call.getString("url")) else { return call.reject("Invalid URL / Server URL")}
         call.resolve(cookieManager.getCookiesAsMap(url))
     }
 
-    @objc func setCookie(_ call: CAPPluginCall) {
+    func setCookie(_ call: CAPPluginCall) {
         guard let cookieManager = cookieManager(for: call) else { return }
         guard let key = call.getString("key") else { return call.reject("Must provide key") }
         guard let value = call.getString("value") else { return call.reject("Must provide value") }
@@ -37,7 +37,7 @@ public class CAPCookiesPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
-    @objc func deleteCookie(_ call: CAPPluginCall) {
+    func deleteCookie(_ call: CAPPluginCall) {
         guard let cookieManager = cookieManager(for: call) else { return }
         guard let key = call.getString("key") else { return call.reject("Must provide key") }
         guard let url = cookieManager.getServerUrl(call.getString("url")) else { return call.reject("Invalid URL / Server URL")}
@@ -45,14 +45,14 @@ public class CAPCookiesPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
-    @objc func clearCookies(_ call: CAPPluginCall) {
+    func clearCookies(_ call: CAPPluginCall) {
         guard let cookieManager = cookieManager(for: call) else { return }
         guard let url = cookieManager.getServerUrl(call.getString("url")) else { return call.reject("Invalid URL / Server URL")}
         cookieManager.clearCookies(url)
         call.resolve()
     }
 
-    @objc func clearAllCookies(_ call: CAPPluginCall) {
+    func clearAllCookies(_ call: CAPPluginCall) {
         guard let cookieManager = cookieManager(for: call) else { return }
         cookieManager.clearAllCookies()
         call.resolve()

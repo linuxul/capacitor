@@ -5,19 +5,19 @@ public class CAPHttpPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPHttpPlugin"
     public let jsName = "CapacitorHttp"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "request", returnType: .promise),
-        CAPPluginMethod(name: "get", returnType: .promise),
-        CAPPluginMethod(name: "post", returnType: .promise),
-        CAPPluginMethod(name: "put", returnType: .promise),
-        CAPPluginMethod(name: "patch", returnType: .promise),
-        CAPPluginMethod(name: "delete", returnType: .promise)
+        .promise("request", CAPHttpPlugin.request),
+        .promise("get", CAPHttpPlugin.get),
+        .promise("post", CAPHttpPlugin.post),
+        .promise("put", CAPHttpPlugin.put),
+        .promise("patch", CAPHttpPlugin.patch),
+        .promise("delete", CAPHttpPlugin.delete)
     ]
 
-    @objc func http(_ call: CAPPluginCall, _ httpMethod: String?) {
+    func http(_ call: CAPPluginCall, _ httpMethod: String?) {
         do {
             if let clazz = NSClassFromString("SSLPinningHttpRequestHandlerClass") {
                 // swiftlint:disable force_cast
-                (clazz as! NSObject.Type).perform(#selector(self.request(_:)), with: [
+                (clazz as! NSObject.Type).perform(NSSelectorFromString("request:"), with: [
                     "call": call,
                     "httpMethod": httpMethod as Any,
                     "config": self.bridge?.config as Any
@@ -31,27 +31,27 @@ public class CAPHttpPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func request(_ call: CAPPluginCall) {
+    func request(_ call: CAPPluginCall) {
         http(call, nil)
     }
 
-    @objc func get(_ call: CAPPluginCall) {
+    func get(_ call: CAPPluginCall) {
         http(call, "GET")
     }
 
-    @objc func post(_ call: CAPPluginCall) {
+    func post(_ call: CAPPluginCall) {
         http(call, "POST")
     }
 
-    @objc func put(_ call: CAPPluginCall) {
+    func put(_ call: CAPPluginCall) {
         http(call, "PUT")
     }
 
-    @objc func patch(_ call: CAPPluginCall) {
+    func patch(_ call: CAPPluginCall) {
         http(call, "PATCH")
     }
 
-    @objc func delete(_ call: CAPPluginCall) {
+    func delete(_ call: CAPPluginCall) {
         http(call, "DELETE")
     }
 }

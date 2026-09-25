@@ -9,15 +9,15 @@ private class MessageTestPlugin: CAPPlugin, CAPBridgedPlugin {
     let identifier = "CAPBridgeMessageTestPlugin"
     let jsName = "MessageTest"
     let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "fail", returnType: .promise),
-        CAPPluginMethod(name: "failKeptAlive", returnType: .callback)
+        .promise("fail", MessageTestPlugin.fail),
+        .callback("failKeptAlive", MessageTestPlugin.failKeptAlive)
     ]
 
-    @objc func fail(_ call: CAPPluginCall) {
+    func fail(_ call: CAPPluginCall) {
         call.reject("failed")
     }
 
-    @objc func failKeptAlive(_ call: CAPPluginCall) {
+    func failKeptAlive(_ call: CAPPluginCall) {
         call.keepAlive = true
         call.reject("failed")
     }

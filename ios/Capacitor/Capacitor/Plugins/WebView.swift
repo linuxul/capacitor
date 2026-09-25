@@ -6,13 +6,13 @@ public class CAPWebViewPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPWebViewPlugin"
     public let jsName = "WebView"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "setServerAssetPath", returnType: .promise),
-        CAPPluginMethod(name: "setServerBasePath", returnType: .promise),
-        CAPPluginMethod(name: "getServerBasePath", returnType: .promise),
-        CAPPluginMethod(name: "persistServerBasePath", returnType: .promise)
+        .promise("setServerAssetPath", CAPWebViewPlugin.setServerAssetPath),
+        .promise("setServerBasePath", CAPWebViewPlugin.setServerBasePath),
+        .promise("getServerBasePath", CAPWebViewPlugin.getServerBasePath),
+        .promise("persistServerBasePath", CAPWebViewPlugin.persistServerBasePath)
     ]
 
-    @objc func setServerAssetPath(_ call: CAPPluginCall) {
+    func setServerAssetPath(_ call: CAPPluginCall) {
         guard let path = call.getString("path") else {
             call.reject("Must provide a path")
             return
@@ -24,7 +24,7 @@ public class CAPWebViewPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func setServerBasePath(_ call: CAPPluginCall) {
+    func setServerBasePath(_ call: CAPPluginCall) {
         guard let path = call.getString("path") else {
             call.reject("Must provide a path")
             return
@@ -35,7 +35,7 @@ public class CAPWebViewPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func getServerBasePath(_ call: CAPPluginCall) {
+    func getServerBasePath(_ call: CAPPluginCall) {
         withBridgeViewController(call) { viewController in
             call.resolve([
                 "path": viewController.getServerBasePath()
@@ -43,7 +43,7 @@ public class CAPWebViewPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func persistServerBasePath(_ call: CAPPluginCall) {
+    func persistServerBasePath(_ call: CAPPluginCall) {
         withBridgeViewController(call) { viewController in
             KeyValueStore.standard["serverBasePath"] = viewController.getServerBasePath()
             call.resolve()

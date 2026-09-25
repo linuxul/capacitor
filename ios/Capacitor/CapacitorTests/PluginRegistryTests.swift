@@ -39,13 +39,13 @@ class LazyEchoPlugin: CAPPlugin, CAPBridgedPlugin {
     static var instances = 0
     let identifier = "LazyEcho"
     let jsName = "LazyEcho"
-    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+    let pluginMethods: [CAPPluginMethod] = [.promise("echo", LazyEchoPlugin.echo)]
 
     override func load() {
         LazyEchoPlugin.instances += 1
     }
 
-    @objc func echo(_ call: CAPPluginCall) {
+    func echo(_ call: CAPPluginCall) {
         call.resolve(["value": call.getString("value") ?? ""])
     }
 }
@@ -55,9 +55,9 @@ class LazyEchoPlugin: CAPPlugin, CAPBridgedPlugin {
 class RegistryIdentifierPlugin: CAPPlugin, CAPBridgedPlugin {
     let identifier = "CAPRegistryIdentifierPlugin"
     let jsName = "RegistryIdentifier"
-    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+    let pluginMethods: [CAPPluginMethod] = [.promise("echo", RegistryIdentifierPlugin.echo)]
 
-    @objc func echo(_ call: CAPPluginCall) {
+    func echo(_ call: CAPPluginCall) {
         call.resolve()
     }
 }
@@ -67,9 +67,9 @@ class RegistryIdentifierPlugin: CAPPlugin, CAPBridgedPlugin {
 class RegistryMismatchPlugin: CAPPlugin, CAPBridgedPlugin {
     let identifier = "CAPRegistryMismatchPlugin"
     let jsName = "RegistryMismatch"
-    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+    let pluginMethods: [CAPPluginMethod] = [.promise("echo", RegistryMismatchPlugin.echo)]
 
-    @objc func echo(_ call: CAPPluginCall) {
+    func echo(_ call: CAPPluginCall) {
         call.resolve()
     }
 }
@@ -79,9 +79,9 @@ class RegistryMismatchPlugin: CAPPlugin, CAPBridgedPlugin {
 class RegistryInstancePlugin: CAPInstancePlugin, CAPBridgedPlugin {
     let identifier = "CAPRegistryInstancePlugin"
     let jsName = "CAPRegistryInstancePlugin"
-    let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "echo", returnType: .promise)]
+    let pluginMethods: [CAPPluginMethod] = [.promise("echo", RegistryInstancePlugin.echo)]
 
-    @objc func echo(_ call: CAPPluginCall) {
+    func echo(_ call: CAPPluginCall) {
         call.resolve()
     }
 }

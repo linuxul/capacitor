@@ -7,17 +7,17 @@ private class SettleTestPlugin: CAPPlugin, CAPBridgedPlugin {
     let identifier = "CAPSettleTestPlugin"
     let jsName = "SettleTest"
     let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "resolveTwice", returnType: .promise),
-        CAPPluginMethod(name: "watch", returnType: .callback)
+        .promise("resolveTwice", SettleTestPlugin.resolveTwice),
+        .callback("watch", SettleTestPlugin.watch)
     ]
 
-    @objc func resolveTwice(_ call: CAPPluginCall) {
+    func resolveTwice(_ call: CAPPluginCall) {
         call.resolve(["attempt": 1])
         call.reject("too late")
         call.resolve(["attempt": 2])
     }
 
-    @objc func watch(_ call: CAPPluginCall) {
+    func watch(_ call: CAPPluginCall) {
         call.keepAlive = true
         call.resolve(["tick": 1])
         call.resolve(["tick": 2])

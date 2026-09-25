@@ -6,10 +6,10 @@ public class CAPSystemBarsPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPSystemBarsPlugin"
     public let jsName = "SystemBars"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "setStyle", returnType: .promise),
-        CAPPluginMethod(name: "setAnimation", returnType: .promise),
-        CAPPluginMethod(name: "show", returnType: .promise),
-        CAPPluginMethod(name: "hide", returnType: .promise)
+        .promise("setStyle", CAPSystemBarsPlugin.setStyle(_:)),
+        .promise("setAnimation", CAPSystemBarsPlugin.setAnimation(_:)),
+        .promise("show", CAPSystemBarsPlugin.show(_:)),
+        .promise("hide", CAPSystemBarsPlugin.hide(_:))
     ]
 
     public private(set) var hideHomeIndicator: Bool = false
@@ -34,12 +34,12 @@ public class CAPSystemBarsPlugin: CAPPlugin, CAPBridgedPlugin {
         setHidden(hidden: hidden)
     }
 
-    @objc func setStyle(_ call: CAPPluginCall) {
+    func setStyle(_ call: CAPPluginCall) {
         setStyle(style: call.getString("style") ?? Style.defaultStyle.rawValue)
         call.resolve()
     }
 
-    @objc func show(_ call: CAPPluginCall) {
+    func show(_ call: CAPPluginCall) {
         let bar = call.getString("bar")
 
         if let animation = call.getString("animation") {
@@ -52,7 +52,7 @@ public class CAPSystemBarsPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func hide(_ call: CAPPluginCall) {
+    func hide(_ call: CAPPluginCall) {
         let bar = call.getString("bar")
 
         if let animation = call.getString("animation") {
@@ -65,7 +65,7 @@ public class CAPSystemBarsPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func setAnimation(_ call: CAPPluginCall) {
+    func setAnimation(_ call: CAPPluginCall) {
         let animation = call.getString("animation", "FADE")
         setAnimation(animation: animation)
 

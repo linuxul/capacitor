@@ -416,32 +416,30 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     /**
-     Handle a call from JavaScript. First, find the corresponding plugin, construct a selector,
-     and perform that selector on the plugin instance.
-
-     Quiet the length warning because we don't want to refactor the function at this time.
+     Handle a call from JavaScript: find the plugin and the method it registered under that name, and call the method
+     on the bridge queue. Methods registered by reference are called directly; methods registered by selector, and the
+     listener methods every plugin inherits, are performed through the Obj-C runtime.
      */
-    // swiftlint:disable:next function_body_length
     func handleJSCall(call: JSCall) {
         guard let plugin = pluginRegistry[call.pluginId] ?? lazyLoadPlugin(named: call.pluginId) else {
             rejectJSCall(call, message: "Error loading plugin \(call.pluginId) for call. Check that the pluginId is correct")
             return
         }
 
-        let selector: Selector
+        let invocation: CAPPluginMethod.Invocation
         if call.method == "addListener" || call.method == "removeListener" || call.method == "removeAllListeners" {
-            selector = NSSelectorFromString(call.method + ":")
+            invocation = .selector(NSSelectorFromString(call.method + ":"))
         } else {
             guard let method = plugin.getMethod(named: call.method) else {
-                CAPLog.print("⚡️  Ensure plugin method exists and uses @objc in its declaration, and has been defined")
+                CAPLog.print("⚡️  Ensure the method is listed in the pluginMethods of the plugin")
                 rejectJSCall(call, message: "Error calling method \(call.method) on plugin \(call.pluginId): No method found.")
                 return
             }
 
-            selector = method.selector
+            invocation = method.invocation
         }
 
-        if !plugin.responds(to: selector) {
+        if case .selector(let selector) = invocation, !plugin.responds(to: selector) {
             CAPLog.print("⚡️  Ensure plugin method exists, uses @objc in its declaration, and is listed in the pluginMethods of the plugin.")
             CAPLog.print("⚡️  Learn more: \(docLink(DocLinks.CAPPluginMethodSelector.rawValue))")
             rejectJSCall(call, message: "Plugin \(plugin.getId()) does not respond to method \(call.method) using selector \(selector).")
@@ -465,8 +463,8 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
             weakPluginCall = pluginCall
             pluginCall.pluginName = call.pluginId
 
-            plugin.perform(selector, with: pluginCall)
-            if pluginCall.keepAlive {
+            // a method that threw has been rejected; like on Android, only a method that returns keeps its call
+            if invocation.invoke(on: plugin, with: pluginCall), pluginCall.keepAlive {
                 self?.saveCall(pluginCall)
             }
         }
