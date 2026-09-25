@@ -10,6 +10,17 @@ import { runCommand } from '../src/util/subprocess';
 
 const cwd = process.cwd();
 
+/**
+ * Returns the value, failing the test with a clear message when it is null or undefined. Use it
+ * instead of a non-null assertion when a test goes on to use a value it expects to exist.
+ */
+export function defined<T>(value: T | null | undefined, what = 'value'): T {
+  if (value === null || value === undefined) {
+    throw new Error(`expected ${what} to be defined`);
+  }
+  return value;
+}
+
 export const CAPACITOR_PLUGIN_ID = 'cool-capacitor-plugin';
 export const LEGACY_CORDOVA_PLUGIN_ID = 'cool-cordova-plugin';
 export const APP_ID = 'com.getcapacitor.cli.test';

@@ -3,6 +3,8 @@ import { resolve } from 'path';
 
 import { __testables } from '../src/tasks/migrate-uiscene';
 
+import { defined } from './util';
+
 const { extractConfigurationForConnecting, insertBeforeAppDelegateClassEnd } = __testables;
 
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -17,8 +19,8 @@ describe('extractConfigurationForConnecting', () => {
     expect(snippet).toContain('configurationForConnecting connectingSceneSession: UISceneSession');
     expect(snippet).toContain('UISceneConfiguration(name: "Default Configuration"');
     expect(snippet).toContain('config.delegateClass = SceneDelegate.self');
-    expect(snippet!.startsWith('\n')).toBe(true);
-    expect(snippet!.endsWith('\n')).toBe(true);
+    expect(defined(snippet, 'snippet').startsWith('\n')).toBe(true);
+    expect(defined(snippet, 'snippet').endsWith('\n')).toBe(true);
   });
 
   it('slices the method out of the shipped Pods AppDelegate', () => {
@@ -42,7 +44,7 @@ describe('insertBeforeAppDelegateClassEnd', () => {
     expect(snippet).not.toBeNull();
     const pre = stripConfigurationForConnecting(shipped);
 
-    const patched = insertBeforeAppDelegateClassEnd(pre, snippet!);
+    const patched = insertBeforeAppDelegateClassEnd(pre, defined(snippet, 'snippet'));
 
     expect(patched).toBe(shipped);
   });

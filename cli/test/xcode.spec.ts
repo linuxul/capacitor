@@ -4,7 +4,7 @@ import { project as loadXcodeProject } from 'xcode';
 
 import { addSwiftFileToAppTarget, findGroupUuidByComment } from '../src/util/xcode';
 
-import { mktmp } from './util';
+import { defined, mktmp } from './util';
 
 const REPO_ROOT = resolve(__dirname, '..', '..');
 const SHIPPED_PBXPROJ = resolve(REPO_ROOT, 'ios-spm-template/App/App.xcodeproj/project.pbxproj');
@@ -24,7 +24,7 @@ describe('findGroupUuidByComment', () => {
     const uuid = findGroupUuidByComment(project, 'App');
 
     expect(uuid).toMatch(/^[A-F0-9]{24}$/);
-    const group = project.getPBXGroupByKey(uuid!);
+    const group = project.getPBXGroupByKey(defined(uuid, 'App group uuid'));
     expect(group).toBeDefined();
     expect(group?.path).toBe('App');
   });
@@ -74,11 +74,11 @@ describe('addSwiftFileToAppTarget', () => {
       buildFiles.some(([k]) => (objects.PBXBuildFile as any)[`${k}_comment`]?.includes('SceneDelegate.swift')),
     ).toBe(true);
 
-    const appGroupUuid = findGroupUuidByComment(project, 'App')!;
-    const appGroup = project.getPBXGroupByKey(appGroupUuid)!;
+    const appGroupUuid = defined(findGroupUuidByComment(project, 'App'), 'App group uuid');
+    const appGroup = defined(project.getPBXGroupByKey(appGroupUuid), 'App group');
     expect(appGroup.children.some((c: any) => c.comment === 'SceneDelegate.swift')).toBe(true);
 
-    const sourcesPhase = objects.PBXSourcesBuildPhase!;
+    const sourcesPhase = defined(objects.PBXSourcesBuildPhase, 'PBXSourcesBuildPhase');
     const sourcesEntries = Object.entries(sourcesPhase).filter(([k]) => !k.endsWith('_comment'));
     const [, sourcesObj] = sourcesEntries[0];
     expect((sourcesObj as any).files.some((f: any) => f.comment?.includes('SceneDelegate.swift'))).toBe(true);
