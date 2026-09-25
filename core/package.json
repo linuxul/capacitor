@@ -25,7 +25,7 @@
   "unpkg": "dist/capacitor.js",
   "scripts": {
     "build": "npm run clean && npm run docgen && npm run transpile && npm run rollup",
-    "build:nativebridge": "tsc native-bridge.ts --target es2017 --moduleResolution node --outDir build && rollup --config rollup.bridge.config.js",
+    "build:nativebridge": "tsc -p tsconfig.bridge.json && rollup --config rollup.bridge.config.js",
     "clean": "rimraf dist",
     "docgen": "docgen --api CapacitorCookiesPlugin --output-readme cookies.md && docgen --api CapacitorHttpPlugin --output-readme http.md && docgen --api SystemBarsPlugin --output-readme system-bars.md",
     "prepublishOnly": "npm run build",
@@ -53,7 +53,15 @@
   },
   "jest": {
     "preset": "ts-jest",
-    "testRunner": "jest-jasmine2"
+    "testRunner": "jest-jasmine2",
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": "tsconfig.spec.json"
+        }
+      ]
+    }
   },
   "publishConfig": {
     "access": "public"

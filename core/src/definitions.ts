@@ -90,4 +90,8 @@ export interface PluginResultError {
   message: string;
 }
 
-export type PluginCallback = (data: PluginResultData, error?: PluginResultError) => void;
+/**
+ * Receives the results of a callback-style plugin call. `data` is `null` when the call failed, and
+ * `error` then describes the failure.
+ */
+export type PluginCallback = (data: PluginResultData | null, error?: PluginResultError) => void;

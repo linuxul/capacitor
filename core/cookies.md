@@ -113,7 +113,7 @@ As of iOS 14, you cannot use 3rd party cookies by default. Add the following lin
 ### getCookies(...)
 
 ```typescript
-getCookies(options?: GetCookieOptions) => Promise<HttpCookieMap>
+getCookies(options?: GetCookieOptions | undefined) => Promise<HttpCookieMap>
 ```
 
 | Param         | Type                                                          |

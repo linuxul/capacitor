@@ -14,7 +14,7 @@ export interface RegisteredPlugin {
 }
 
 export const createCapacitor = (win: WindowCapacitor): CapacitorInstance => {
-  const capCustomPlatform: CapacitorCustomPlatformInstance = win.CapacitorCustomPlatform || null;
+  const capCustomPlatform: CapacitorCustomPlatformInstance | null = win.CapacitorCustomPlatform || null;
   const cap: CapacitorInstance = win.Capacitor || ({} as any);
   const Plugins = (cap.Plugins = cap.Plugins || ({} as any));
 
@@ -43,7 +43,7 @@ export const createCapacitor = (win: WindowCapacitor): CapacitorInstance => {
   const getPluginHeader = (pluginName: string): PluginHeader | undefined =>
     cap.PluginHeaders?.find((h) => h.name === pluginName);
 
-  const handleError = (err: Error) => win.console.error(err);
+  const handleError = (err: Error) => win.console?.error(err);
 
   const registeredPlugins = new Map<string, RegisteredPlugin>();
 
@@ -75,7 +75,7 @@ export const createCapacitor = (win: WindowCapacitor): CapacitorInstance => {
       return jsImplementation;
     };
 
-    const createPluginMethod = (impl: any, prop: PropertyKey): ((...args: any[]) => any) => {
+    const createPluginMethod = (impl: any, prop: PropertyKey): ((...args: any[]) => any) | undefined => {
       if (pluginHeader) {
         const methodHeader = pluginHeader?.methods.find((m) => prop === m.name);
         if (methodHeader) {
@@ -87,6 +87,8 @@ export const createCapacitor = (win: WindowCapacitor): CapacitorInstance => {
         } else if (impl) {
           return impl[prop]?.bind(impl);
         }
+        // a native plugin without this method and no JS implementation: the caller reports it
+        return undefined;
       } else if (impl) {
         return impl[prop]?.bind(impl);
       } else {

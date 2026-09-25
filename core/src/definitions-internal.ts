@@ -49,7 +49,7 @@ export interface CapacitorInstance extends CapacitorGlobal {
    * Sends data over the bridge to the native layer.
    * Returns the Callback Id.
    */
-  nativeCallback: <O>(pluginName: string, methodName: string, options?: O, callback?: PluginCallback) => string;
+  nativeCallback: <O>(pluginName: string, methodName: string, options?: O, callback?: PluginCallback) => string | null;
 
   /**
    * Sends data over the bridge to the native layer and
@@ -81,7 +81,7 @@ export interface CapacitorInstance extends CapacitorGlobal {
    * Installed as `window.onerror` when `DEBUG` is set. The return value is
    * that handler's "suppress default handling" flag; it is always `false`.
    */
-  handleWindowError: (msg: string | Event, url: string, lineNo: number, columnNo: number, err: Error) => boolean;
+  handleWindowError: (msg: string | Event, url?: string, lineNo?: number, columnNo?: number, err?: Error) => boolean;
 
   /**
    * Low-level API used by the native bridge to log messages.
@@ -110,9 +110,9 @@ export interface ErrorCallData {
   type: 'js.error';
   error: {
     message: string;
-    url: string;
-    line: number;
-    col: number;
+    url?: string;
+    line?: number;
+    col?: number;
     errorObject: string;
   };
 }

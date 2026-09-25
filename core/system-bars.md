@@ -145,7 +145,7 @@ Set the current style of the system bars.
 ### show(...)
 
 ```typescript
-show(options?: SystemBarsVisibilityOptions) => Promise<void>
+show(options?: SystemBarsVisibilityOptions | undefined) => Promise<void>
 ```
 
 Show the system bars.
@@ -162,7 +162,7 @@ Show the system bars.
 ### hide(...)
 
 ```typescript
-hide(options?: SystemBarsVisibilityOptions) => Promise<void>
+hide(options?: SystemBarsVisibilityOptions | undefined) => Promise<void>
 ```
 
 Hide the system bars.

@@ -227,7 +227,15 @@ var nativeBridge = (function (exports) {
             return filePath;
         };
         const initEvents = (win, cap) => {
+            // The callback argument is kept for compatibility; the bridge releases the listener's callback itself.
+            const removeListener = (pluginName, callbackId, eventName, callback) => {
+                cap.nativeCallback(pluginName, 'removeListener', {
+                    callbackId: callbackId,
+                    eventName: eventName,
+                }, callback);
+            };
             cap.addListener = (pluginName, eventName, callback) => {
+                // throws when the call cannot be sent to native
                 const callbackId = cap.nativeCallback(pluginName, 'addListener', {
                     eventName: eventName,
                 }, callback);
@@ -235,17 +243,14 @@ var nativeBridge = (function (exports) {
                     remove: async () => {
                         var _a;
                         (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.debug('Removing listener', pluginName, eventName);
-                        cap.removeListener(pluginName, callbackId, eventName, callback);
+                        if (callbackId !== null) {
+                            removeListener(pluginName, callbackId, eventName, callback);
+                        }
                     },
                 };
             };
-            cap.removeListener = (pluginName, callbackId, eventName, callback) => {
-                cap.nativeCallback(pluginName, 'removeListener', {
-                    callbackId: callbackId,
-                    eventName: eventName,
-                }, callback);
-            };
-            cap.createEvent = (eventName, eventData) => {
+            cap.removeListener = removeListener;
+            const createEvent = (eventName, eventData) => {
                 const doc = win.document;
                 if (doc) {
                     const ev = doc.createEvent('Events');
@@ -262,10 +267,11 @@ var nativeBridge = (function (exports) {
                 }
                 return null;
             };
+            cap.createEvent = createEvent;
             cap.triggerEvent = (eventName, target, eventData) => {
                 const doc = win.document;
                 eventData = eventData || {};
-                const ev = cap.createEvent(eventName, eventData);
+                const ev = createEvent(eventName, eventData);
                 if (ev) {
                     if (target === 'document') {
                         if (doc === null || doc === void 0 ? void 0 : doc.dispatchEvent) {
@@ -295,9 +301,9 @@ var nativeBridge = (function (exports) {
             if (nav) {
                 nav.app = nav.app || {};
                 nav.app.exitApp = () => {
-                    var _a;
+                    var _a, _b;
                     if (!((_a = cap.Plugins) === null || _a === void 0 ? void 0 : _a.App)) {
-                        win.console.warn('App plugin not installed');
+                        (_b = win.console) === null || _b === void 0 ? void 0 : _b.warn('App plugin not installed');
                     }
                     else {
                         cap.nativeCallback('App', 'exitApp', {});
@@ -351,8 +357,10 @@ var nativeBridge = (function (exports) {
             win.Ionic.WebView = IonicWebView;
         };
         const initLogger = (win, cap) => {
+            var _a, _b;
             const BRIDGED_CONSOLE_METHODS = ['debug', 'error', 'info', 'log', 'trace', 'warn'];
             const createLogFromNative = (c) => (result) => {
+                var _a, _b;
                 if (isFullConsole(c)) {
                     const success = result.success === true;
                     const tagStyles = success
@@ -369,21 +377,22 @@ var nativeBridge = (function (exports) {
                 }
                 else {
                     if (result.success === false) {
-                        c.error('LOG FROM NATIVE', result.error);
+                        (_a = c.error) === null || _a === void 0 ? void 0 : _a.call(c, 'LOG FROM NATIVE', result.error);
                     }
                     else {
-                        c.log('LOG FROM NATIVE', result.data);
+                        (_b = c.log) === null || _b === void 0 ? void 0 : _b.call(c, 'LOG FROM NATIVE', result.data);
                     }
                 }
             };
             const createLogToNative = (c) => (call) => {
+                var _a;
                 if (isFullConsole(c)) {
                     c.groupCollapsed('%cnative %c' + call.pluginId + '.' + call.methodName + ' (#' + call.callbackId + ')', 'font-weight: lighter; color: gray', 'font-weight: bold; color: #000');
                     c.dir(call);
                     c.groupEnd();
                 }
                 else {
-                    c.log('LOG TO NATIVE: ', call);
+                    (_a = c.log) === null || _a === void 0 ? void 0 : _a.call(c, 'LOG TO NATIVE: ', call);
                 }
             };
             const isFullConsole = (c) => {
@@ -793,21 +802,23 @@ var nativeBridge = (function (exports) {
             }
             // patch window.console on iOS and store original console fns
             const isIos = getPlatformId(win) === 'ios';
-            if (win.console && isIos) {
+            const winConsole = win.console;
+            if (winConsole && isIos) {
                 // Set while a message is on its way to native: anything the bridge logs itself (for example an
                 // error from toNative) then goes to the original console only instead of recursing.
                 let forwarding = false;
-                Object.defineProperties(win.console, BRIDGED_CONSOLE_METHODS.reduce((props, method) => {
-                    const consoleMethod = win.console[method].bind(win.console);
+                Object.defineProperties(winConsole, BRIDGED_CONSOLE_METHODS.reduce((props, method) => {
+                    const consoleMethod = winConsole[method].bind(winConsole);
                     props[method] = {
                         configurable: true,
                         enumerable: true,
                         writable: true,
                         value: (...args) => {
+                            var _a;
                             if (!forwarding) {
                                 forwarding = true;
                                 try {
-                                    cap.toNative('Console', 'log', {
+                                    (_a = cap.toNative) === null || _a === void 0 ? void 0 : _a.call(cap, 'Console', 'log', {
                                         level: method,
                                         message: args.map(serializeConsoleMessage).join(' '),
                                     });
@@ -823,26 +834,28 @@ var nativeBridge = (function (exports) {
                 }, {}));
             }
             cap.logJs = (msg, level) => {
+                var _a, _b, _c, _d;
                 switch (level) {
                     case 'error':
-                        win.console.error(msg);
+                        (_a = win.console) === null || _a === void 0 ? void 0 : _a.error(msg);
                         break;
                     case 'warn':
-                        win.console.warn(msg);
+                        (_b = win.console) === null || _b === void 0 ? void 0 : _b.warn(msg);
                         break;
                     case 'info':
-                        win.console.info(msg);
+                        (_c = win.console) === null || _c === void 0 ? void 0 : _c.info(msg);
                         break;
                     default:
-                        win.console.log(msg);
+                        (_d = win.console) === null || _d === void 0 ? void 0 : _d.log(msg);
                 }
             };
-            cap.logToNative = createLogToNative(win.console);
-            cap.logFromNative = createLogFromNative(win.console);
-            cap.handleError = (err) => win.console.error(err);
+            cap.logToNative = createLogToNative((_a = win.console) !== null && _a !== void 0 ? _a : {});
+            cap.logFromNative = createLogFromNative((_b = win.console) !== null && _b !== void 0 ? _b : {});
+            cap.handleError = (err) => { var _a; return (_a = win.console) === null || _a === void 0 ? void 0 : _a.error(err); };
             win.Capacitor = cap;
         };
         function initNativeBridge(win) {
+            var _a, _b;
             const cap = win.Capacitor || {};
             // keep a collection of callbacks for native response data, with the call each one belongs to
             const callbacks = new Map();
@@ -855,6 +868,9 @@ var nativeBridge = (function (exports) {
             // reload server. crypto.randomUUID would be shorter but is undefined outside secure contexts
             // (https and localhost), so it is not used.
             const createCallbackId = () => {
+                if (!win.crypto) {
+                    throw new Error('window.crypto is required to create callback ids');
+                }
                 const bytes = win.crypto.getRandomValues(new Uint8Array(16));
                 bytes[6] = (bytes[6] & 0x0f) | 0x40;
                 bytes[8] = (bytes[8] & 0x3f) | 0x80;
@@ -868,17 +884,19 @@ var nativeBridge = (function (exports) {
             cap.isPluginAvailable = (name) => Object.prototype.hasOwnProperty.call(cap.Plugins, name);
             cap.isNativePlatform = isNativePlatform;
             // create the postToNative() fn if needed
-            if (getPlatformId(win) === 'android') {
+            const androidBridge = win.androidBridge;
+            const iosBridge = (_b = (_a = win.webkit) === null || _a === void 0 ? void 0 : _a.messageHandlers) === null || _b === void 0 ? void 0 : _b.bridge;
+            if (androidBridge) {
                 // android platform
                 postToNative = (data) => {
-                    win.androidBridge.postMessage(JSON.stringify(data));
+                    androidBridge.postMessage(JSON.stringify(data));
                 };
             }
-            else if (getPlatformId(win) === 'ios') {
+            else if (iosBridge) {
                 // ios platform
                 postToNative = (data) => {
                     data.type = data.type ? data.type : 'message';
-                    win.webkit.messageHandlers.bridge.postMessage(data);
+                    iosBridge.postMessage(data);
                 };
             }
             cap.handleWindowError = (msg, url, lineNo, columnNo, err) => {
@@ -926,7 +944,7 @@ var nativeBridge = (function (exports) {
             /**
              * Send a plugin method call to the native layer
              */
-            cap.toNative = (pluginName, methodName, options, storedCallback) => {
+            const toNative = (pluginName, methodName, options, storedCallback) => {
                 var _a, _b;
                 let callbackId = CALLBACK_ID_DANGLING;
                 try {
@@ -986,6 +1004,7 @@ var nativeBridge = (function (exports) {
                 }
                 return null;
             };
+            cap.toNative = toNative;
             if (win === null || win === void 0 ? void 0 : win.androidBridge) {
                 win.androidBridge.onmessage = function (event) {
                     returnResult(JSON.parse(event.data));
@@ -998,7 +1017,7 @@ var nativeBridge = (function (exports) {
                 returnResult(result);
             };
             const returnResult = (result) => {
-                var _a, _b;
+                var _a, _b, _c;
                 if (cap.isLoggingEnabled && result.pluginId !== 'Console') {
                     cap.logFromNative(result);
                 }
@@ -1030,7 +1049,7 @@ var nativeBridge = (function (exports) {
                                 storedCall.resolve(result.data);
                             }
                             else {
-                                storedCall.reject(result.error);
+                                (_a = storedCall.reject) === null || _a === void 0 ? void 0 : _a.call(storedCall, result.error);
                             }
                             // no need to keep this stored callback
                             // around for a one time resolve promise
@@ -1039,24 +1058,24 @@ var nativeBridge = (function (exports) {
                     }
                     else if (!result.success && result.error) {
                         // no stored callback, but if there was an error let's log it
-                        (_a = win === null || win === void 0 ? void 0 : win.console) === null || _a === void 0 ? void 0 : _a.warn(result.error);
+                        (_b = win === null || win === void 0 ? void 0 : win.console) === null || _b === void 0 ? void 0 : _b.warn(result.error);
                     }
                     if (result.save === false) {
                         callbacks.delete(result.callbackId);
                     }
                 }
                 catch (e) {
-                    (_b = win === null || win === void 0 ? void 0 : win.console) === null || _b === void 0 ? void 0 : _b.error(e);
+                    (_c = win === null || win === void 0 ? void 0 : win.console) === null || _c === void 0 ? void 0 : _c.error(e);
                 }
                 // always delete to prevent memory leaks
                 // overkill but we're not sure what apps will do with this data
                 delete result.data;
                 delete result.error;
             };
-            cap.nativeCallback = (pluginName, methodName, options, callback) => cap.toNative(pluginName, methodName, options, { callback });
+            cap.nativeCallback = (pluginName, methodName, options, callback) => toNative(pluginName, methodName, options, { callback });
             cap.nativePromise = (pluginName, methodName, options) => {
                 return new Promise((resolve, reject) => {
-                    cap.toNative(pluginName, methodName, options, {
+                    toNative(pluginName, methodName, options, {
                         resolve: resolve,
                         reject: reject,
                     });

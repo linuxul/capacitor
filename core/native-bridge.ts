@@ -3,6 +3,7 @@
  * afterwards to build the nativebridge.js files to the android and iOS projects.
  */
 import type { HttpResponse } from './src/core-plugins';
+import type { PluginCallback } from './src/definitions';
 import type {
   CallData,
   CapacitorInstance,
@@ -208,24 +209,8 @@ const initBridge = (w: any): void => {
   };
 
   const initEvents = (win: WindowCapacitor, cap: CapacitorInstance) => {
-    cap.addListener = (pluginName, eventName, callback) => {
-      const callbackId = cap.nativeCallback(
-        pluginName,
-        'addListener',
-        {
-          eventName: eventName,
-        },
-        callback,
-      );
-      return {
-        remove: async () => {
-          win?.console?.debug('Removing listener', pluginName, eventName);
-          cap.removeListener(pluginName, callbackId, eventName, callback);
-        },
-      };
-    };
-
-    cap.removeListener = (pluginName, callbackId, eventName, callback) => {
+    // The callback argument is kept for compatibility; the bridge releases the listener's callback itself.
+    const removeListener = (pluginName: string, callbackId: string, eventName: string, callback?: PluginCallback) => {
       cap.nativeCallback(
         pluginName,
         'removeListener',
@@ -237,7 +222,29 @@ const initBridge = (w: any): void => {
       );
     };
 
-    cap.createEvent = (eventName, eventData) => {
+    cap.addListener = (pluginName, eventName, callback) => {
+      // throws when the call cannot be sent to native
+      const callbackId = cap.nativeCallback(
+        pluginName,
+        'addListener',
+        {
+          eventName: eventName,
+        },
+        callback,
+      );
+      return {
+        remove: async () => {
+          win?.console?.debug('Removing listener', pluginName, eventName);
+          if (callbackId !== null) {
+            removeListener(pluginName, callbackId, eventName, callback);
+          }
+        },
+      };
+    };
+
+    cap.removeListener = removeListener;
+
+    const createEvent = (eventName: string, eventData?: any): Event | null => {
       const doc = win.document;
       if (doc) {
         const ev = doc.createEvent('Events');
@@ -254,11 +261,12 @@ const initBridge = (w: any): void => {
       }
       return null;
     };
+    cap.createEvent = createEvent;
 
     cap.triggerEvent = (eventName, target, eventData) => {
       const doc = win.document;
       eventData = eventData || {};
-      const ev = cap.createEvent(eventName, eventData);
+      const ev = createEvent(eventName, eventData);
 
       if (ev) {
         if (target === 'document') {
@@ -291,7 +299,7 @@ const initBridge = (w: any): void => {
       nav.app = nav.app || {};
       nav.app.exitApp = () => {
         if (!cap.Plugins?.App) {
-          win.console.warn('App plugin not installed');
+          win.console?.warn('App plugin not installed');
         } else {
           cap.nativeCallback('App', 'exitApp', {});
         }
@@ -371,9 +379,9 @@ const initBridge = (w: any): void => {
         c.groupEnd();
       } else {
         if (result.success === false) {
-          c.error('LOG FROM NATIVE', result.error);
+          c.error?.('LOG FROM NATIVE', result.error);
         } else {
-          c.log('LOG FROM NATIVE', result.data);
+          c.log?.('LOG FROM NATIVE', result.data);
         }
       }
     };
@@ -388,7 +396,7 @@ const initBridge = (w: any): void => {
         c.dir(call);
         c.groupEnd();
       } else {
-        c.log('LOG TO NATIVE: ', call);
+        c.log?.('LOG TO NATIVE: ', call);
       }
     };
 
@@ -795,7 +803,7 @@ const initBridge = (w: any): void => {
                 }
 
                 // intercept request & pass to the bridge
-                return cap.nativePromise('CapacitorHttp', 'request', {
+                return cap.nativePromise<unknown, HttpResponse>('CapacitorHttp', 'request', {
                   url: state.url,
                   method: state.method,
                   data: data !== null ? data : undefined,
@@ -892,14 +900,15 @@ const initBridge = (w: any): void => {
 
     // patch window.console on iOS and store original console fns
     const isIos = getPlatformId(win) === 'ios';
-    if (win.console && isIos) {
+    const winConsole = win.console;
+    if (winConsole && isIos) {
       // Set while a message is on its way to native: anything the bridge logs itself (for example an
       // error from toNative) then goes to the original console only instead of recursing.
       let forwarding = false;
       Object.defineProperties(
-        win.console,
+        winConsole,
         BRIDGED_CONSOLE_METHODS.reduce((props: PropertyDescriptorMap, method) => {
-          const consoleMethod = win.console[method].bind(win.console);
+          const consoleMethod = (winConsole[method] as (...args: unknown[]) => void).bind(winConsole);
           props[method] = {
             configurable: true,
             enumerable: true,
@@ -908,7 +917,7 @@ const initBridge = (w: any): void => {
               if (!forwarding) {
                 forwarding = true;
                 try {
-                  cap.toNative('Console', 'log', {
+                  cap.toNative?.('Console', 'log', {
                     level: method,
                     message: args.map(serializeConsoleMessage).join(' '),
                   });
@@ -927,23 +936,23 @@ const initBridge = (w: any): void => {
     cap.logJs = (msg, level) => {
       switch (level) {
         case 'error':
-          win.console.error(msg);
+          win.console?.error(msg);
           break;
         case 'warn':
-          win.console.warn(msg);
+          win.console?.warn(msg);
           break;
         case 'info':
-          win.console.info(msg);
+          win.console?.info(msg);
           break;
         default:
-          win.console.log(msg);
+          win.console?.log(msg);
       }
     };
 
-    cap.logToNative = createLogToNative(win.console);
-    cap.logFromNative = createLogFromNative(win.console);
+    cap.logToNative = createLogToNative(win.console ?? {});
+    cap.logFromNative = createLogFromNative(win.console ?? {});
 
-    cap.handleError = (err) => win.console.error(err);
+    cap.handleError = (err) => win.console?.error(err);
 
     win.Capacitor = cap;
   };
@@ -964,6 +973,9 @@ const initBridge = (w: any): void => {
     // reload server. crypto.randomUUID would be shorter but is undefined outside secure contexts
     // (https and localhost), so it is not used.
     const createCallbackId = (): string => {
+      if (!win.crypto) {
+        throw new Error('window.crypto is required to create callback ids');
+      }
       const bytes = win.crypto.getRandomValues(new Uint8Array(16));
       bytes[6] = (bytes[6] & 0x0f) | 0x40;
       bytes[8] = (bytes[8] & 0x3f) | 0x80;
@@ -981,16 +993,18 @@ const initBridge = (w: any): void => {
     cap.isNativePlatform = isNativePlatform;
 
     // create the postToNative() fn if needed
-    if (getPlatformId(win) === 'android') {
+    const androidBridge = win.androidBridge;
+    const iosBridge = win.webkit?.messageHandlers?.bridge;
+    if (androidBridge) {
       // android platform
       postToNative = (data) => {
-        win.androidBridge.postMessage(JSON.stringify(data));
+        androidBridge.postMessage(JSON.stringify(data));
       };
-    } else if (getPlatformId(win) === 'ios') {
+    } else if (iosBridge) {
       // ios platform
       postToNative = (data) => {
         data.type = data.type ? data.type : 'message';
-        win.webkit.messageHandlers.bridge.postMessage(data);
+        iosBridge.postMessage(data);
       };
     }
 
@@ -1045,7 +1059,7 @@ const initBridge = (w: any): void => {
     /**
      * Send a plugin method call to the native layer
      */
-    cap.toNative = (pluginName, methodName, options, storedCallback) => {
+    const toNative: NonNullable<CapacitorInstance['toNative']> = (pluginName, methodName, options, storedCallback) => {
       let callbackId = CALLBACK_ID_DANGLING;
       try {
         if (typeof postToNative === 'function') {
@@ -1108,6 +1122,7 @@ const initBridge = (w: any): void => {
 
       return null;
     };
+    cap.toNative = toNative;
 
     if (win?.androidBridge) {
       win.androidBridge.onmessage = function (event) {
@@ -1155,7 +1170,7 @@ const initBridge = (w: any): void => {
             if (result.success) {
               storedCall.resolve(result.data);
             } else {
-              storedCall.reject(result.error);
+              storedCall.reject?.(result.error);
             }
 
             // no need to keep this stored callback
@@ -1181,11 +1196,11 @@ const initBridge = (w: any): void => {
     };
 
     cap.nativeCallback = (pluginName, methodName, options, callback) =>
-      cap.toNative(pluginName, methodName, options, { callback });
+      toNative(pluginName, methodName, options, { callback });
 
     cap.nativePromise = (pluginName, methodName, options) => {
       return new Promise((resolve, reject) => {
-        cap.toNative(pluginName, methodName, options, {
+        toNative(pluginName, methodName, options, {
           resolve: resolve,
           reject: reject,
         });
