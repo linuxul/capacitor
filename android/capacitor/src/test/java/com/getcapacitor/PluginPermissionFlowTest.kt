@@ -177,7 +177,7 @@ class PluginPermissionFlowTest {
         val call = call()
         plugin.request(arrayOf("camera"), call)
         whenever(bridge.getPermissionCall("Flow")).thenReturn(call)
-        whenever(bridge.validatePermissions(any(), anyOrNull(), any())).thenReturn(true)
+        whenever(bridge.validatePermissions(anyOrNull(), any())).thenReturn(true)
 
         permissionResultCallback().onActivityResult(mapOf(CAMERA to true))
 

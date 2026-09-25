@@ -131,7 +131,7 @@ public open class Plugin {
         val savedCall = bridge.getPermissionCall(handle.id)
 
         // validate permissions and invoke the permission result callback
-        if (bridge.validatePermissions(this, savedCall, permissionResultMap)) {
+        if (bridge.validatePermissions(savedCall, permissionResultMap)) {
             invokeCallback(method, savedCall)
         }
     }
@@ -265,7 +265,7 @@ public open class Plugin {
             }
         }
 
-        Logger.error(String.format("isPermissionDeclared: No alias defined for %s " + "or missing @CapacitorPlugin annotation.", alias))
+        Logger.error("isPermissionDeclared: No alias defined for $alias or missing @CapacitorPlugin annotation.")
         return false
     }
 
@@ -379,7 +379,7 @@ public open class Plugin {
             val result = suspendCoroutine { continuation -> startPermissionRequest(PermissionRequest(permissions, continuation)) }
 
             // Caches denied states, as for a PermissionCallback; false when the manifest lacks a permission.
-            if (!bridge.validatePermissions(this, null, result)) {
+            if (!bridge.validatePermissions(null, result)) {
                 throw PluginException(bridge.missingPermissionsMessage(permissions) ?: "Missing permissions in AndroidManifest.xml")
             }
         }
@@ -724,7 +724,7 @@ public open class Plugin {
             for (perm in permissions) {
                 // If a permission is defined with no permission strings, separate it for auto-granting.
                 // Otherwise, the alias is added to the list to be requested.
-                if (perm.strings.isEmpty() || (perm.strings.size == 1 && perm.strings[0].isEmpty())) {
+                if (perm.isAutoGranted) {
                     if (perm.alias.isNotEmpty()) {
                         autoGrantPerms.add(perm.alias)
                     }

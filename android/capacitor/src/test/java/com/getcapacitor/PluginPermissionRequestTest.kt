@@ -62,7 +62,7 @@ class PluginPermissionRequestTest {
             registrations.add(launcher to invocation.getArgument<ActivityResultCallback<*>>(1))
             launcher
         }.whenever(bridge).registerForActivityResult(any<ActivityResultContract<Any, Any>>(), any<ActivityResultCallback<Any>>())
-        whenever(bridge.validatePermissions(any(), isNull(), any())).thenReturn(true)
+        whenever(bridge.validatePermissions(isNull(), any())).thenReturn(true)
         doAnswer { states }.whenever(bridge).getPermissionStates(plugin)
 
         PluginHandle(bridge, plugin)
@@ -132,7 +132,7 @@ class PluginPermissionRequestTest {
 
     @Test
     fun permissionMissingFromTheManifestThrows() {
-        whenever(bridge.validatePermissions(any(), isNull(), any())).thenReturn(false)
+        whenever(bridge.validatePermissions(isNull(), any())).thenReturn(false)
         whenever(bridge.missingPermissionsMessage(any())).thenReturn("Missing the following permissions in AndroidManifest.xml:\n$CAMERA\n")
         val result = request("camera")
 

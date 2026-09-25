@@ -6,7 +6,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
@@ -23,7 +22,6 @@ import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.fragment.app.Fragment
 import androidx.webkit.WebViewCompat
@@ -32,7 +30,6 @@ import com.getcapacitor.android.R
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.util.HostMask
 import com.getcapacitor.util.InternalUtils
-import com.getcapacitor.util.PermissionHelper
 import com.getcapacitor.util.WebColor
 import java.io.File
 import java.net.SocketTimeoutException
@@ -134,6 +131,11 @@ public class Bridge private constructor(
 
     // Saved plugin calls: kept alive, waiting for permissions, or waiting for an activity result
     private val savedCallStore = SavedCallStore()
+
+    private val permissionStore =
+        PermissionStateStore(ActivityPermissionChecker(activity)) {
+            activity.getSharedPreferences(PERMISSION_PREFS_NAME, Activity.MODE_PRIVATE)
+        }
 
     // Runs plugin methods, plain and suspend, on the plugin or the main thread. taskHandler is read when a call is
     // posted, after init has set it.
@@ -761,42 +763,17 @@ public class Bridge private constructor(
     }
 
     /**
-     * Saves permission states and rejects if permissions were not correctly defined in
-     * the AndroidManifest.xml file.
+     * Stores the outcome of a permission prompt and rejects [savedCall] if AndroidManifest.xml does not declare
+     * all of [permissions].
      *
-     * @return true if permissions were saved and defined correctly, false if not
+     * @return true if all of [permissions] are declared, false if not
      */
-    internal fun validatePermissions(plugin: Plugin, savedCall: PluginCall?, permissions: Map<String, Boolean>): Boolean {
-        val prefs = context.getSharedPreferences(PERMISSION_PREFS_NAME, Activity.MODE_PRIVATE)
-
-        for ((permString, isGranted) in permissions) {
-            if (isGranted) {
-                // Permission granted. If previously denied, remove cached state
-                val state = prefs.getString(permString, null)
-
-                if (state != null) {
-                    val editor = prefs.edit()
-                    editor.remove(permString)
-                    editor.apply()
-                }
-            } else {
-                val editor = prefs.edit()
-
-                if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permString)) {
-                    // Permission denied, can prompt again with rationale
-                    editor.putString(permString, PermissionState.PROMPT_WITH_RATIONALE.toString())
-                } else {
-                    // Permission denied permanently, store this state for future reference
-                    editor.putString(permString, PermissionState.DENIED.toString())
-                }
-
-                editor.apply()
-            }
-        }
+    internal fun validatePermissions(savedCall: PluginCall?, permissions: Map<String, Boolean>): Boolean {
+        permissionStore.recordResults(permissions)
 
         val message = missingPermissionsMessage(permissions.keys.toTypedArray()) ?: return true
 
-        // The Java original threw when no call had been saved for the request; there is nothing to reject then.
+        // requestPermissionsFor saves no call; it reports the missing permissions itself.
         savedCall?.reject(message)
         return false
     }
@@ -805,67 +782,17 @@ public class Bridge private constructor(
      * The error for the permissions in [permStrings] that AndroidManifest.xml does not declare, or null if it
      * declares them all.
      */
-    internal fun missingPermissionsMessage(permStrings: Array<String>): String? {
-        if (PermissionHelper.hasDefinedPermissions(context, permStrings)) return null
-
-        return buildString {
-            appendLine("Missing the following permissions in AndroidManifest.xml:")
-            PermissionHelper.getUndefinedPermissions(context, permStrings).forEach { appendLine(it) }
-        }
-    }
+    internal fun missingPermissionsMessage(permStrings: Array<String>): String? = permissionStore.missingPermissionsMessage(permStrings)
 
     /**
-     * Helper to check all permissions and see the current states of each permission.
+     * The state of each permission alias declared on [plugin].
      *
      * @since 3.0.0
      * @return A mapping of permission aliases to the associated granted status.
      */
-    internal fun getPermissionStates(plugin: Plugin): Map<String, PermissionState> {
-        val permissionsResults = HashMap<String, PermissionState>()
+    internal fun getPermissionStates(plugin: Plugin): Map<String, PermissionState> =
         // PluginHandle's init throws InvalidPluginException when the annotation is missing, so it is always present here.
-        for (perm in plugin.pluginHandle.pluginAnnotation.permissions) {
-            // If a permission is defined with no permission constants, return GRANTED for it.
-            // Otherwise, get its true state.
-            if (perm.strings.isEmpty() || (perm.strings.size == 1 && perm.strings[0].isEmpty())) {
-                val key = perm.alias
-                if (key.isNotEmpty()) {
-                    val existingResult = permissionsResults[key]
-
-                    // auto set permission state to GRANTED if the alias is empty.
-                    if (existingResult == null) {
-                        permissionsResults[key] = PermissionState.GRANTED
-                    }
-                }
-            } else {
-                for (permString in perm.strings) {
-                    val key = if (perm.alias.isEmpty()) permString else perm.alias
-                    var permissionStatus: PermissionState
-                    if (ActivityCompat.checkSelfPermission(context, permString) == PackageManager.PERMISSION_GRANTED) {
-                        permissionStatus = PermissionState.GRANTED
-                    } else {
-                        permissionStatus = PermissionState.PROMPT
-
-                        // Check if there is a cached permission state for the "Never ask again" state
-                        val prefs = context.getSharedPreferences(PERMISSION_PREFS_NAME, Activity.MODE_PRIVATE)
-                        val state = prefs.getString(permString, null)
-
-                        if (state != null) {
-                            permissionStatus = PermissionState.byState(state)
-                        }
-                    }
-
-                    val existingResult = permissionsResults[key]
-
-                    // multiple permissions with the same alias must all be true, otherwise all false.
-                    if (existingResult == null || existingResult == PermissionState.GRANTED) {
-                        permissionsResults[key] = permissionStatus
-                    }
-                }
-            }
-        }
-
-        return permissionsResults
-    }
+        permissionStore.states(plugin.pluginHandle.pluginAnnotation.permissions)
 
     /**
      * Handle an onNewIntent lifecycle event and notify the plugins

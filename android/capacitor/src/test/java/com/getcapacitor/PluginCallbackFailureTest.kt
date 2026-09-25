@@ -76,7 +76,7 @@ class PluginCallbackFailureTest {
             registrations.add(launcher to invocation.getArgument<ActivityResultCallback<*>>(1))
             launcher
         }.whenever(bridge).registerForActivityResult(any<ActivityResultContract<Any, Any>>(), any<ActivityResultCallback<Any>>())
-        whenever(bridge.validatePermissions(any(), anyOrNull(), any())).thenReturn(true)
+        whenever(bridge.validatePermissions(anyOrNull(), any())).thenReturn(true)
 
         PluginHandle(bridge, plugin)
     }
