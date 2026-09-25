@@ -4,9 +4,9 @@ import { join, sep } from 'path';
 import { runTask } from '../common';
 import type { Config } from '../definitions';
 import { logger } from '../log';
-import { deleteFolderRecursive, readdirp } from '../util/fs';
+import { readdirp } from '../util/fs';
 import { addSceneManifestIfNeeded, hasSceneManifest } from '../util/spm';
-import { extractTemplate } from '../util/template';
+import { withExtractedTemplate } from '../util/template';
 import { addSwiftFileToAppTarget } from '../util/xcode';
 
 type PreUISceneState = 'eligible' | 'already-migrated' | 'partial';
@@ -168,12 +168,10 @@ async function loadTemplateAssets(config: Config): Promise<TemplateAssets | null
   const packageManager = await config.ios.packageManager;
   const archiveName = packageManager === 'SPM' ? 'ios-spm-template.tar.gz' : 'ios-pods-template.tar.gz';
   const archivePath = join(config.cli.assetsDirAbs, archiveName);
-  const tempDir = join(config.cli.assetsDirAbs, 'tempUISceneTemplate');
 
-  try {
-    await extractTemplate(archivePath, tempDir);
-    const sceneDelegatePath = join(tempDir, 'App', 'App', 'SceneDelegate.swift');
-    const appDelegatePath = join(tempDir, 'App', 'App', 'AppDelegate.swift');
+  return withExtractedTemplate(archivePath, (dir) => {
+    const sceneDelegatePath = join(dir, 'App', 'App', 'SceneDelegate.swift');
+    const appDelegatePath = join(dir, 'App', 'App', 'AppDelegate.swift');
     if (!existsSync(sceneDelegatePath) || !existsSync(appDelegatePath)) {
       return null;
     }
@@ -184,9 +182,7 @@ async function loadTemplateAssets(config: Config): Promise<TemplateAssets | null
       return null;
     }
     return { sceneDelegate, configurationForConnectingSnippet };
-  } finally {
-    deleteFolderRecursive(tempDir);
-  }
+  });
 }
 
 function writeSceneDelegate(config: Config, contents: string): { written: boolean } {

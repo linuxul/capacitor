@@ -10,9 +10,8 @@ import type { Config } from '../definitions';
 import { fatal } from '../errors';
 import { getMajoriOSVersion } from '../ios/common';
 import { logger, logPrompt, logSuccess } from '../log';
-import { deleteFolderRecursive } from '../util/fs';
 import { isPermissionError, runCommand } from '../util/subprocess';
-import { extractTemplate } from '../util/template';
+import { withExtractedTemplate } from '../util/template';
 
 import { migrateToUIScene } from './migrate-uiscene';
 
@@ -54,9 +53,7 @@ const kotlinVersion = '2.2.20';
 let installFailed = false;
 
 export async function migrateCommand(config: Config, noprompt: boolean, packagemanager: string): Promise<void> {
-  if (config === null) {
-    fatal('Config data missing');
-  }
+  installFailed = false;
 
   const capMajor = await checkCapacitorMajorVersion(config);
   if (capMajor < 7) {
@@ -158,7 +155,6 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
           // ios template changes
           await runTask(`Migrating deployment target to ${iOSVersion}.0.`, () => {
             return updateFile(
-              config,
               join(config.ios.nativeXcodeProjDirAbs, 'project.pbxproj'),
               'IPHONEOS_DEPLOYMENT_TARGET = ',
               ';',
@@ -170,7 +166,6 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
             // Update Podfile
             await runTask(`Migrating Podfile to ${iOSVersion}.0.`, () => {
               return updateFile(
-                config,
                 join(config.ios.nativeProjectDirAbs, 'Podfile'),
                 `platform :ios, '`,
                 `'`,
@@ -270,7 +265,6 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
                     lt(value, variablesAndClasspaths.variables[variable]))
                 ) {
                   await updateFile(
-                    config,
                     variablesPath,
                     replaceStart,
                     replaceEnd,
@@ -304,7 +298,7 @@ export async function migrateCommand(config: Config, noprompt: boolean, packagem
               coreSplashScreenVersion: '1.2.0',
             };
             for (const variable of Object.keys(pluginVariables)) {
-              await updateFile(config, variablesPath, `${variable} = '`, `'`, pluginVariables[variable], true);
+              await updateFile(variablesPath, `${variable} = '`, `'`, pluginVariables[variable], true);
             }
           })();
         });
@@ -422,41 +416,46 @@ async function writeBreakingChanges() {
 }
 
 async function getAndroidVariablesAndClasspaths(config: Config) {
-  const tempAndroidTemplateFolder = join(config.cli.assetsDirAbs, 'tempAndroidTemplate');
-  await extractTemplate(config.cli.assets.android.platformTemplateArchiveAbs, tempAndroidTemplateFolder);
-  const variablesGradleFile = readFile(join(tempAndroidTemplateFolder, 'variables.gradle'));
-  const buildGradleFile = readFile(join(tempAndroidTemplateFolder, 'build.gradle'));
-  if (!variablesGradleFile || !buildGradleFile) {
+  const template = await withExtractedTemplate(config.cli.assets.android.platformTemplateArchiveAbs, (dir) => ({
+    variablesGradle: readFile(join(dir, 'variables.gradle')),
+    buildGradle: readFile(join(dir, 'build.gradle')),
+  }));
+  if (!template.variablesGradle || !template.buildGradle) {
     return;
   }
-  deleteFolderRecursive(tempAndroidTemplateFolder);
 
-  const firstIndxOfCATBGV = buildGradleFile.indexOf(`classpath 'com.android.tools.build:gradle:`) + 42;
-  const firstIndxOfCGGGS = buildGradleFile.indexOf(`com.google.gms:google-services:`) + 31;
-  const comAndroidToolsBuildGradleVersion =
-    '' + buildGradleFile.substring(firstIndxOfCATBGV, buildGradleFile.indexOf("'", firstIndxOfCATBGV));
-  const comGoogleGmsGoogleServices =
-    '' + buildGradleFile.substring(firstIndxOfCGGGS, buildGradleFile.indexOf("'", firstIndxOfCGGGS));
-
-  const variablesGradleAsJSON = JSON.parse(
-    variablesGradleFile
-      .replace('ext ', '')
-      .replace(/=/g, ':')
-      .replace(/\n/g, ',')
-      .replace(/,([^:]+):/g, function (_k, p1) {
-        return `,"${p1}":`;
-      })
-      .replace('{,', '{')
-      .replace(',}', '}')
-      .replace(/\s/g, '')
-      .replace(/'/g, '"'),
-  );
+  const androidGradlePluginVersion = getClasspathVersion(template.buildGradle, 'com.android.tools.build:gradle');
+  const googleServicesVersion = getClasspathVersion(template.buildGradle, 'com.google.gms:google-services');
+  if (!androidGradlePluginVersion || !googleServicesVersion) {
+    return;
+  }
 
   return {
-    variables: variablesGradleAsJSON,
-    'com.android.tools.build:gradle': comAndroidToolsBuildGradleVersion,
-    'com.google.gms:google-services': comGoogleGmsGoogleServices,
+    variables: parseGradleExtVariables(template.variablesGradle),
+    'com.android.tools.build:gradle': androidGradlePluginVersion,
+    'com.google.gms:google-services': googleServicesVersion,
   };
+}
+
+/**
+ * The version in a `classpath 'group:artifact:version'` line of a build.gradle.
+ */
+export function getClasspathVersion(buildGradle: string, dependency: string): string | undefined {
+  const escaped = dependency.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return buildGradle.match(new RegExp(`classpath\\s+['"]${escaped}:([^'"]+)['"]`))?.[1];
+}
+
+/**
+ * The variables of an `ext { name = value }` block such as the template's variables.gradle. Quoted
+ * values are strings and bare numbers are numbers, which is how migrate tells SDK levels from library
+ * versions.
+ */
+export function parseGradleExtVariables(variablesGradle: string): Record<string, string | number> {
+  const variables: Record<string, string | number> = {};
+  for (const match of variablesGradle.matchAll(/^\s*(\w+)\s*=\s*(?:(['"])(.*?)\2|(-?\d+(?:\.\d+)?))\s*$/gm)) {
+    variables[match[1]] = match[3] ?? Number(match[4]);
+  }
+  return variables;
 }
 
 function readFile(filename: string): string | undefined {
@@ -558,47 +557,18 @@ async function updateAppBuildGradle(filename: string) {
 }
 
 async function updateFile(
-  config: Config,
   filename: string,
   textStart: string,
   textEnd: string,
-  replacement?: string,
+  replacement: string,
   skipIfNotFound?: boolean,
 ): Promise<boolean> {
-  if (config === null) {
-    return false;
-  }
-  const path = filename;
-  let txt = readFile(path);
+  const txt = readFile(filename);
   if (!txt) {
     return false;
   }
   if (txt.includes(textStart)) {
-    if (replacement) {
-      txt = setAllStringIn(txt, textStart, textEnd, replacement);
-      writeFileSync(path, txt, { encoding: 'utf-8' });
-    } else {
-      // Replacing in code so we need to count the number of brackets to find the end of the function in swift
-      const lines = txt.split('\n');
-      let replaced = '';
-      let keep = true;
-      let brackets = 0;
-      for (const line of lines) {
-        if (line.includes(textStart)) {
-          keep = false;
-        }
-        if (!keep) {
-          brackets += (line.match(/{/g) || []).length;
-          brackets -= (line.match(/}/g) || []).length;
-          if (brackets == 0) {
-            keep = true;
-          }
-        } else {
-          replaced += line + '\n';
-        }
-      }
-      writeFileSync(path, replaced, { encoding: 'utf-8' });
-    }
+    writeFileSync(filename, setAllStringIn(txt, textStart, textEnd, replacement), { encoding: 'utf-8' });
     return true;
   } else if (!skipIfNotFound) {
     logger.error(`Unable to find "${textStart}" in ${filename}. Try updating it manually`);

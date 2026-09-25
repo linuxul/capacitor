@@ -1,19 +1,7 @@
-import {
-  ensureSymlink,
-  pathExists,
-  existsSync,
-  readFileSync,
-  realpath,
-  writeFileSync,
-  remove,
-  move,
-  mkdtemp,
-} from 'fs-extra';
-import { tmpdir } from 'os';
+import { ensureSymlink, pathExists, existsSync, readFileSync, realpath, writeFileSync, remove, move } from 'fs-extra';
 import { dirname, join, relative, resolve } from 'path';
 import type { PlistObject } from 'plist';
 import { build, parse } from 'plist';
-import { extract } from 'tar';
 
 import type { Config } from '../definitions';
 import { fatal } from '../errors';
@@ -24,6 +12,7 @@ import { getPluginType, PluginType } from '../plugin';
 import { convertToUnixPath } from '../util/fs';
 import { resolveNode } from '../util/node';
 import { runCommand } from '../util/subprocess';
+import { withExtractedTemplate } from '../util/template';
 
 export async function findPackageSwiftFile(config: Config): Promise<string> {
   const packageDirectory = resolve(config.ios.nativeProjectDirAbs, 'CapApp-SPM');
@@ -68,12 +57,10 @@ export async function extractSPMPackageDirectory(config: Config): Promise<void> 
   logger.info('Extracting ' + spmTemplate + ' to ' + spmDirectory);
 
   try {
-    const tempCapDir = await mkdtemp(join(tmpdir(), 'cap-'));
-    const tempCapSPM = join(tempCapDir, 'App', 'CapApp-SPM');
-    const tempDebugXCConfig = join(tempCapDir, 'debug.xcconfig');
-    await extract({ file: spmTemplate, cwd: tempCapDir });
-    await move(tempCapSPM, spmDirectory);
-    await move(tempDebugXCConfig, debugConfig);
+    await withExtractedTemplate(spmTemplate, async (dir) => {
+      await move(join(dir, 'App', 'CapApp-SPM'), spmDirectory);
+      await move(join(dir, 'debug.xcconfig'), debugConfig);
+    });
   } catch (err) {
     fatal('Failed to create ' + spmDirectory + ' with error: ' + err);
   }

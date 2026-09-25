@@ -5,8 +5,8 @@ import c from '../colors';
 import { runTask } from '../common';
 import type { Config } from '../definitions';
 import { logger } from '../log';
-import { convertToUnixPath, deleteFolderRecursive } from '../util/fs';
-import { extractTemplate } from '../util/template';
+import { convertToUnixPath } from '../util/fs';
+import { withExtractedTemplate } from '../util/template';
 
 import { debugBuildDeclaresCleartext } from './cleartext';
 import { findLegacyCordovaGradleLines, legacyCordovaPluginsDir } from './update';
@@ -103,22 +103,20 @@ export async function addDebugManifestIfMissing(config: Config): Promise<boolean
     return false;
   }
 
-  const tempDir = join(config.cli.assetsDirAbs, 'tempAndroidDebugManifest');
   try {
-    await extractTemplate(config.cli.assets.android.platformTemplateArchiveAbs, tempDir);
-    const templatePath = join(tempDir, 'app', 'src', 'debug', 'AndroidManifest.xml');
-    if (!existsSync(templatePath)) {
-      warnAboutDebugManifest(config, manifestPath, `it is missing from the shipped Android template`);
-      return false;
-    }
-    mkdirpSync(dirname(manifestPath));
-    copyFileSync(templatePath, manifestPath);
-    return true;
-  } catch (e: any) {
-    warnAboutDebugManifest(config, manifestPath, `${e?.message ?? e}`);
+    return await withExtractedTemplate(config.cli.assets.android.platformTemplateArchiveAbs, (dir) => {
+      const templatePath = join(dir, 'app', 'src', 'debug', 'AndroidManifest.xml');
+      if (!existsSync(templatePath)) {
+        warnAboutDebugManifest(config, manifestPath, `it is missing from the shipped Android template`);
+        return false;
+      }
+      mkdirpSync(dirname(manifestPath));
+      copyFileSync(templatePath, manifestPath);
+      return true;
+    });
+  } catch (e) {
+    warnAboutDebugManifest(config, manifestPath, e instanceof Error ? e.message : String(e));
     return false;
-  } finally {
-    deleteFolderRecursive(tempDir);
   }
 }
 
