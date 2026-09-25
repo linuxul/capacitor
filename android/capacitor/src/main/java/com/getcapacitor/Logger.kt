@@ -82,6 +82,7 @@ public object Logger {
         log(Log.WARN, tag, message, null)
     }
 
+    @JvmOverloads
     public fun error(message: String?, e: Throwable? = null) {
         error(LOG_TAG_CORE, message, e)
     }

@@ -21,6 +21,7 @@ public class PluginConfig internal constructor(
      * @param defaultValue A default value to return if the key does not exist in the config
      * @return The value from the config, if key exists. Default value returned if not
      */
+    @JvmOverloads
     public fun getString(configKey: String, defaultValue: String? = null): String? =
         JSONUtils.getString(configJSON, configKey, defaultValue)
 
@@ -58,6 +59,7 @@ public class PluginConfig internal constructor(
      * @param defaultValue A default value to return if the key does not exist in the config
      * @return The value from the config, if key exists. Default value returned if not
      */
+    @JvmOverloads
     public fun getArray(configKey: String, defaultValue: Array<String>? = null): Array<String>? =
         JSONUtils.getArray(configJSON, configKey, defaultValue)
 
