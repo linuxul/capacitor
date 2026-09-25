@@ -155,6 +155,60 @@ suspend fun take(call: PluginCall): JSObject {
 - `HttpURLConnectionBuilder` without `setUrl`/`setHeaders`, and `Bridge.Builder(fragment).create()` for a detached fragment, throw `IllegalStateException` with a message instead of `NullPointerException`.
 - New Android apps register `clean` with `tasks.register` and delete `rootProject.layout.buildDirectory`, and set `ignoreAssetsPattern` in `androidResources` instead of `aaptOptions`, so the template builds without Gradle deprecation warnings. Existing apps can make the same two edits; `cap migrate` does not.
 
+### Swift plugin API
+
+A plugin registers each method by reference instead of by selector. Such a method needs no `@objc`, may be private, may throw to reject its call, and may be `async`:
+
+- `.promise("name", MyPlugin.name)`, `.callback(...)` and `.none(...)` take a method `(CAPPluginCall) throws`. The bridge calls it on its plugin queue, as before. What it throws rejects the call. A misspelled method is a compile error instead of an `UNIMPLEMENTED` rejection at run time.
+- `.async("name", MyPlugin.name)` takes an `async throws` method that returns nothing, a `JSObject` or an `Encodable` value. It starts from the plugin queue in a `Task` of its own. Returning resolves the call: with the object or the encoded value, or without data if the method returned nothing and did not answer the call itself. A `@MainActor` method runs on the main actor, and this is how a method runs on the main thread. Async methods are promise methods, and they do not wait for each other. When the page reloads or navigates, or the bridge is released, calls that are still running are rejected with "The plugin call was cancelled" and their tasks are cancelled; what a method sends after that is dropped.
+- `throw CAPPluginError("Denied", code: "DENIED", data: [...])`, `CAPPluginError.unimplemented()` and `.unavailable()` reject with that message, code and data. `call.reject(error)` does the same from completion handlers. Other errors reject with their `localizedDescription`.
+- `getConfig().decode(MyConfig.self)` decodes a plugin's configuration.
+- A plugin that conforms to `CapacitorHttpRequestHandling` performs CapacitorHttp's requests (for example, to pin certificates).
+
+In the Swift 5 language mode, a synchronous `@MainActor` method registered with `.promise`, `.callback` or `.none` runs on the plugin queue, and the compiler says nothing. Register it with `.async` instead. `/contract-check` reports this case.
+
+Before (8.5.3):
+
+```swift
+public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "pick", returnType: .promise)]
+
+@objc func pick(_ call: CAPPluginCall) {
+    DispatchQueue.main.async {
+        self.picker.present(from: self.bridge?.viewController) { photo, error in
+            if let error { call.reject("Pick failed", "PICK_FAILED", error); return }
+            call.resolve(["path": photo!.path])
+        }
+    }
+}
+```
+
+After (9.0):
+
+```swift
+public let pluginMethods: [CAPPluginMethod] = [.async("pick", PhotoPlugin.pick)]
+
+@MainActor
+private func pick(_ call: CAPPluginCall) async throws -> JSObject {
+    do {
+        let photo = try await picker.present(from: bridge?.viewController)
+        return ["path": photo.path]
+    } catch {
+        throw CAPPluginError("Pick failed", code: "PICK_FAILED", underlyingError: error)
+    }
+}
+```
+
+### iOS plugin API changes
+
+- `CAPPluginMethod` is a struct; `selector` is optional (nil for methods registered by reference).
+- `CapacitorBridge` no longer derives from `NSObject`. `PluginConfig`, `CAPPluginCallResult` and `CAPPluginCallError` are structs. `PluginCallResult` and `resultData` are removed; use `data`. `CAPPluginCallError.data` is the data passed to `reject`, no longer `["data": data]`; what JavaScript receives is unchanged.
+- `NotificationHandlerProtocol` is a Swift protocol constrained to `AnyObject`, and no longer `@objc`.
+- The members of `CAPPluginCall` are not `@objc`, and `CAPPluginCall.jsDateFormatter` is a constant.
+- Removed, unused by the official and community plugins: the `NSNotification.capacitor…` statics (use the `Notification.Name` ones), the `NSDictionary` overload of `JSTypes.coerceDictionaryToJSObject`, the `SSLPinningHttpRequestHandlerClass` hook (use `CapacitorHttpRequestHandling`), `AppUUID`, `Data.sha256`, and `CapacitorBridge.logToJs`.
+- The UIKit members of `CAPBridgeProtocol` (`viewController`, `webView`, `userInterfaceStyle`, the status bar members, `showAlertWith`, `alert`) are `@preconcurrency @MainActor`. Code on the plugin queue compiles as before; reading them in a `Task` or an `async` function without `await` is a warning.
+- `CAPLog.enableLogging` is safe to set from any thread.
+- Deprecated, to be removed in 10.0: `CAPPluginMethod(name:returnType:)`, `CAPPluginMethod(_:returnType:)` and `CAPPluginMethod.selector`. They keep working, and a method registered this way still needs `@objc`.
+
 ### CLI
 
 - The CLI collects and sends no usage data. Upstream Capacitor sends metrics, including the dependency specs of the app (which for this fork are the release tarball URLs), to an upstream service. `npx cap telemetry` is kept so scripts that call it keep working, but it only reports that nothing is collected.
@@ -258,16 +312,16 @@ public class EchoPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "EchoPlugin"
     public let jsName = "Echo"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "echo", returnType: .promise)
+        .promise("echo", EchoPlugin.echo)
     ]
 
-    @objc func echo(_ call: CAPPluginCall) {
+    private func echo(_ call: CAPPluginCall) {
         call.resolve(["value": call.getString("value") ?? ""])
     }
 }
 ```
 
-What still matters from the Objective-C runtime: the class needs `@objc(Name)` because the CLI registers plugins by that name, and plugin methods need `@objc` because the bridge calls them by selector.
+What still matters from the Objective-C runtime: the class needs `@objc(Name)` because the CLI registers plugins by that name. Plugin methods need `@objc` only when they are registered with the deprecated selector initializers; see "Swift plugin API" under 9.0.
 
 ### API changes
 
