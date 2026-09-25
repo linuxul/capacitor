@@ -116,6 +116,17 @@ class FileUtilsTest {
     }
 
     @Test
+    fun aMediaDocumentOfAnotherTypeYieldsNoPath() {
+        // What the system picker's Documents category returns, for example for a PDF.
+        whenever(uri.authority).thenReturn("com.android.providers.media.documents")
+        documents.`when`<Boolean> { DocumentsContract.isDocumentUri(any(), any()) }.thenReturn(true)
+        documents.`when`<String> { DocumentsContract.getDocumentId(any()) }.thenReturn("document:1234")
+
+        // It threw a NullPointerException instead.
+        assertNull(FileUtils.getFileUrlForUri(context, uri))
+    }
+
+    @Test
     fun unreadableContentYieldsNoPathAndIsLogged() {
         queriesReturn(nameCursor)
         whenever(resolver.openInputStream(uri)).thenThrow(FileNotFoundException("gone"))

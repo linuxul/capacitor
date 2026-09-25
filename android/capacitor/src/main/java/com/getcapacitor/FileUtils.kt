@@ -97,18 +97,18 @@ public object FileUtils {
                 val split = COLON.split(docId)
                 val type = split[0]
 
+                // Other types, such as the "document" entries of the Documents category, have no media table here.
                 val contentUri = when (type) {
                     "image" -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
                     "video" -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
                     "audio" -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                    else -> null
+                    else -> return null
                 }
 
                 val selection = "_id=?"
                 val selectionArgs = arrayOf(split[1])
 
-                // Same as the Java original: an unknown media type throws here.
-                return getDataColumn(context, contentUri!!, selection, selectionArgs)
+                return getDataColumn(context, contentUri, selection, selectionArgs)
             }
         } else if ("content".equals(uri.scheme, ignoreCase = true)) {
             // MediaStore (and general)
