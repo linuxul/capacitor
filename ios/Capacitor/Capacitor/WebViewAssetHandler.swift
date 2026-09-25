@@ -70,24 +70,24 @@ open class WebViewAssetHandler: NSObject, WKURLSchemeHandler {
             }
 
             if let rangeString = urlSchemeTask.request.value(forHTTPHeaderField: "Range"),
-               let totalSize = try fileUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-                let fileHandle = try FileHandle(forReadingFrom: fileUrl)
-                let parts = rangeString.components(separatedBy: "=")
-                let streamParts = parts[1].components(separatedBy: "-")
-                let fromRange = Int(streamParts[0]) ?? 0
-                var toRange = totalSize - 1
-                if streamParts.count > 1 {
-                    toRange = Int(streamParts[1]) ?? toRange
-                }
-                let rangeLength = toRange - fromRange + 1
-                try fileHandle.seek(toOffset: UInt64(fromRange))
-                data = fileHandle.readData(ofLength: rangeLength)
+               let totalSize = try fileUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+               case let resolution = ByteRange.resolve(rangeString, size: totalSize), resolution != .whole {
                 headers["Accept-Ranges"] = "bytes"
-                headers["Content-Range"] = "bytes \(fromRange)-\(toRange)/\(totalSize)"
+                let statusCode: Int
+                if case let .partial(range) = resolution {
+                    let fileHandle = try FileHandle(forReadingFrom: fileUrl)
+                    defer { try? fileHandle.close() }
+                    try fileHandle.seek(toOffset: UInt64(range.first))
+                    data = try fileHandle.read(upToCount: range.length) ?? Data()
+                    statusCode = 206
+                    headers["Content-Range"] = range.contentRange(of: totalSize)
+                } else {
+                    statusCode = 416
+                    headers["Content-Range"] = ByteRange.unsatisfiedContentRange(of: totalSize)
+                }
                 headers["Content-Length"] = String(data.count)
-                let response = HTTPURLResponse(url: localUrl, statusCode: 206, httpVersion: nil, headerFields: headers)
+                let response = HTTPURLResponse(url: localUrl, statusCode: statusCode, httpVersion: nil, headerFields: headers)
                 urlSchemeTask.didReceive(response!)
-                try fileHandle.close()
             } else {
                 if !stringToLoad.contains("cordova.js") {
                     if isMediaExtension(pathExtension: url.pathExtension) {
