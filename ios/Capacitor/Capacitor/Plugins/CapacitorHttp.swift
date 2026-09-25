@@ -1,5 +1,25 @@
 import Foundation
 
+/// A plugin that performs the requests of the `CapacitorHttp` plugin in its place, for example to pin TLS certificates.
+///
+/// `CapacitorHttp` hands every request to the first registered plugin that conforms, in registration order, and
+/// performs the request itself when none does. A handler that only wants to change some requests can pass the others
+/// to `HttpRequestHandler.request(_:_:_:)`, which is what `CapacitorHttp` calls by default.
+public protocol CapacitorHttpRequestHandling: AnyObject {
+    /// Performs the request that `call` describes and settles `call`.
+    ///
+    /// Called on the bridge queue.
+    ///
+    /// - Parameters:
+    ///   - call: The call of `request`, `get`, `post`, `put`, `patch` or `delete`, whose options are the `HttpOptions` of
+    ///     JavaScript.
+    ///   - httpMethod: The method of `get` and the others (`"GET"` and so on), or nil for `request`, which takes the
+    ///     method from its `method` option.
+    ///   - config: The configuration of the bridge, for its cookie and server settings.
+    /// - Throws: An error that rejects the call.
+    func performHttpRequest(_ call: CAPPluginCall, httpMethod: String?, config: InstanceConfiguration?) throws
+}
+
 @objc(CAPHttpPlugin)
 public class CAPHttpPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CAPHttpPlugin"
@@ -13,45 +33,44 @@ public class CAPHttpPlugin: CAPPlugin, CAPBridgedPlugin {
         .promise("delete", CAPHttpPlugin.delete)
     ]
 
-    func http(_ call: CAPPluginCall, _ httpMethod: String?) {
-        do {
-            if let clazz = NSClassFromString("SSLPinningHttpRequestHandlerClass") {
-                // swiftlint:disable force_cast
-                (clazz as! NSObject.Type).perform(NSSelectorFromString("request:"), with: [
-                    "call": call,
-                    "httpMethod": httpMethod as Any,
-                    "config": self.bridge?.config as Any
-                ])
-                // swiftlint:enable force_cast
-            } else {
-                try HttpRequestHandler.request(call, httpMethod, self.bridge?.config)
-            }
-        } catch let error {
-            call.reject(error.localizedDescription)
+    func http(_ call: CAPPluginCall, _ httpMethod: String?) throws {
+        let config = bridge?.config
+        if let handler = requestHandler {
+            try handler.performHttpRequest(call, httpMethod: httpMethod, config: config)
+        } else {
+            try HttpRequestHandler.request(call, httpMethod, config)
         }
     }
 
-    func request(_ call: CAPPluginCall) {
-        http(call, nil)
+    /// The first registered plugin that handles the requests of this one.
+    private var requestHandler: CapacitorHttpRequestHandling? {
+        guard let bridge = bridge as? CapacitorBridge else {
+            return nil
+        }
+        return bridge.pluginRegistry.all.lazy.compactMap { $0 as? CapacitorHttpRequestHandling }.first
     }
 
-    func get(_ call: CAPPluginCall) {
-        http(call, "GET")
+    func request(_ call: CAPPluginCall) throws {
+        try http(call, nil)
     }
 
-    func post(_ call: CAPPluginCall) {
-        http(call, "POST")
+    func get(_ call: CAPPluginCall) throws {
+        try http(call, "GET")
     }
 
-    func put(_ call: CAPPluginCall) {
-        http(call, "PUT")
+    func post(_ call: CAPPluginCall) throws {
+        try http(call, "POST")
     }
 
-    func patch(_ call: CAPPluginCall) {
-        http(call, "PATCH")
+    func put(_ call: CAPPluginCall) throws {
+        try http(call, "PUT")
     }
 
-    func delete(_ call: CAPPluginCall) {
-        http(call, "DELETE")
+    func patch(_ call: CAPPluginCall) throws {
+        try http(call, "PATCH")
+    }
+
+    func delete(_ call: CAPPluginCall) throws {
+        try http(call, "DELETE")
     }
 }

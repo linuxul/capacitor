@@ -2,6 +2,28 @@ import XCTest
 
 @testable import Capacitor
 
+/// Performs the requests of CapacitorHttp in its place, as a certificate pinning plugin would.
+private final class PinningPlugin: CAPPlugin, CAPBridgedPlugin, CapacitorHttpRequestHandling {
+    let identifier = "PinningPlugin"
+    let jsName = "Pinning"
+    let pluginMethods: [CAPPluginMethod] = []
+
+    private let lock = NSLock()
+    private var handled: [String?] = []
+
+    var methods: [String?] {
+        lock.withLock { handled }
+    }
+
+    func performHttpRequest(_ call: CAPPluginCall, httpMethod: String?, config: InstanceConfiguration?) throws {
+        lock.withLock { handled.append(httpMethod) }
+        guard call.getString("url") != "fail" else {
+            throw CAPPluginError("Pinning failed", code: "PINNING")
+        }
+        call.resolve(["handledBy": jsName, "hasConfig": config != nil])
+    }
+}
+
 class HttpRequestHandlerTests: XCTestCase {
     override func setUp() {
         super.setUp()
@@ -75,6 +97,48 @@ class HttpRequestHandlerTests: XCTestCase {
     func testUrlParamsWithoutAUrlAreIgnored() {
         let builder = HttpRequestHandler.CapacitorHttpRequestBuilder().setUrlParams(["page": 2])
         XCTAssertNil(builder.url)
+    }
+
+    // MARK: - Request handlers
+
+    /// Sends `method` to CapacitorHttp on `bridge` and returns the result.
+    private func send(_ method: String, _ options: [String: Any], to bridge: RecordingBridge) -> RecordingBridge.Message? {
+        let callbackId = UUID().uuidString
+        let sent = expectation(description: "\(method) answered")
+        bridge.onMessage = { if $0.callbackId == callbackId { sent.fulfill() } }
+        bridge.handleJSCall(call: JSCall(options: options, pluginId: "CapacitorHttp", method: method, callbackId: callbackId))
+        wait(for: [sent], timeout: 20)
+        return bridge.messages.first { $0.callbackId == callbackId }
+    }
+
+    func testARegisteredRequestHandlerPerformsTheRequests() throws {
+        let bridge = RecordingBridge(delegate: TestBridgeDelegate())
+        bridge.registerPluginInstance(CAPHttpPlugin())
+        let handler = PinningPlugin()
+        bridge.registerPluginInstance(handler)
+
+        let handled = try XCTUnwrap(send("get", ["url": "capstub://http/items"], to: bridge)?.payload)
+        let data = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(handled.utf8)) as? [String: Any])
+        XCTAssertEqual(data["handledBy"] as? String, "Pinning")
+        XCTAssertEqual(data["hasConfig"] as? Bool, true)
+        XCTAssertEqual(send("request", ["url": "capstub://http/items", "method": "PUT"], to: bridge)?.success, true)
+        XCTAssertEqual(handler.methods, ["GET", nil])
+        XCTAssertTrue(StubURLProtocol.requests.isEmpty, "CapacitorHttp must not send the request itself")
+
+        let failed = try XCTUnwrap(send("post", ["url": "fail"], to: bridge))
+        XCTAssertFalse(failed.success)
+        XCTAssertTrue(failed.payload.contains(#""code":"PINNING""#), failed.payload)
+    }
+
+    func testWithoutARequestHandlerCapacitorHttpSendsTheRequest() {
+        StubURLProtocol.body = Data(#"{"ok":true}"#.utf8)
+        StubURLProtocol.httpHeaders = ["Content-Type": "application/json"]
+        let bridge = RecordingBridge(delegate: TestBridgeDelegate())
+        bridge.registerPluginInstance(CAPHttpPlugin())
+
+        let message = send("get", ["url": "capstub://http/items"], to: bridge)
+        XCTAssertEqual(message?.success, true)
+        XCTAssertEqual(StubURLProtocol.requests.first?.httpMethod, "GET")
     }
 
     // MARK: - Responses
