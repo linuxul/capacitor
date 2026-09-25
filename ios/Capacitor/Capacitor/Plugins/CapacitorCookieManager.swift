@@ -56,7 +56,7 @@ public class CapacitorCookieManager {
     }
 
     public func setCookie(_ domain: String, _ action: String) {
-        let url = getServerUrl(domain)!
+        guard let url = getServerUrl(domain) else { return }
         let jar = HTTPCookieStorage.shared
         let field = ["Set-Cookie": action]
         let cookies = HTTPCookie.cookies(withResponseHeaderFields: field, for: url)
