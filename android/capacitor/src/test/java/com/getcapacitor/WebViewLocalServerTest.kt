@@ -13,6 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -156,6 +157,20 @@ class WebViewLocalServerTest {
     fun aPathOfOnlySlashesIsNotServedWithoutHtml5Mode() {
         assertNull(intercept("//"))
         assertNull(intercept("///"))
+    }
+
+    @Test
+    fun anInvalidPathLeavesTheServedPathAlone() {
+        val server =
+            WebViewLocalServer(mock<Context>().also { whenever(it.applicationContext).thenReturn(it) }, mock(), null, emptyList(), false)
+        server.hostAssets("public")
+
+        // A null path used to replace the served path (and switch from assets to files) before failing.
+        assertThrows(IllegalArgumentException::class.java) { server.hostFiles(null) }
+        assertThrows(IllegalArgumentException::class.java) { server.hostFiles("www/*") }
+        assertThrows(IllegalArgumentException::class.java) { server.hostAssets(null) }
+
+        assertEquals("public", server.basePath)
     }
 
     @Test

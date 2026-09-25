@@ -12,6 +12,11 @@ public class WebView : Plugin() {
     @PluginMethod
     public fun setServerAssetPath(call: PluginCall) {
         val path = call.getString("path")
+        if (path == null) {
+            call.reject("Must provide a path")
+            return
+        }
+
         bridge.setServerAssetPath(path)
         call.resolve()
     }
@@ -19,6 +24,11 @@ public class WebView : Plugin() {
     @PluginMethod
     public fun setServerBasePath(call: PluginCall) {
         val path = call.getString("path")
+        if (path == null) {
+            call.reject("Must provide a path")
+            return
+        }
+
         bridge.serverBasePath = path
         call.resolve()
     }

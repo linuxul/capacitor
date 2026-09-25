@@ -549,9 +549,7 @@ public class WebViewLocalServer internal constructor(
      * available by the server (for example "/www").
      */
     public fun hostAssets(assetPath: String?) {
-        isAsset = true
-        basePath = assetPath
-        createHostingDetails()
+        host(assetPath, isAsset = true)
     }
 
     /**
@@ -563,19 +561,25 @@ public class WebViewLocalServer internal constructor(
      * available by the server (for example "/www").
      */
     public fun hostFiles(basePath: String?) {
-        isAsset = false
-        this.basePath = basePath
-        createHostingDetails()
+        host(basePath, isAsset = false)
     }
 
-    private fun createHostingDetails() {
-        // Same as the Java original: hosting a null path throws here.
-        val assetPath = basePath!!
+    /**
+     * Serves the app from [path]. An invalid path throws before anything changes, so the app keeps being served
+     * from where it was.
+     *
+     * @throws IllegalArgumentException when [path] is null or contains a `*`
+     */
+    private fun host(path: String?, isAsset: Boolean) {
+        requireNotNull(path) { "The path to serve the app from must not be null" }
+        require('*' !in path) { "assetPath cannot contain the '*' character." }
 
-        if (assetPath.indexOf('*') != -1) {
-            throw IllegalArgumentException("assetPath cannot contain the '*' character.")
-        }
+        this.isAsset = isAsset
+        basePath = path
+        createHostingDetails(path)
+    }
 
+    private fun createHostingDetails(assetPath: String) {
         val handler: PathHandler =
             object : PathHandler() {
                 override fun handle(url: Uri): InputStream? {
