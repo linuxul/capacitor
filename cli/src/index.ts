@@ -5,17 +5,13 @@ import c from './colors';
 import { loadConfig } from './config';
 import type { Config, PackageManager, Writable } from './definitions';
 import { fatal, isFatal } from './errors';
-import { receive } from './ipc';
 import { logger, output } from './log';
-import { telemetryAction } from './telemetry';
 import { wrapAction } from './util/cli';
 import { emoji as _e } from './util/emoji';
 
 process.on('unhandledRejection', (error) => {
   console.error(c.failure('[fatal]'), error);
 });
-
-process.on('message', receive);
 
 export async function run(): Promise<void> {
   try {
@@ -52,27 +48,15 @@ export function runProgram(config: Config): void {
     );
 
   program
-    .command('create [directory] [name] [id]', { hidden: true })
-    .description('Creates a new Capacitor project')
-    .action(
-      wrapAction(async () => {
-        const { createCommand } = await import('./tasks/create');
-        await createCommand();
-      }),
-    );
-
-  program
     .command('init [appName] [appId]')
     .description(`Initialize Capacitor configuration`)
     .option('--web-dir <value>', 'Optional: Directory of your projects built web assets')
     .option('--skip-appid-validation', 'Optional: Skip validating the app ID for iOS and Android compatibility')
     .action(
-      wrapAction(
-        telemetryAction(config, async (appName, appId, { webDir, skipAppidValidation }) => {
-          const { initCommand } = await import('./tasks/init');
-          await initCommand(config, appName, appId, webDir, skipAppidValidation);
-        }),
-      ),
+      wrapAction(async (appName, appId, { webDir, skipAppidValidation }) => {
+        const { initCommand } = await import('./tasks/init');
+        await initCommand(config, appName, appId, webDir, skipAppidValidation);
+      }),
     );
 
   program
@@ -95,12 +79,10 @@ export function runProgram(config: Config): void {
       false,
     )
     .action(
-      wrapAction(
-        telemetryAction(config, async (platform, { deployment, inline }) => {
-          const { syncCommand } = await import('./tasks/sync');
-          await syncCommand(config, platform, deployment, inline);
-        }),
-      ),
+      wrapAction(async (platform, { deployment, inline }) => {
+        const { syncCommand } = await import('./tasks/sync');
+        await syncCommand(config, platform, deployment, inline);
+      }),
     );
 
   program
@@ -108,12 +90,10 @@ export function runProgram(config: Config): void {
     .description(`updates the native plugins and dependencies based on ${c.strong('package.json')}`)
     .option('--deployment', 'Optional: if provided, pod install will use --deployment option')
     .action(
-      wrapAction(
-        telemetryAction(config, async (platform, { deployment }) => {
-          const { updateCommand } = await import('./tasks/update');
-          await updateCommand(config, platform, deployment);
-        }),
-      ),
+      wrapAction(async (platform, { deployment }) => {
+        const { updateCommand } = await import('./tasks/update');
+        await updateCommand(config, platform, deployment);
+      }),
     );
 
   program
@@ -125,12 +105,10 @@ export function runProgram(config: Config): void {
       false,
     )
     .action(
-      wrapAction(
-        telemetryAction(config, async (platform, { inline }) => {
-          const { copyCommand } = await import('./tasks/copy');
-          await copyCommand(config, platform, inline);
-        }),
-      ),
+      wrapAction(async (platform, { inline }) => {
+        const { copyCommand } = await import('./tasks/copy');
+        await copyCommand(config, platform, inline);
+      }),
     );
 
   program
@@ -192,46 +170,43 @@ export function runProgram(config: Config): void {
     )
     .action(
       wrapAction(
-        telemetryAction(
-          config,
-          async (
-            platform,
-            {
-              scheme,
-              flavor,
-              keystorepath,
-              keystorepass,
-              keystorealias,
-              keystorealiaspass,
-              androidreleasetype,
-              signingType,
-              configuration,
-              xcodeTeamId,
-              xcodeExportMethod,
-              xcodeSigningStyle,
-              xcodeSigningCertificate,
-              xcodeProvisioningProfile,
-            },
-          ) => {
-            const { buildCommand } = await import('./tasks/build');
-            await buildCommand(config, platform, {
-              scheme,
-              flavor,
-              keystorepath,
-              keystorepass,
-              keystorealias,
-              keystorealiaspass,
-              androidreleasetype,
-              signingtype: signingType,
-              configuration,
-              xcodeTeamId,
-              xcodeExportMethod,
-              xcodeSigningType: xcodeSigningStyle,
-              xcodeSigningCertificate,
-              xcodeProvisioningProfile,
-            });
+        async (
+          platform,
+          {
+            scheme,
+            flavor,
+            keystorepath,
+            keystorepass,
+            keystorealias,
+            keystorealiaspass,
+            androidreleasetype,
+            signingType,
+            configuration,
+            xcodeTeamId,
+            xcodeExportMethod,
+            xcodeSigningStyle,
+            xcodeSigningCertificate,
+            xcodeProvisioningProfile,
           },
-        ),
+        ) => {
+          const { buildCommand } = await import('./tasks/build');
+          await buildCommand(config, platform, {
+            scheme,
+            flavor,
+            keystorepath,
+            keystorepass,
+            keystorealias,
+            keystorealiaspass,
+            androidreleasetype,
+            signingtype: signingType,
+            configuration,
+            xcodeTeamId,
+            xcodeExportMethod,
+            xcodeSigningType: xcodeSigningStyle,
+            xcodeSigningCertificate,
+            xcodeProvisioningProfile,
+          });
+        },
       ),
     );
   program
@@ -256,46 +231,43 @@ export function runProgram(config: Config): void {
     .option('--https', 'Use https:// instead of http:// for live-reload URL (used with --live-reload)')
     .action(
       wrapAction(
-        telemetryAction(
-          config,
-          async (
-            platform,
-            {
-              scheme,
-              flavor,
-              list,
-              json,
-              target,
-              targetName,
-              targetNameSdkVersion,
-              sync,
-              forwardPorts,
-              liveReload,
-              host,
-              port,
-              configuration,
-              https,
-            },
-          ) => {
-            const { runCommand } = await import('./tasks/run');
-            await runCommand(config, platform, {
-              scheme,
-              flavor,
-              list,
-              json,
-              target,
-              targetName,
-              targetNameSdkVersion,
-              sync,
-              forwardPorts,
-              liveReload,
-              host,
-              port,
-              configuration,
-              https,
-            });
+        async (
+          platform,
+          {
+            scheme,
+            flavor,
+            list,
+            json,
+            target,
+            targetName,
+            targetNameSdkVersion,
+            sync,
+            forwardPorts,
+            liveReload,
+            host,
+            port,
+            configuration,
+            https,
           },
-        ),
+        ) => {
+          const { runCommand } = await import('./tasks/run');
+          await runCommand(config, platform, {
+            scheme,
+            flavor,
+            list,
+            json,
+            target,
+            targetName,
+            targetNameSdkVersion,
+            sync,
+            forwardPorts,
+            liveReload,
+            host,
+            port,
+            configuration,
+            https,
+          });
+        },
       ),
     );
 
@@ -303,12 +275,10 @@ export function runProgram(config: Config): void {
     .command('open [platform]')
     .description('opens the native project workspace (Xcode for iOS)')
     .action(
-      wrapAction(
-        telemetryAction(config, async (platform) => {
-          const { openCommand } = await import('./tasks/open');
-          await openCommand(config, platform);
-        }),
-      ),
+      wrapAction(async (platform) => {
+        const { openCommand } = await import('./tasks/open');
+        await openCommand(config, platform);
+      }),
     );
 
   program
@@ -319,73 +289,50 @@ export function runProgram(config: Config): void {
       'The package manager to use for dependency installs (CocoaPods or SPM)',
     )
     .action(
-      wrapAction(
-        telemetryAction(config, async (platform, { packagemanager }) => {
-          const { addCommand } = await import('./tasks/add');
+      wrapAction(async (platform, { packagemanager }) => {
+        const { addCommand } = await import('./tasks/add');
 
-          const configWritable: Writable<Config> = config as Writable<Config>;
-          configWritable.ios.packageManager = getPackageManager(config, packagemanager?.toLowerCase());
-          if (packagemanager?.toLowerCase() === 'CocoaPods'.toLowerCase()) {
-            configWritable.cli.assets.ios.platformTemplateArchive = 'ios-pods-template.tar.gz';
-            configWritable.cli.assets.ios.platformTemplateArchiveAbs = resolve(
-              configWritable.cli.assetsDirAbs,
-              configWritable.cli.assets.ios.platformTemplateArchive,
-            );
-          }
+        const configWritable: Writable<Config> = config as Writable<Config>;
+        configWritable.ios.packageManager = getPackageManager(config, packagemanager?.toLowerCase());
+        if (packagemanager?.toLowerCase() === 'CocoaPods'.toLowerCase()) {
+          configWritable.cli.assets.ios.platformTemplateArchive = 'ios-pods-template.tar.gz';
+          configWritable.cli.assets.ios.platformTemplateArchiveAbs = resolve(
+            configWritable.cli.assetsDirAbs,
+            configWritable.cli.assets.ios.platformTemplateArchive,
+          );
+        }
 
-          await addCommand(configWritable as Config, platform);
-        }),
-      ),
+        await addCommand(configWritable as Config, platform);
+      }),
     );
 
   program
     .command('ls [platform]')
     .description('list installed Capacitor plugins')
     .action(
-      wrapAction(
-        telemetryAction(config, async (platform) => {
-          const { listCommand } = await import('./tasks/list');
-          await listCommand(config, platform);
-        }),
-      ),
+      wrapAction(async (platform) => {
+        const { listCommand } = await import('./tasks/list');
+        await listCommand(config, platform);
+      }),
     );
 
   program
     .command('doctor [platform]')
     .description('checks the current setup for common errors')
     .action(
-      wrapAction(
-        telemetryAction(config, async (platform) => {
-          const { doctorCommand } = await import('./tasks/doctor');
-          await doctorCommand(config, platform);
-        }),
-      ),
-    );
-
-  program
-    .command('telemetry [on|off]', { hidden: true })
-    .description('enable or disable telemetry')
-    .action(
-      wrapAction(async (onOrOff) => {
-        const { telemetryCommand } = await import('./tasks/telemetry');
-        await telemetryCommand(onOrOff);
+      wrapAction(async (platform) => {
+        const { doctorCommand } = await import('./tasks/doctor');
+        await doctorCommand(config, platform);
       }),
     );
 
   program
-    .command('📡', { hidden: true })
-    .description('IPC receiver command')
-    .action(() => {
-      // no-op: IPC messages are received via `process.on('message')`
-    });
-
-  program
-    .command('plugin:generate', { hidden: true })
-    .description('start a new Capacitor plugin')
+    .command('telemetry [on|off]', { hidden: true })
+    .description('report that this fork collects no telemetry')
     .action(
-      wrapAction(async () => {
-        const { newPluginCommand } = await import('./tasks/new-plugin');
-        await newPluginCommand();
+      wrapAction(async (onOrOff) => {
+        const { telemetryCommand } = await import('./tasks/telemetry');
+        await telemetryCommand(onOrOff);
       }),
     );
 
