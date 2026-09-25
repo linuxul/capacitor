@@ -98,8 +98,9 @@ extension CAPPluginCall: JSValueContainer {
         return options
     }
 
-    /// Parses the ISO 8601 strings that `getDate(_:)` reads. Formatters are thread-safe, so one is shared.
-    public static let jsDateFormatter = ISO8601DateFormatter()
+    /// Parses the ISO 8601 strings that `getDate(_:)` reads. Formatters are thread-safe, so one is shared by every call.
+    /// It is not the runtime's own formatter, so changing its options changes only what `getDate(_:)` accepts.
+    public static let jsDateFormatter = JSDateFormat.makeFormatter()
 }
 
 public extension CAPPluginCall {

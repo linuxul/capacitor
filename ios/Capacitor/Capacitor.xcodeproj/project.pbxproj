@@ -15,6 +15,7 @@
 		50503EEE1FC08595003606DC /* CapacitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50503EED1FC08595003606DC /* CapacitorTests.swift */; };
 		6214934725509C3F006C36F9 /* CAPInstanceConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6214934625509C3F006C36F9 /* CAPInstanceConfiguration.swift */; };
 		621ECCBC2542046400D3D615 /* JSTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621ECCBB2542046400D3D615 /* JSTypes.swift */; };
+		BDCBBFF3205196410D847A31 /* JSDateFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E71535F61E7528672578E5A /* JSDateFormat.swift */; };
 		621ECCC3254204B700D3D615 /* BridgedTypesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621ECCC2254204B700D3D615 /* BridgedTypesTests.swift */; };
 		621ECCD6254205BD00D3D615 /* CAPBridgeProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621ECCD4254205BD00D3D615 /* CAPBridgeProtocol.swift */; };
 		621ECCDA254205C400D3D615 /* CapacitorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621ECCD9254205C400D3D615 /* CapacitorBridge.swift */; };
@@ -91,6 +92,7 @@
 		A5B3ACEF0BF29A6C2C0EFDBB /* WebViewAssetHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5625872C48EE642E7AE79B5 /* WebViewAssetHandlerTests.swift */; };
 		FCDCD7936833B45D6B50BA8D /* MimeTypesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E837136C87680CB75430F9C2 /* MimeTypesTests.swift */; };
 		6076129E1756570151700E18 /* ByteRangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E3C4F6EFF6CDF9FC96899F /* ByteRangeTests.swift */; };
+		D93F8B50D5D81B996EA9E99D /* JSDateFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694E4A5A3C924CE6C5843152 /* JSDateFormatTests.swift */; };
 		998807272EC140DF9A723327 /* PluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0A1EB33995406E9F64BD64 /* PluginTests.swift */; };
 		8D1A76AAEF4913C39A5393F4 /* PluginMethodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97BC3A3F3CBEF13AFA413064 /* PluginMethodTests.swift */; };
 		D8B78BBFEE55F9E01B91565D /* PluginErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB901543CA2DD42BB4F79EC /* PluginErrorTests.swift */; };
@@ -167,6 +169,7 @@
 		50503EED1FC08595003606DC /* CapacitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapacitorTests.swift; sourceTree = "<group>"; };
 		6214934625509C3F006C36F9 /* CAPInstanceConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAPInstanceConfiguration.swift; sourceTree = "<group>"; };
 		621ECCBB2542046400D3D615 /* JSTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JSTypes.swift; sourceTree = "<group>"; };
+		8E71535F61E7528672578E5A /* JSDateFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSDateFormat.swift; sourceTree = "<group>"; };
 		621ECCC2254204B700D3D615 /* BridgedTypesTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BridgedTypesTests.swift; sourceTree = "<group>"; };
 		621ECCD4254205BD00D3D615 /* CAPBridgeProtocol.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CAPBridgeProtocol.swift; sourceTree = "<group>"; };
 		621ECCD9254205C400D3D615 /* CapacitorBridge.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CapacitorBridge.swift; sourceTree = "<group>"; };
@@ -247,6 +250,7 @@
 		F5625872C48EE642E7AE79B5 /* WebViewAssetHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewAssetHandlerTests.swift; sourceTree = "<group>"; };
 		E837136C87680CB75430F9C2 /* MimeTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MimeTypesTests.swift; sourceTree = "<group>"; };
 		37E3C4F6EFF6CDF9FC96899F /* ByteRangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteRangeTests.swift; sourceTree = "<group>"; };
+		694E4A5A3C924CE6C5843152 /* JSDateFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSDateFormatTests.swift; sourceTree = "<group>"; };
 		2A0A1EB33995406E9F64BD64 /* PluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginTests.swift; sourceTree = "<group>"; };
 		97BC3A3F3CBEF13AFA413064 /* PluginMethodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginMethodTests.swift; sourceTree = "<group>"; };
 		AEB901543CA2DD42BB4F79EC /* PluginErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginErrorTests.swift; sourceTree = "<group>"; };
@@ -361,6 +365,7 @@
 				F5625872C48EE642E7AE79B5 /* WebViewAssetHandlerTests.swift */,
 				E837136C87680CB75430F9C2 /* MimeTypesTests.swift */,
 				37E3C4F6EFF6CDF9FC96899F /* ByteRangeTests.swift */,
+				694E4A5A3C924CE6C5843152 /* JSDateFormatTests.swift */,
 				2A0A1EB33995406E9F64BD64 /* PluginTests.swift */,
 				97BC3A3F3CBEF13AFA413064 /* PluginMethodTests.swift */,
 				AEB901543CA2DD42BB4F79EC /* PluginErrorTests.swift */,
@@ -386,6 +391,7 @@
 				A7F7EDD4292BE8520015B73B /* CAPInstancePlugin.swift */,
 				62ADC0C925CB678000E914DE /* PluginCallResult.swift */,
 				621ECCBB2542046400D3D615 /* JSTypes.swift */,
+				8E71535F61E7528672578E5A /* JSDateFormat.swift */,
 				623D68F9254C5037002D01D1 /* KeyPath.swift */,
 				62959AFF2524DA7700A3D7F1 /* JS.swift */,
 				62959AE32524DA7700A3D7F1 /* JSExport.swift */,
@@ -682,6 +688,7 @@
 				62E207AE2588234500A78983 /* WebViewDelegationHandler.swift in Sources */,
 				A7187FD22BD1CB7D00093C45 /* CAPPluginMethod.swift in Sources */,
 				621ECCBC2542046400D3D615 /* JSTypes.swift in Sources */,
+				BDCBBFF3205196410D847A31 /* JSDateFormat.swift in Sources */,
 				621ECCDA254205C400D3D615 /* CapacitorBridge.swift in Sources */,
 				4EC345DA10E1CD8E0CA29F2F /* CapacitorBridge+Environment.swift in Sources */,
 				BAD788B3A73855AC56795159 /* CapacitorBridge+Plugins.swift in Sources */,
@@ -753,6 +760,7 @@
 				A5B3ACEF0BF29A6C2C0EFDBB /* WebViewAssetHandlerTests.swift in Sources */,
 				FCDCD7936833B45D6B50BA8D /* MimeTypesTests.swift in Sources */,
 				6076129E1756570151700E18 /* ByteRangeTests.swift in Sources */,
+				D93F8B50D5D81B996EA9E99D /* JSDateFormatTests.swift in Sources */,
 				998807272EC140DF9A723327 /* PluginTests.swift in Sources */,
 				8D1A76AAEF4913C39A5393F4 /* PluginMethodTests.swift in Sources */,
 				D8B78BBFEE55F9E01B91565D /* PluginErrorTests.swift in Sources */,

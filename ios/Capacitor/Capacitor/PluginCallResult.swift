@@ -42,8 +42,6 @@ internal enum PluginCallResultJSON {
         case invalidObject
     }
 
-    private static let formatter = ISO8601DateFormatter()
-
     /// The JSON for `dictionary`, with `Date` values written as ISO 8601 strings. Keys of `includingFields` are added
     /// unless `dictionary` has them already.
     static func serialize(_ dictionary: PluginCallResultData, includingFields fields: PluginCallResultData? = nil) throws -> String? {
@@ -65,7 +63,7 @@ internal enum PluginCallResultJSON {
 
     private static func prepare(value: Any) -> Any {
         if let date = value as? Date {
-            return formatter.string(from: date)
+            return JSDateFormat.string(from: date)
         } else if let aDictionary = value as? PluginCallResultData {
             return prepare(dictionary: aDictionary)
         } else if let anArray = value as? [Any] {

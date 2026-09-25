@@ -158,8 +158,9 @@ extension _JSValueDecoder: Decoder {
             return Date(timeIntervalSince1970: value.doubleValue / Double(MSEC_PER_SEC))
         case .iso8601:
             guard let value = data as? String else { throw DecodingError.dataCorrupted(data, target: String.self, codingPath: codingPath) }
-            let formatter = ISO8601DateFormatter()
-            guard let date = formatter.date(from: value) else { throw DecodingError.dataCorrupted(value, target: Date.self, codingPath: codingPath) }
+            guard let date = JSDateFormat.date(from: value) else {
+                throw DecodingError.dataCorrupted(value, target: Date.self, codingPath: codingPath)
+            }
             return date
         case .formatted(let formatter):
             guard let value = data as? String else { throw DecodingError.dataCorrupted(data, target: String.self, codingPath: codingPath) }

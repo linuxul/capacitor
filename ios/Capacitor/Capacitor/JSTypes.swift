@@ -197,8 +197,6 @@ extension JSTypes {
     }
 }
 
-private let dateStringFormatter = ISO8601DateFormatter()
-
 // We need a large switch statement because we have a lot of types.
 // swiftlint:disable:next cyclomatic_complexity
 private func coerceToJSValue(_ value: Any?, formattingDates: Bool) -> JSValue? {
@@ -220,7 +218,7 @@ private func coerceToJSValue(_ value: Any?, formattingDates: Bool) -> JSValue? {
         return doubleValue
     case let dateValue as Date:
         if formattingDates {
-            return dateStringFormatter.string(from: dateValue)
+            return JSDateFormat.string(from: dateValue)
         }
         return dateValue
     case let nullValue as NSNull:

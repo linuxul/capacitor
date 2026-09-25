@@ -272,7 +272,7 @@ extension _JSValueEncoder: Encoder {
             case .secondsSince1970:
                 try value.timeIntervalSince1970.encode(to: self)
             case .iso8601:
-                let formattedDate = ISO8601DateFormatter().string(from: value)
+                let formattedDate = JSDateFormat.string(from: value)
                 try formattedDate.encode(to: self)
             case .formatted(let formatter):
                 let formattedDate = formatter.string(from: value)
