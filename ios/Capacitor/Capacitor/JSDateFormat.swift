@@ -2,7 +2,8 @@ import Foundation
 
 /// The ISO 8601 form in which the runtime reads and writes dates: the defaults of `ISO8601DateFormatter`, an internet
 /// date and time in UTC with whole seconds, such as `2023-11-14T22:13:20Z`. Fractional seconds are dropped when
-/// writing and not accepted when reading.
+/// writing. Reading also accepts them, because JavaScript's `Date.prototype.toISOString()` writes milliseconds
+/// (`2023-11-14T22:13:20.750Z`).
 ///
 /// `ISO8601DateFormatter` is thread-safe, so the runtime shares one ``formatter``.
 internal enum JSDateFormat {
@@ -16,11 +17,18 @@ internal enum JSDateFormat {
     /// The formatter the runtime shares. Never change its options.
     static let formatter = makeFormatter()
 
+    /// Reads the fractional seconds that `toISOString()` writes.
+    static let fractionalSecondsFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
     static func string(from date: Date) -> String {
         return formatter.string(from: date)
     }
 
     static func date(from string: String) -> Date? {
-        return formatter.date(from: string)
+        return formatter.date(from: string) ?? fractionalSecondsFormatter.date(from: string)
     }
 }

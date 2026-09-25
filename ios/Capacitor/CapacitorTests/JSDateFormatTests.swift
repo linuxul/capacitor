@@ -19,10 +19,13 @@ class JSDateFormatTests: XCTestCase {
         XCTAssertEqual(JSDateFormat.string(from: date), string)
     }
 
-    func testReadsOffsetsButNotFractionalSeconds() {
+    func testReadsOffsetsAndFractionalSeconds() throws {
         XCTAssertEqual(JSDateFormat.date(from: string), wholeSeconds)
         XCTAssertEqual(JSDateFormat.date(from: "2023-11-15T07:13:20+09:00"), wholeSeconds)
-        XCTAssertNil(JSDateFormat.date(from: "2023-11-14T22:13:20.750Z"))
+        // what JavaScript's toISOString() writes
+        let fractional = try XCTUnwrap(JSDateFormat.date(from: "2023-11-14T22:13:20.750Z"))
+        XCTAssertEqual(fractional.timeIntervalSince1970, date.timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertNil(JSDateFormat.date(from: "2023-11-14"))
     }
 
     func testPluginCallResultsWriteDatesInTheSameForm() throws {
@@ -43,12 +46,16 @@ class JSDateFormatTests: XCTestCase {
     func testTheValueEncoderAndDecoderUseTheSameForm() throws {
         XCTAssertEqual(try JSValueEncoder(dateEncodingStrategy: .iso8601).encode(date) as? String, string)
         XCTAssertEqual(try JSValueDecoder(dateDecodingStrategy: .iso8601).decode(Date.self, from: string), wholeSeconds)
-        XCTAssertThrowsError(try JSValueDecoder(dateDecodingStrategy: .iso8601).decode(Date.self, from: "2023-11-14T22:13:20.750Z"))
+        let fractional = try JSValueDecoder(dateDecodingStrategy: .iso8601).decode(Date.self, from: "2023-11-14T22:13:20.750Z")
+        XCTAssertEqual(fractional.timeIntervalSince1970, date.timeIntervalSince1970, accuracy: 0.001)
     }
 
-    func testPluginCallsReadDatesWithTheirOwnFormatter() {
+    func testPluginCallsReadDatesWithTheirOwnFormatter() throws {
         let call = CAPPluginCall(callbackId: "1", methodName: "m", options: ["date": string], success: { _, _ in }, error: { _ in })
         XCTAssertEqual(call.getDate("date"), wholeSeconds)
+        let fractionalCall = CAPPluginCall(callbackId: "2", methodName: "m", options: ["date": "2023-11-14T22:13:20.750Z"],
+                                           success: { _, _ in }, error: { _ in })
+        XCTAssertEqual(try XCTUnwrap(fractionalCall.getDate("date")).timeIntervalSince1970, date.timeIntervalSince1970, accuracy: 0.001)
         XCTAssertEqual(CAPPluginCall.jsDateFormatter.formatOptions, JSDateFormat.formatter.formatOptions)
         // plugins can change the options of the public formatter; that must not change what the runtime writes
         XCTAssertFalse(CAPPluginCall.jsDateFormatter === JSDateFormat.formatter)
