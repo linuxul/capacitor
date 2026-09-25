@@ -92,9 +92,17 @@ public class Bridge private constructor(
     public val appUrl: String
         get() = appUrls.appUrl
 
-    public lateinit var appAllowNavigationMask: HostMask
-        private set
+    /**
+     * The hosts of `server.allowNavigation`, which the WebView may navigate to besides the app.
+     */
+    public val appAllowNavigationMask: HostMask
+
+    /**
+     * The origins whose pages may post messages to the bridge.
+     */
     public val allowedOriginRules: MutableSet<String> = HashSet()
+
+    private val navigationPolicy: NavigationPolicy
     private var miscJSFileInjections = ArrayList<String>()
     private var canInjectJS = true
 
@@ -155,7 +163,10 @@ public class Bridge private constructor(
 
         // Initialize web view and message handler for it
         initWebView()
-        setAllowedOriginRules()
+        appAllowNavigationMask = HostMask.Parser.parse(this.config.allowNavigation)
+        allowedOriginRules.addAll(NavigationPolicy.allowedOriginRules(scheme, host, serverUrl, this.config.allowNavigation))
+        val appUri = Uri.parse(appUrl)
+        navigationPolicy = NavigationPolicy(appUri.scheme, appUri.host, appAllowNavigationMask)
         msgHandler = MessageHandler(this, webView)
 
         // Grab any intent info that our app was launched with
@@ -165,24 +176,6 @@ public class Bridge private constructor(
         registerAllPlugins()
 
         loadWebView()
-    }
-
-    private fun setAllowedOriginRules() {
-        val appAllowNavigationConfig = config.allowNavigation
-        val authority = host
-        val scheme = scheme
-        allowedOriginRules.add("$scheme://$authority")
-        serverUrl?.let { allowedOriginRules.add(it) }
-        if (appAllowNavigationConfig != null) {
-            for (allowNavigation in appAllowNavigationConfig) {
-                if (!allowNavigation.startsWith("http")) {
-                    allowedOriginRules.add("https://$allowNavigation")
-                } else {
-                    allowedOriginRules.add(allowNavigation)
-                }
-            }
-        }
-        appAllowNavigationMask = HostMask.Parser.parse(appAllowNavigationConfig)
     }
 
     private fun loadWebView() {
@@ -261,39 +254,31 @@ public class Bridge private constructor(
         }
     }
 
-    public fun launchIntent(url: Uri): Boolean {
-        // The proxy returns a remote body at the app origin, so block it before plugins can allow it.
-        val path = url.path
-        if (path != null && path.startsWith(CAPACITOR_HTTP_INTERCEPTOR_START)) {
-            return true
-        }
+    /**
+     * Whether the WebView must not load [url] itself: it is blocked, or opened in another app. Plugins are asked
+     * first, through [Plugin.shouldOverrideLoad]; see [NavigationPolicy] for the rest.
+     */
+    public fun launchIntent(url: Uri): Boolean =
+        when (navigationPolicy.decide(url.scheme, url.host, url.path) { askPluginsToOverrideLoad(url) }) {
+            NavigationPolicy.Decision.LOAD -> false
 
-        /*
-         * Give plugins the chance to handle the url
-         */
-        for (entry in plugins.entries) {
-            val plugin = entry.value.instance
-            val shouldOverrideLoad = plugin.shouldOverrideLoad(url)
-            if (shouldOverrideLoad != null) {
-                return shouldOverrideLoad
+            NavigationPolicy.Decision.BLOCK -> true
+
+            NavigationPolicy.Decision.OPEN_EXTERNALLY -> {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, url))
+                } catch (e: ActivityNotFoundException) {
+                    Logger.debug("No app can open $url")
+                }
+                true
             }
         }
 
-        if (url.scheme == "data" || url.scheme == "blob") {
-            return false
+    private fun askPluginsToOverrideLoad(url: Uri): Boolean? {
+        for (handle in plugins.values) {
+            handle.instance.shouldOverrideLoad(url)?.let { return it }
         }
-
-        val appUri = Uri.parse(appUrl)
-        if (!(appUri.host == url.host && url.scheme == appUri.scheme) && !appAllowNavigationMask.matches(url.host)) {
-            try {
-                val openIntent = Intent(Intent.ACTION_VIEW, url)
-                context.startActivity(openIntent)
-            } catch (e: ActivityNotFoundException) {
-                // TODO - trigger an event
-            }
-            return true
-        }
-        return false
+        return null
     }
 
     private fun isNewBinary(): Boolean {
