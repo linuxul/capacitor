@@ -32,7 +32,6 @@ import com.getcapacitor.util.InternalUtils
 import com.getcapacitor.util.WebColor
 import java.io.File
 import java.net.SocketTimeoutException
-import org.json.JSONException
 
 /**
  * The Bridge class is the main engine of Capacitor. It manages
@@ -647,58 +646,42 @@ public class Bridge private constructor(
     }
 
     /**
-     * Restore any saved bundle state data
+     * Restore the call that started an activity for result, and its plugin's state, after Android recreated the app.
      */
     public fun restoreInstanceState(savedInstanceState: Bundle) {
-        val lastPluginId = savedInstanceState.getString(BUNDLE_LAST_PLUGIN_ID_KEY)
-        val lastPluginCallMethod = savedInstanceState.getString(BUNDLE_LAST_PLUGIN_CALL_METHOD_NAME_KEY)
-        val lastOptionsJson = savedInstanceState.getString(BUNDLE_PLUGIN_CALL_OPTIONS_SAVED_KEY)
+        val saved = InstanceStateCodec.read(savedInstanceState) ?: return
 
-        if (lastPluginId != null) {
-            // If we have JSON blob saved, create a new plugin call with the original options
-            if (lastOptionsJson != null && lastPluginCallMethod != null) {
-                try {
-                    val options = JSObject(lastOptionsJson)
+        // Recreate the call with its original options; its result goes to App.AppRestoredListener.
+        if (saved.methodName != null && saved.options != null) {
+            savedCallStore.setLastActivityCall(
+                PluginCall(msgHandler, saved.pluginId, PluginCall.CALLBACK_ID_DANGLING, saved.methodName, saved.options)
+            )
+        }
 
-                    savedCallStore.setLastActivityCall(
-                        PluginCall(msgHandler, lastPluginId, PluginCall.CALLBACK_ID_DANGLING, lastPluginCallMethod, options)
-                    )
-                } catch (ex: JSONException) {
-                    Logger.error("Unable to restore plugin call, unable to parse persisted JSON object", ex)
-                }
-            }
-
-            // Let the plugin restore any state it needs
-            val bundleData = savedInstanceState.getBundle(BUNDLE_PLUGIN_CALL_BUNDLE_KEY)
-            val lastPlugin = getPlugin(lastPluginId)
-            if (bundleData != null && lastPlugin != null) {
-                lastPlugin.instance.dispatchRestoreState(bundleData)
-            } else {
-                Logger.error("Unable to restore last plugin call")
-            }
+        // Let the plugin restore any state it needs
+        val lastPlugin = getPlugin(saved.pluginId)
+        if (saved.pluginState != null && lastPlugin != null) {
+            lastPlugin.instance.dispatchRestoreState(saved.pluginState)
+        } else {
+            Logger.error("Unable to restore last plugin call")
         }
     }
 
+    /**
+     * Save the call that started an activity for result, if any, so that [restoreInstanceState] can restore it
+     * should Android end the app while that activity is in front.
+     */
     public fun saveInstanceState(outState: Bundle) {
         Logger.debug("Saving instance state!")
 
-        // If there was a last PluginCall for a started activity, we need to
-        // persist it so we can load it again in case our app gets terminated
-        val call = savedCallStore.peekLastActivityCall()
-        if (call != null) {
-            val handle = getPlugin(call.pluginId)
+        val call = savedCallStore.peekLastActivityCall() ?: return
+        val handle = getPlugin(call.pluginId) ?: return
 
-            if (handle != null) {
-                val bundle = handle.instance.dispatchSaveInstanceState()
-                if (bundle != null) {
-                    outState.putString(BUNDLE_LAST_PLUGIN_ID_KEY, call.pluginId)
-                    outState.putString(BUNDLE_LAST_PLUGIN_CALL_METHOD_NAME_KEY, call.methodName)
-                    outState.putString(BUNDLE_PLUGIN_CALL_OPTIONS_SAVED_KEY, call.data.toString())
-                    outState.putBundle(BUNDLE_PLUGIN_CALL_BUNDLE_KEY, bundle)
-                } else {
-                    Logger.error("Couldn't save last " + call.pluginId + "'s Plugin " + call.methodName + " call")
-                }
-            }
+        val pluginState = handle.instance.dispatchSaveInstanceState()
+        if (pluginState != null) {
+            InstanceStateCodec.write(outState, call, pluginState)
+        } else {
+            Logger.error("Couldn't save last " + call.pluginId + "'s Plugin " + call.methodName + " call")
         }
     }
 
@@ -956,10 +939,6 @@ public class Bridge private constructor(
 
     public companion object {
         private const val PERMISSION_PREFS_NAME = "PluginPermStates"
-        private const val BUNDLE_LAST_PLUGIN_ID_KEY = "capacitorLastActivityPluginId"
-        private const val BUNDLE_LAST_PLUGIN_CALL_METHOD_NAME_KEY = "capacitorLastActivityPluginMethod"
-        private const val BUNDLE_PLUGIN_CALL_OPTIONS_SAVED_KEY = "capacitorLastPluginCallOptions"
-        private const val BUNDLE_PLUGIN_CALL_BUNDLE_KEY = "capacitorLastPluginCallBundle"
         private const val LAST_BINARY_VERSION_CODE = "lastBinaryVersionCode"
         private const val LAST_BINARY_VERSION_NAME = "lastBinaryVersionName"
         private const val MINIMUM_ANDROID_WEBVIEW_ERROR = "System WebView is not supported"
