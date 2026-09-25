@@ -47,8 +47,8 @@ extension CapacitorBridge {
         // The error handler has no call parameter, but needs keepAlive to tell the page whether to keep its callback.
         // The call is alive whenever its handler runs, so a weak reference is enough.
         weak var weakPluginCall: CAPPluginCall?
-        let pluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: call.method,
-                                       options: JSTypes.coerceDictionaryToJSObject(call.options, formattingDatesAsStrings: formattingDatesAsStrings) ?? [:],
+        let options = JSTypes.coerceDictionaryToJSObject(call.options, formattingDatesAsStrings: formattingDatesAsStrings) ?? [:]
+        let pluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: call.method, options: options,
                                        success: { [weak self] (result: CAPPluginCallResult, pluginCall: CAPPluginCall) in
                                         self?.toJs(result: JSResult(call: call, callResult: result), save: pluginCall.keepAlive)
                                        }, error: { [weak self] (error: CAPPluginCallError) in

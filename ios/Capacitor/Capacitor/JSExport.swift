@@ -88,8 +88,8 @@ internal class JSExport {
                 })(window);
                 """)
         }
-        let js = lines.joined(separator: "\n")
-        let userScript = WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        let script = lines.joined(separator: "\n")
+        let userScript = WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         userContentController.addUserScript(userScript)
     }
 

@@ -63,8 +63,7 @@ extension CapacitorBridge {
 
      `js` is a short name but needs to be preserved for backwards compatibility.
      */
-    // swiftlint:disable:next identifier_name
-    public func evalWithPlugin(_ plugin: CAPPlugin, js: String) {
+    public func evalWithPlugin(_ plugin: CAPPlugin, js: String) { // swiftlint:disable:this identifier_name
         eval(js: BridgeScript.withPlugin(plugin.getId(), js: js))
     }
 
@@ -73,8 +72,7 @@ extension CapacitorBridge {
 
      `js` is a short name but needs to be preserved for backwards compatibility.
      */
-    // swiftlint:disable:next identifier_name
-    public func eval(js: String) {
+    public func eval(js: String) { // swiftlint:disable:this identifier_name
         DispatchQueue.main.async {
             self.webView?.evaluateJavaScript(js, completionHandler: { (_, error) in
                 if let error = error {

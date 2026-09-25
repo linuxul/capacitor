@@ -14,7 +14,7 @@ private struct Foo: Codable, Equatable {
 }
 
 private let jsonString = #"{ "key": "value" }"#
-private let jsonData = jsonString.data(using: .utf8)!
+private let jsonData = Data(jsonString.utf8)
 private let jsonByteArray: [NSNumber] = [123, 32, 34, 107, 101, 121, 34, 58, 32, 34, 118, 97, 108, 117, 101, 34, 32, 125]
 private let jsonBase64 = "eyAia2V5IjogInZhbHVlIiB9"
 

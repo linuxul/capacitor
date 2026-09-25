@@ -48,10 +48,14 @@ public class CapacitorCookieManager {
     }
 
     public func encode(_ value: String) -> String {
+        // only fails for invalid UTF-16, which a Swift String cannot hold
+        // swiftlint:disable:next force_unwrapping
         return value.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!
     }
 
+    /// Traps when `value` has a malformed percent escape. The runtime does not call it.
     public func decode(_ value: String) -> String {
+        // swiftlint:disable:next force_unwrapping
         return value.removingPercentEncoding!
     }
 
@@ -77,10 +81,8 @@ public class CapacitorCookieManager {
         var cookiesMap: [String: String] = [:]
         let jar = HTTPCookieStorage.shared
         if let cookies = jar.cookies(for: url) {
-            for cookie in cookies {
-                if !cookie.isHTTPOnly {
-                    cookiesMap[cookie.name] = cookie.value
-                }
+            for cookie in cookies where !cookie.isHTTPOnly {
+                cookiesMap[cookie.name] = cookie.value
             }
         }
         return cookiesMap

@@ -131,12 +131,18 @@ open class HttpRequestHandler {
         }
 
         open func openConnection() -> CapacitorHttpRequestBuilder {
-            request = CapacitorUrlRequest(url!, method: method!)
+            guard let url, let method else {
+                preconditionFailure("setUrl(_:) and setMethod(_:) must be called before openConnection()")
+            }
+            request = CapacitorUrlRequest(url, method: method)
             return self
         }
 
         public func build() -> CapacitorUrlRequest {
-            return request!
+            guard let request else {
+                preconditionFailure("openConnection() must be called before build()")
+            }
+            return request
         }
     }
 

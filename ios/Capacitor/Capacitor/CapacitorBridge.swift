@@ -116,7 +116,9 @@ open class CapacitorBridge: CAPBridgeProtocol {
      Register all plugins that have been declared
      */
     func registerPlugins() {
-        var pluginList: [AnyClass] = [CAPHttpPlugin.self, CAPConsolePlugin.self, CAPWebViewPlugin.self, CAPCookiesPlugin.self, CAPSystemBarsPlugin.self]
+        var pluginList: [AnyClass] = [
+            CAPHttpPlugin.self, CAPConsolePlugin.self, CAPWebViewPlugin.self, CAPCookiesPlugin.self, CAPSystemBarsPlugin.self
+        ]
 
         if autoRegisterPlugins {
             do {

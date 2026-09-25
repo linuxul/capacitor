@@ -29,7 +29,9 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
         if JSONSerialization.isValidJSONObject(data) {
             return try JSONSerialization.data(withJSONObject: data)
         } else {
-            throw CapacitorUrlRequest.CapacitorUrlRequestError.serializationError("[ data ] argument for request of content-type [ application/json ] must be serializable to JSON")
+            throw CapacitorUrlRequest.CapacitorUrlRequestError.serializationError(
+                "[ data ] argument for request of content-type [ application/json ] must be serializable to JSON"
+            )
         }
     }
 
@@ -39,14 +41,18 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
 
         guard let obj = data as? JSObject else {
             // Throw, other data types explicitly not supported
-            throw CapacitorUrlRequestError.serializationError("[ data ] argument for request with content-type [ multipart/form-data ] may only be a plain javascript object")
+            throw CapacitorUrlRequestError.serializationError(
+                "[ data ] argument for request with content-type [ multipart/form-data ] may only be a plain javascript object"
+            )
         }
 
         let allowed = CharacterSet(charactersIn: "-._*").union(.alphanumerics)
 
         obj.keys.forEach { (key: String) in
             let value = obj[key] as? String ?? ""
-            components.queryItems?.append(URLQueryItem(name: key.addingPercentEncoding(withAllowedCharacters: allowed)?.replacingOccurrences(of: "%20", with: "+") ?? key, value: value.addingPercentEncoding(withAllowedCharacters: allowed)?.replacingOccurrences(of: "%20", with: "+")))
+            let name = key.addingPercentEncoding(withAllowedCharacters: allowed)?.replacingOccurrences(of: "%20", with: "+") ?? key
+            let encodedValue = value.addingPercentEncoding(withAllowedCharacters: allowed)?.replacingOccurrences(of: "%20", with: "+")
+            components.queryItems?.append(URLQueryItem(name: name, value: encodedValue))
         }
 
         if let query = components.query {
@@ -59,7 +65,9 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
     public func getRequestDataAsMultipartFormData(_ data: JSValue, _ contentType: String) throws -> Data {
         guard let obj = data as? JSObject else {
             // Throw, other data types explicitly not supported.
-            throw CapacitorUrlRequestError.serializationError("[ data ] argument for request with content-type [ application/x-www-form-urlencoded ] may only be a plain javascript object")
+            throw CapacitorUrlRequestError.serializationError(
+                "[ data ] argument for request with content-type [ application/x-www-form-urlencoded ] may only be a plain javascript object"
+            )
         }
 
         let strings: [String: String] = obj.compactMapValues { any in

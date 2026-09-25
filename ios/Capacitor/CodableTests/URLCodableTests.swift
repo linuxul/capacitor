@@ -10,7 +10,8 @@ import XCTest
 import Capacitor
 
 private let urlString = "https://capacitorjs.com"
-private let url = URL(string: urlString)!
+// swiftlint:disable:next force_unwrapping
+private let url = URL(string: urlString)! // a valid literal
 
 private struct Website: Codable, Equatable {
     var url: URL

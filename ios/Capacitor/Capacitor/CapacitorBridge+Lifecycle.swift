@@ -8,12 +8,14 @@ extension CapacitorBridge {
      Observe scene lifecycle transitions and forward them to the page as `resume` and `pause` document events.
      */
     func setupLifecycleObservers() {
-        observers.append(NotificationCenter.default.addObserver(forName: UIScene.willEnterForegroundNotification, object: nil, queue: OperationQueue.main) { [weak self] notification in
+        let center = NotificationCenter.default
+        let resume = center.addObserver(forName: UIScene.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] notification in
             self?.triggerSceneLifecycleJSEvent("resume", for: notification)
-        })
-        observers.append(NotificationCenter.default.addObserver(forName: UIScene.didEnterBackgroundNotification, object: nil, queue: OperationQueue.main) { [weak self] notification in
+        }
+        let pause = center.addObserver(forName: UIScene.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] notification in
             self?.triggerSceneLifecycleJSEvent("pause", for: notification)
-        })
+        }
+        observers.append(contentsOf: [resume, pause])
     }
 
     /**

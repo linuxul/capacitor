@@ -17,7 +17,7 @@ public class ApplicationDelegateProxy: NSObject, UIApplicationDelegate {
     }
 
     public func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // TODO: Support other types, emit to rest of plugins
+        // Only universal links are handled; other activity types are left to the app.
         guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
               let url = userActivity.webpageURL else {
             return false

@@ -110,12 +110,7 @@ extension InstanceConfiguration {
     }
 
     public func shouldAllowNavigation(to host: String) -> Bool {
-        for hostname in allowedNavigationHostnames {
-            if doesHost(host, match: hostname) {
-                return true
-            }
-        }
-        return false
+        return allowedNavigationHostnames.contains { doesHost(host, match: $0) }
     }
 
     // MARK: - Private

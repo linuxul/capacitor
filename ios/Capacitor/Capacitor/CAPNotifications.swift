@@ -1,11 +1,11 @@
 import Foundation
 
+// swiftlint:disable identifier_name
 /**
  Notification names Capacitor posts to NotificationCenter
 
  We want to include `capacitor` in the name(s) to uniquely identify these even though it can make the names long.
  */
-// swiftlint:disable identifier_name
 extension Notification.Name {
     public static let capacitorOpenURL = Notification.Name(rawValue: "CapacitorOpenURLNotification")
     public static let capacitorOpenUniversalLink = Notification.Name(rawValue: "CapacitorOpenUniversalLinkNotification")

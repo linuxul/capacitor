@@ -98,7 +98,9 @@ extension Flattened: Decodable {
             reviewCountArray.append(try reviewCountContainer.decode(Int.self, forKey: .count))
         }
         guard let reviewCount = reviewCountArray.first else {
-            throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: container.codingPath + [RootKeys.reviewCount], debugDescription: "reviews_count cannot be empty"))
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(codingPath: container.codingPath + [RootKeys.reviewCount], debugDescription: "reviews_count cannot be empty")
+            )
         }
         self.reviewCount = reviewCount
     }

@@ -145,7 +145,9 @@ class JSValueDecoderNonConformingFloatTests: XCTestCase {
     }
 
     func testDecode_float__convertFromString_root() throws {
-        let decoder = JSValueDecoder(nonConformingFloatDecodingStrategy: .convertFromString(positiveInfinity: "pos", negativeInfinity: "neg", nan: "nan"))
+        let decoder = JSValueDecoder(
+            nonConformingFloatDecodingStrategy: .convertFromString(positiveInfinity: "pos", negativeInfinity: "neg", nan: "nan")
+        )
         var result = try decoder.decode(Double.self, from: "pos")
         XCTAssertEqual(result, .infinity)
         result = try decoder.decode(Double.self, from: "neg")
@@ -155,14 +157,18 @@ class JSValueDecoderNonConformingFloatTests: XCTestCase {
     }
 
     func testDecode_float__convertFromString_array() throws {
-        let decoder = JSValueDecoder(nonConformingFloatDecodingStrategy: .convertFromString(positiveInfinity: "pos", negativeInfinity: "neg", nan: "nan"))
+        let decoder = JSValueDecoder(
+            nonConformingFloatDecodingStrategy: .convertFromString(positiveInfinity: "pos", negativeInfinity: "neg", nan: "nan")
+        )
         let result = try decoder.decode([Double].self, from: ["pos", "neg", "nan"])
         XCTAssertEqual(result[0...1], [.infinity, -.infinity])
         XCTAssertTrue(result[2].isNaN)
     }
 
     func testDecode_float__convertFromString_struct() throws {
-        let decoder = JSValueDecoder(nonConformingFloatDecodingStrategy: .convertFromString(positiveInfinity: "pos", negativeInfinity: "neg", nan: "nan"))
+        let decoder = JSValueDecoder(
+            nonConformingFloatDecodingStrategy: .convertFromString(positiveInfinity: "pos", negativeInfinity: "neg", nan: "nan")
+        )
         var result = try decoder.decode(Foo.self, from: ["number": "pos"])
         XCTAssertEqual(result, .init(number: .infinity))
         result = try decoder.decode(Foo.self, from: ["number": "neg"])

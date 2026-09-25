@@ -107,11 +107,13 @@
 		A7D474D52C8BA8E8005620A8 /* DataCodableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D474D42C8BA8E8005620A8 /* DataCodableTests.swift */; };
 		A7D474D82C8BA8FD005620A8 /* NonconformingFloatCodableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D474D72C8BA8FD005620A8 /* NonconformingFloatCodableTests.swift */; };
 		A7D8B3522B238A840003FAD6 /* JSValueEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D8B3512B238A840003FAD6 /* JSValueEncoder.swift */; };
+		DFC412202CA24D482DF696FC /* JSValueEncoder+Containers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9A3B8FF1BB4A78DEAF8AAE0 /* JSValueEncoder+Containers.swift */; };
 		A7D8B3632B263B8D0003FAD6 /* NestedCodableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D8B3622B263B8D0003FAD6 /* NestedCodableTests.swift */; };
 		A7D8B3642B263B8D0003FAD6 /* Capacitor.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50503EDF1FC08594003606DC /* Capacitor.framework */; };
 		A7D8B36A2B263B990003FAD6 /* CodableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D8B3562B23B2110003FAD6 /* CodableTests.swift */; };
 		A7D8B36E2B2692300003FAD6 /* SuperCodableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D8B36D2B2692300003FAD6 /* SuperCodableTests.swift */; };
 		A7D9312F2B23710300FF59A2 /* JSValueDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D9312E2B23710300FF59A2 /* JSValueDecoder.swift */; };
+		954245867FE79F95C8912000 /* JSValueDecoder+Containers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1A96B3F601AE7AC8586BA1 /* JSValueDecoder+Containers.swift */; };
 		A7DB03AC29B001E300888AE9 /* CAPBridgedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7DB03AB29B001E300888AE9 /* CAPBridgedPlugin.swift */; };
 		A7F7EDCD291EC75C0015B73B /* CAPPlugin+LoadInstance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F7EDCC291EC75C0015B73B /* CAPPlugin+LoadInstance.swift */; };
 		A7F7EDD5292BE8520015B73B /* CAPInstancePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F7EDD4292BE8520015B73B /* CAPInstancePlugin.swift */; };
@@ -265,11 +267,13 @@
 		A7D474D42C8BA8E8005620A8 /* DataCodableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataCodableTests.swift; sourceTree = "<group>"; };
 		A7D474D72C8BA8FD005620A8 /* NonconformingFloatCodableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonconformingFloatCodableTests.swift; sourceTree = "<group>"; };
 		A7D8B3512B238A840003FAD6 /* JSValueEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSValueEncoder.swift; sourceTree = "<group>"; };
+		C9A3B8FF1BB4A78DEAF8AAE0 /* JSValueEncoder+Containers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSValueEncoder+Containers.swift"; sourceTree = "<group>"; };
 		A7D8B3562B23B2110003FAD6 /* CodableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodableTests.swift; sourceTree = "<group>"; };
 		A7D8B3602B263B8D0003FAD6 /* CodableTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CodableTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A7D8B3622B263B8D0003FAD6 /* NestedCodableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NestedCodableTests.swift; sourceTree = "<group>"; };
 		A7D8B36D2B2692300003FAD6 /* SuperCodableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperCodableTests.swift; sourceTree = "<group>"; };
 		A7D9312E2B23710300FF59A2 /* JSValueDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSValueDecoder.swift; sourceTree = "<group>"; };
+		2B1A96B3F601AE7AC8586BA1 /* JSValueDecoder+Containers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSValueDecoder+Containers.swift"; sourceTree = "<group>"; };
 		A7DB03AB29B001E300888AE9 /* CAPBridgedPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAPBridgedPlugin.swift; sourceTree = "<group>"; };
 		A7F7EDCC291EC75C0015B73B /* CAPPlugin+LoadInstance.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CAPPlugin+LoadInstance.swift"; sourceTree = "<group>"; };
 		A7F7EDD4292BE8520015B73B /* CAPInstancePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAPInstancePlugin.swift; sourceTree = "<group>"; };
@@ -504,7 +508,9 @@
 			isa = PBXGroup;
 			children = (
 				A7D9312E2B23710300FF59A2 /* JSValueDecoder.swift */,
+				2B1A96B3F601AE7AC8586BA1 /* JSValueDecoder+Containers.swift */,
 				A7D8B3512B238A840003FAD6 /* JSValueEncoder.swift */,
+				C9A3B8FF1BB4A78DEAF8AAE0 /* JSValueEncoder+Containers.swift */,
 			);
 			path = Codable;
 			sourceTree = "<group>";
@@ -681,6 +687,7 @@
 				A71289E627F380A500DADDF3 /* Router.swift in Sources */,
 				A327E6B828DB8B2900CA8B0A /* CapacitorUrlRequest.swift in Sources */,
 				A7D9312F2B23710300FF59A2 /* JSValueDecoder.swift in Sources */,
+				954245867FE79F95C8912000 /* JSValueDecoder+Containers.swift in Sources */,
 				62959B362524DA7800A3D7F1 /* CAPBridgeViewController.swift in Sources */,
 				621ECCD6254205BD00D3D615 /* CAPBridgeProtocol.swift in Sources */,
 				62D43AF02581817500673C24 /* WKWebView+Capacitor.swift in Sources */,
@@ -697,6 +704,7 @@
 				8E5FFCED2C1FB18B833F6BF2 /* CapacitorBridge+Lifecycle.swift in Sources */,
 				FFDE2BC8C8A1E010CE4323BA /* CapacitorBridge+Paths.swift in Sources */,
 				A7D8B3522B238A840003FAD6 /* JSValueEncoder.swift in Sources */,
+				DFC412202CA24D482DF696FC /* JSValueEncoder+Containers.swift in Sources */,
 				A7F7EDD5292BE8520015B73B /* CAPInstancePlugin.swift in Sources */,
 				A38C3D7B2848BE6F004B3680 /* CapacitorCookieManager.swift in Sources */,
 				952707712FD9DD2D0079E5D3 /* CAPSceneDelegateProxy.swift in Sources */,
