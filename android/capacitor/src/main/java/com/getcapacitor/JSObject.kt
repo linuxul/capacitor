@@ -112,8 +112,6 @@ public open class JSObject : JSONObject {
         return this
     }
 
-    public fun putSafe(key: String, value: Any?): JSObject = super.put(key, value) as JSObject
-
     public companion object {
         /**
          * Convert a pathetic JSONObject into a JSObject

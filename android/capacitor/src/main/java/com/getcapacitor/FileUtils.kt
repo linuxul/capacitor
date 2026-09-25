@@ -46,10 +46,6 @@ import java.util.regex.Pattern
  * creating portable web paths from low-level files
  */
 public object FileUtils {
-    public enum class Type(private val type: String) {
-        IMAGE("image")
-    }
-
     // Pattern.split keeps java.lang.String.split semantics (trailing empty parts dropped).
     private val COLON: Pattern = Pattern.compile(":")
     private val SLASH: Pattern = Pattern.compile("/")

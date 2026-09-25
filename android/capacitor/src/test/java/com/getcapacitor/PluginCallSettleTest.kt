@@ -5,6 +5,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -58,6 +59,7 @@ class PluginCallSettleTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
     fun everyLaterSettleIsDroppedAfterAReject() {
         val call = call()
 
@@ -67,13 +69,26 @@ class PluginCallSettleTest {
         call.unavailable()
         call.resolve()
         call.errorCallback("legacy")
-        call.successCallback(PluginResult())
 
         val error = argumentCaptor<PluginResult>()
         verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), anyOrNull())
         verify(handler).sendResponseMessage(any(), isNull(), error.capture())
         assertEquals("first", JSObject(error.firstValue.toString()).getString("message"))
-        assertEquals(6, droppedResponseWarnings().size)
+        assertEquals(5, droppedResponseWarnings().size)
+    }
+
+    @Test
+    @Suppress("DEPRECATION")
+    fun errorCallbackRejectsWithoutACode() {
+        val call = call()
+
+        call.errorCallback("legacy")
+
+        val error = argumentCaptor<PluginResult>()
+        verify(handler).sendResponseMessage(any(), isNull(), error.capture())
+        val result = JSObject(error.firstValue.toString())
+        assertEquals("legacy", result.getString("message"))
+        assertFalse(result.has("code"))
     }
 
     @Test
@@ -122,17 +137,6 @@ class PluginCallSettleTest {
             assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS))
         }
 
-        verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), anyOrNull())
-    }
-
-    @Test
-    fun danglingCallbackIdStillSendsNothingThroughSuccessCallback() {
-        val call = PluginCall(handler, "Echo", PluginCall.CALLBACK_ID_DANGLING, "echo", JSObject())
-
-        call.successCallback(PluginResult())
-        call.resolve()
-
-        // successCallback never answers a dangling call, so the resolve after it is the first response.
         verify(handler, times(1)).sendResponseMessage(any(), anyOrNull(), anyOrNull())
     }
 }

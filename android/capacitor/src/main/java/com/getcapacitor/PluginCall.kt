@@ -11,9 +11,9 @@ import org.json.JSONObject
  * The functions with default arguments are `@JvmOverloads` so that the short forms, such as
  * `call.getString("x")`, `call.resolve()` and `call.reject("msg")`, stay callable from Java plugins.
  *
- * A call that is not kept alive settles once: the first [resolve], [reject], [unimplemented],
- * [unavailable], [successCallback] or [errorCallback] answers the web layer, and any later one is
- * dropped with a warning. A [keepAlive] call may resolve any number of times.
+ * A call that is not kept alive settles once: the first [resolve], [reject], [unimplemented] or
+ * [unavailable] answers the web layer, and any later one is dropped with a warning. A [keepAlive]
+ * call may resolve any number of times.
  */
 public class PluginCall(
     private val msgHandler: MessageHandler,
@@ -65,16 +65,6 @@ public class PluginCall(
         msgHandler.sendResponseMessage(this, null, null)
     }
 
-    public fun successCallback(successResult: PluginResult?) {
-        if (CALLBACK_ID_DANGLING == callbackId) {
-            // don't send back response if the callbackId was "-1"
-            return
-        }
-        if (!claimResponse("a success")) return
-
-        msgHandler.sendResponseMessage(this, successResult, null)
-    }
-
     /**
      * Resolve the call, optionally with data.
      *
@@ -88,6 +78,10 @@ public class PluginCall(
         msgHandler.sendResponseMessage(this, result, null)
     }
 
+    /**
+     * Reject the call with [msg] and no code. Kept for plugins written against the Java API.
+     */
+    @Deprecated("Use reject", ReplaceWith("reject(msg)"))
     public fun errorCallback(msg: String?) {
         if (!claimResponse("an error ($msg)")) return
 

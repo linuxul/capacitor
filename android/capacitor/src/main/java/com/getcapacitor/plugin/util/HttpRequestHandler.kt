@@ -423,10 +423,6 @@ public object HttpRequestHandler {
         false
     }
 
-    public fun interface ProgressEmitter {
-        public fun emit(bytes: Int?, contentLength: Int?)
-    }
-
     // Pattern.matcher(..).matches() is what java.lang.String.matches(regex) does.
     private val QUOTED_STRING: Pattern = Pattern.compile("^\".*\"$")
     private val INTEGER: Pattern = Pattern.compile("^-?\\d+$")

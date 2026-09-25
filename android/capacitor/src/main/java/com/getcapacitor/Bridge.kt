@@ -599,14 +599,6 @@ public class Bridge private constructor(
     }
 
     /**
-     * Log [message] to the web console at [level] (a console method such as "log" or "warn").
-     */
-    @JvmOverloads
-    public fun logToJs(message: String?, level: String? = "log") {
-        eval("window.Capacitor.logJs(${JsStrings.literal(message)}, ${JsStrings.literal(level)})", null)
-    }
-
-    /**
      * Dispatch the event [eventName] on [target] ("window", "document" or a CSS selector) in the web view.
      */
     public fun triggerJSEvent(eventName: String?, target: String?) {

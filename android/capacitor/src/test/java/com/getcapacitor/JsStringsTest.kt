@@ -69,7 +69,6 @@ class JsStringsTest {
 
     private fun bridgeScripts(block: (Bridge) -> Unit): List<String> {
         val bridge = mock<Bridge>()
-        doCallRealMethod().whenever(bridge).logToJs(anyOrNull(), anyOrNull())
         doCallRealMethod().whenever(bridge).triggerJSEvent(anyOrNull(), anyOrNull())
         doCallRealMethod().whenever(bridge).triggerJSEvent(anyOrNull(), anyOrNull(), anyOrNull())
 
@@ -84,14 +83,12 @@ class JsStringsTest {
     fun bridgeQuotesTheStringsItPutsIntoScripts() {
         val scripts =
             bridgeScripts { bridge ->
-                bridge.logToJs("a\"); alert(1); (\"", "warn")
                 bridge.triggerJSEvent("x\"y", "window")
                 bridge.triggerJSEvent("resume", "document", "{\"a\":1}")
             }
 
         assertEquals(
             listOf(
-                "window.Capacitor.logJs(${JsStrings.literal("a\"); alert(1); (\"")}, \"warn\")",
                 "window.Capacitor.triggerEvent(${JsStrings.literal("x\"y")}, \"window\")",
                 // The data argument is JSON and goes in as it is.
                 "window.Capacitor.triggerEvent(\"resume\", \"document\", {\"a\":1})"
