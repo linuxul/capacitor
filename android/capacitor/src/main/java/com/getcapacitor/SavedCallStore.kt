@@ -1,17 +1,18 @@
 package com.getcapacitor
 
-import java.util.LinkedList
-
 /**
  * The plugin calls the [Bridge] keeps around between invocations: calls kept alive by callback id, the
  * queue of calls waiting for a permission result per plugin, and the call that launched the last activity.
+ *
+ * Every function is synchronized: the bridge thread, plugins' own threads and the main thread (activity and
+ * permission results) all use the store.
  */
 internal class SavedCallStore {
     // Stored plugin calls that we're keeping around to call again someday
     private val savedCalls: MutableMap<String?, PluginCall> = HashMap()
 
     // The call IDs of saved plugin calls with associated plugin id for handling permissions
-    private val savedPermissionCallIds: MutableMap<String?, LinkedList<String?>> = HashMap()
+    private val savedPermissionCallIds: MutableMap<String?, ArrayDeque<String?>> = HashMap()
 
     // Store a plugin that started a new activity, in case we need to resume
     // the app and return that data back
@@ -20,6 +21,7 @@ internal class SavedCallStore {
     /**
      * Retain a call between plugin invocations
      */
+    @Synchronized
     fun save(call: PluginCall) {
         savedCalls[call.callbackId] = call
     }
@@ -27,6 +29,7 @@ internal class SavedCallStore {
     /**
      * Get a retained plugin call
      */
+    @Synchronized
     fun get(callbackId: String?): PluginCall? {
         if (callbackId == null) {
             return null
@@ -38,6 +41,7 @@ internal class SavedCallStore {
     /**
      * Release a retained call by its ID
      */
+    @Synchronized
     fun release(callbackId: String?) {
         savedCalls.remove(callbackId)
     }
@@ -45,6 +49,7 @@ internal class SavedCallStore {
     /**
      * Forget every retained call. Permission queues and the last activity call are left alone.
      */
+    @Synchronized
     fun reset() {
         savedCalls.clear()
     }
@@ -52,10 +57,11 @@ internal class SavedCallStore {
     /**
      * Save a call to be retrieved after requesting permissions. Calls are saved in order.
      */
+    @Synchronized
     fun savePermissionCall(call: PluginCall?) {
         if (call == null) return
 
-        savedPermissionCallIds.getOrPut(call.pluginId) { LinkedList() }.add(call.callbackId)
+        savedPermissionCallIds.getOrPut(call.pluginId) { ArrayDeque() }.addLast(call.callbackId)
         save(call)
     }
 
@@ -63,22 +69,26 @@ internal class SavedCallStore {
      * Removes the earliest saved call prior to a permissions request for a given plugin and
      * returns it.
      */
-    fun takePermissionCall(pluginId: String?): PluginCall? = get(savedPermissionCallIds[pluginId]?.poll())
+    @Synchronized
+    fun takePermissionCall(pluginId: String?): PluginCall? = get(savedPermissionCallIds[pluginId]?.removeFirstOrNull())
 
     /**
      * The call that launched the last activity, without clearing it.
      */
+    @Synchronized
     fun peekLastActivityCall(): PluginCall? = pluginCallForLastActivity
 
     /**
      * The call that launched the last activity. Reading it clears it.
      */
+    @Synchronized
     fun takeLastActivityCall(): PluginCall? {
         val call = pluginCallForLastActivity
         pluginCallForLastActivity = null
         return call
     }
 
+    @Synchronized
     fun setLastActivityCall(call: PluginCall?) {
         pluginCallForLastActivity = call
     }

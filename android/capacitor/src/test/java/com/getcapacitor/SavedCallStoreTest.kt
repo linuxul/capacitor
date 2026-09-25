@@ -1,7 +1,13 @@
 package com.getcapacitor
 
+import java.util.Collections
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.mock
 
@@ -101,5 +107,60 @@ class SavedCallStoreTest {
         assertSame(call, store.takeLastActivityCall())
         assertNull(store.takeLastActivityCall())
         assertNull(store.peekLastActivityCall())
+    }
+
+    @Test
+    fun concurrentPermissionCallsAreEachHandedOutOnce() {
+        val threads = 8
+        val perThread = 500
+        val handler = mock<MessageHandler>()
+        val taken = Collections.synchronizedList(ArrayList<PluginCall>())
+        val start = CountDownLatch(1)
+        val failures = Collections.synchronizedList(ArrayList<Throwable>())
+        val pool = Executors.newFixedThreadPool(threads * 2)
+
+        repeat(threads) { thread ->
+            pool.execute {
+                try {
+                    start.await()
+                    repeat(perThread) { i ->
+                        val call = PluginCall(handler, "P", "$thread-$i", "method", JSObject())
+                        store.savePermissionCall(call)
+                        store.save(PluginCall(handler, "Q", "kept-$thread-$i", "method", JSObject()))
+                        store.release("kept-$thread-$i")
+                    }
+                } catch (t: Throwable) {
+                    failures.add(t)
+                }
+            }
+            pool.execute {
+                try {
+                    start.await()
+                    var misses = 0
+                    while (misses < 10_000) {
+                        val call = store.takePermissionCall("P")
+                        if (call == null) {
+                            misses++
+                        } else {
+                            taken.add(call)
+                            store.release(call.callbackId)
+                        }
+                    }
+                } catch (t: Throwable) {
+                    failures.add(t)
+                }
+            }
+        }
+        start.countDown()
+        pool.shutdown()
+        assertTrue(pool.awaitTermination(30, TimeUnit.SECONDS))
+        assertTrue(failures.toString(), failures.isEmpty())
+
+        // Whatever the takers missed while the savers were still running is still queued.
+        while (true) {
+            taken.add(store.takePermissionCall("P") ?: break)
+        }
+        assertEquals(threads * perThread, taken.size)
+        assertEquals(taken.size, taken.map { it.callbackId }.toSet().size)
     }
 }

@@ -41,6 +41,10 @@ public open class Plugin {
      */
     protected lateinit var handle: PluginHandle
 
+    // Guards eventListeners and retainedEventArguments: listeners come and go on the bridge thread while
+    // plugins notify from their own threads. Listeners are resolved outside the lock.
+    private val listenerLock = Any()
+
     // Stored event listeners
     private val eventListeners: MutableMap<String?, MutableList<PluginCall>> = HashMap()
 
@@ -420,21 +424,28 @@ public open class Plugin {
      * Add a listener for the given event
      */
     private fun addEventListener(eventName: String?, call: PluginCall) {
-        val listeners = eventListeners.getOrPut(eventName) { ArrayList() }
+        // The first listener takes the events retained while there was none, in the same step that adds it,
+        // so they are handed out exactly once.
+        val retainedArgs =
+            synchronized(listenerLock) {
+                val listeners = eventListeners.getOrPut(eventName) { ArrayList() }
 
-        // Must add the call before sending retained arguments
-        listeners.add(call)
+                // Must add the call before sending retained arguments
+                listeners.add(call)
 
-        if (listeners.size == 1) {
-            sendRetainedArgumentsForEvent(eventName)
-        }
+                if (listeners.size == 1) retainedEventArguments.remove(eventName) else null
+            }
+
+        retainedArgs?.let { sendRetainedArguments(eventName, it) }
     }
 
     /**
      * Remove a listener from the given event
      */
     private fun removeEventListener(eventName: String?, call: PluginCall) {
-        eventListeners[eventName]?.remove(call)
+        synchronized(listenerLock) {
+            eventListeners[eventName]?.remove(call)
+        }
     }
 
     /**
@@ -445,17 +456,26 @@ public open class Plugin {
     @JvmOverloads
     protected open fun notifyListeners(eventName: String?, data: JSObject?, retainUntilConsumed: Boolean = false) {
         Logger.verbose(logTag, "Notifying listeners for event $eventName")
-        val listeners = eventListeners[eventName]
-        if (listeners.isNullOrEmpty()) {
-            Logger.debug(logTag, "No listeners found for event $eventName")
-            if (retainUntilConsumed) {
-                retainedEventArguments.getOrPut(eventName) { ArrayList() }.add(data)
+        val listeners =
+            synchronized(listenerLock) {
+                val current = eventListeners[eventName]
+                if (current.isNullOrEmpty()) {
+                    if (retainUntilConsumed) {
+                        retainedEventArguments.getOrPut(eventName) { ArrayList() }.add(data)
+                    }
+                    null
+                } else {
+                    // Resolve a snapshot outside the lock: a listener may add or remove listeners while being resolved.
+                    current.toList()
+                }
             }
+
+        if (listeners == null) {
+            Logger.debug(logTag, "No listeners found for event $eventName")
             return
         }
 
-        // Iterate over a snapshot: a listener may add or remove listeners while being resolved.
-        for (call in listeners.toList()) {
+        for (call in listeners) {
             call.resolve(data)
         }
     }
@@ -463,18 +483,18 @@ public open class Plugin {
     /**
      * Check if there are any listeners for the given event
      */
-    protected open fun hasListeners(eventName: String?): Boolean = !eventListeners[eventName].isNullOrEmpty()
+    protected open fun hasListeners(eventName: String?): Boolean = synchronized(listenerLock) {
+        !eventListeners[eventName].isNullOrEmpty()
+    }
 
     /**
-     * Send retained arguments (if any) for this event. This
+     * Send the arguments retained for this event while it had no listener. This
      * is called only when the first listener for an event is added
      */
-    private fun sendRetainedArgumentsForEvent(eventName: String?) {
-        // take the retained args and null the source to prevent potential race conditions
-        val retainedArgs = retainedEventArguments.remove(eventName) ?: return
-
+    private fun sendRetainedArguments(eventName: String?, retainedArgs: List<JSObject?>) {
         for (retained in retainedArgs) {
-            notifyListeners(eventName, retained)
+            // Should the new listener already be gone again, the event waits for the next one.
+            notifyListeners(eventName, retained, retainUntilConsumed = true)
         }
     }
 
@@ -507,12 +527,16 @@ public open class Plugin {
      */
     @PluginMethod(returnType = PluginMethod.RETURN_PROMISE)
     public open fun removeAllListeners(call: PluginCall) {
-        eventListeners.clear()
+        synchronized(listenerLock) {
+            eventListeners.clear()
+        }
         call.resolve()
     }
 
     public open fun removeAllListeners() {
-        eventListeners.clear()
+        synchronized(listenerLock) {
+            eventListeners.clear()
+        }
     }
 
     /**
