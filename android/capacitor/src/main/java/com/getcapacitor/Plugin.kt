@@ -13,6 +13,7 @@ import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.PermissionCallback
 import com.getcapacitor.util.PermissionHelper
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import org.json.JSONException
 
@@ -109,17 +110,7 @@ public open class Plugin {
 
         // validate permissions and invoke the permission result callback
         if (bridge.validatePermissions(this, savedCall, permissionResultMap)) {
-            invokePermissionCallback(method, savedCall)
-        }
-    }
-
-    private fun invokePermissionCallback(method: Method, call: PluginCall?) {
-        try {
-            method.isAccessible = true
-            method.invoke(this, call)
-        } catch (e: ReflectiveOperationException) {
-            // Method.invoke only declares IllegalAccessException and InvocationTargetException here.
-            e.printStackTrace()
+            invokeCallback(method, savedCall)
         }
     }
 
@@ -127,12 +118,39 @@ public open class Plugin {
         val savedCall = bridge.getSavedCall(lastPluginCallId) ?: bridge.getPluginCallForLastActivity()
 
         // invoke the activity result callback
+        invokeCallback(method, savedCall, result)
+    }
+
+    /**
+     * Runs a permission or activity result callback. The callback runs outside any plugin method, so the bridge
+     * cannot catch what it throws: reject its call here instead of leaving the promise pending. reject logs the
+     * exception, and drops the rejection if the callback settled the call before throwing.
+     *
+     * Without a saved call (it was released, or the app was restarted) the callback still runs with a null call,
+     * as it always has, for callbacks that take `PluginCall?`; what a callback throws then is only logged.
+     */
+    private fun invokeCallback(method: Method, call: PluginCall?, vararg extraArgs: Any?) {
+        if (call == null) {
+            Logger.warn(logTag, "No saved call for ${method.name}; running it with a null call")
+        }
+
         try {
             method.isAccessible = true
-            method.invoke(this, savedCall, result)
+            method.invoke(this, call, *extraArgs)
+        } catch (e: InvocationTargetException) {
+            val cause = e.targetException
+            if (call == null) {
+                Logger.error(logTag, "${method.name} failed without a saved call", cause)
+                return
+            }
+            call.reject(cause.message ?: "Error in ${method.name}", ex = cause as? Exception ?: e)
         } catch (e: ReflectiveOperationException) {
-            // Method.invoke only declares IllegalAccessException and InvocationTargetException here.
-            e.printStackTrace()
+            // Method.invoke only declares IllegalAccessException besides InvocationTargetException.
+            if (call == null) {
+                Logger.error(logTag, "Unable to run ${method.name}", e)
+                return
+            }
+            call.reject("Unable to run ${method.name}", ex = e)
         }
     }
 
@@ -301,7 +319,7 @@ public open class Plugin {
             rejectUnregisteredPermissionCallback(call, callbackName)
             return
         }
-        bridge.executeOnMainThread { invokePermissionCallback(callback, call) }
+        bridge.executeOnMainThread { invokeCallback(callback, call) }
     }
 
     /**
