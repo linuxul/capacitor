@@ -136,6 +136,25 @@ class ConfigurationTests: XCTestCase {
         XCTAssertEqual(pluginConfig.getInt("launchShowDuration", -1), 1)
         XCTAssertTrue(configuration.getPluginConfig("Missing").getConfigJSON().isEmpty)
     }
+
+    func testPluginConfigDecodes() throws {
+        struct SplashScreenConfig: Decodable {
+            var launchShowDuration: Int
+            var backgroundColor: String?
+        }
+        let configuration = InstanceConfiguration(with: makeDescriptor(.flat), isDebug: true)
+        let decoded = try configuration.getPluginConfig("SplashScreen").decode(SplashScreenConfig.self)
+        XCTAssertEqual(decoded.launchShowDuration, 1)
+        XCTAssertNil(decoded.backgroundColor)
+
+        let missing = configuration.getPluginConfig("Missing")
+        XCTAssertThrowsError(try missing.decode(SplashScreenConfig.self)) { error in
+            guard case DecodingError.keyNotFound(let key, _) = error else {
+                return XCTFail("unexpected error \(error)")
+            }
+            XCTAssertEqual(key.stringValue, "launchShowDuration")
+        }
+    }
     
     func testUpdatingAppLocation() throws {
         let descriptor = makeDescriptor(.nested)
