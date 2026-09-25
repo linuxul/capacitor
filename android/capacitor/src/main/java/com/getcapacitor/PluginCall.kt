@@ -1,5 +1,6 @@
 package com.getcapacitor
 
+import java.util.concurrent.atomic.AtomicBoolean
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -9,6 +10,10 @@ import org.json.JSONObject
  *
  * The functions with default arguments are `@JvmOverloads` so that the short forms, such as
  * `call.getString("x")`, `call.resolve()` and `call.reject("msg")`, stay callable from Java plugins.
+ *
+ * A call that is not kept alive settles once: the first [resolve], [reject], [unimplemented],
+ * [unavailable], [successCallback] or [errorCallback] answers the web layer, and any later one is
+ * dropped with a warning. A [keepAlive] call may resolve any number of times.
  */
 public class PluginCall(
     private val msgHandler: MessageHandler,
@@ -24,11 +29,32 @@ public class PluginCall(
      */
     public var keepAlive: Boolean = false
 
+    // Set by the first response of a call that is not kept alive.
+    private val settled = AtomicBoolean(false)
+
+    /**
+     * Claims the right to answer the web layer. False, after logging, when the call already settled.
+     *
+     * @param response what the caller is about to send, for the log
+     */
+    private fun claimResponse(response: String): Boolean {
+        if (keepAlive || settled.compareAndSet(false, true)) {
+            return true
+        }
+
+        Logger.warn(
+            Logger.tags("Plugin"),
+            "Ignoring $response for $pluginId.$methodName (callbackId: $callbackId): the call has already settled"
+        )
+        return false
+    }
+
     public fun successCallback(successResult: PluginResult?) {
         if (CALLBACK_ID_DANGLING == callbackId) {
             // don't send back response if the callbackId was "-1"
             return
         }
+        if (!claimResponse("a success")) return
 
         msgHandler.sendResponseMessage(this, successResult, null)
     }
@@ -40,11 +66,15 @@ public class PluginCall(
      */
     @JvmOverloads
     public fun resolve(data: JSObject? = null) {
+        if (!claimResponse("a resolve")) return
+
         val result = if (data != null) PluginResult(data) else null
         msgHandler.sendResponseMessage(this, result, null)
     }
 
     public fun errorCallback(msg: String?) {
+        if (!claimResponse("an error ($msg)")) return
+
         // PluginResult.put logs and swallows any JSON failure, so there is nothing to catch here.
         msgHandler.sendResponseMessage(this, null, PluginResult().put("message", msg))
     }
@@ -54,6 +84,8 @@ public class PluginCall(
      */
     @JvmOverloads
     public fun reject(msg: String?, code: String? = null, ex: Exception? = null, data: JSObject? = null) {
+        if (!claimResponse("a rejection ($msg)")) return
+
         if (ex != null) {
             Logger.error(Logger.tags("Plugin"), msg, ex)
         }
