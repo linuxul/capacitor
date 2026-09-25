@@ -141,10 +141,6 @@ internal enum BridgeScript {
         return "window.Capacitor.triggerEvent(\(arguments.joined(separator: ", ")))"
     }
 
-    static func logJs(_ message: String, level: String) -> String {
-        "window.Capacitor.logJs(\(literal(message)), \(literal(level)))"
-    }
-
     /// Runs `js`, which is JavaScript supplied by the caller, with the plugin `pluginId` bound to `plugin`.
     static func withPlugin(_ pluginId: String, js: String) -> String { // swiftlint:disable:this identifier_name
         let id = literal(pluginId)

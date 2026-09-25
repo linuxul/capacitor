@@ -42,7 +42,6 @@ class BridgeMessageTests: XCTestCase {
         var window = { Capacitor: {
             fromNative: function (result) { received.push(result); },
             triggerEvent: function (eventName, target, data) { received.push({ eventName: eventName, target: target, data: data }); },
-            logJs: function (message, level) { received.push({ message: message, level: level }); },
             withPlugin: function (pluginId, fn) { received.push({ pluginId: pluginId }); fn(null); }
         } };
         """)
@@ -104,23 +103,20 @@ class BridgeMessageTests: XCTestCase {
         XCTAssertEqual(Set(bare.keys), ["message", "errorMessage"])
     }
 
-    func testEventLogAndPluginScriptsKeepHostileStringsIntact() throws {
+    func testEventAndPluginScriptsKeepHostileStringsIntact() throws {
         let received = try evaluate([
             BridgeScript.triggerEvent(hostile, target: hostile),
             BridgeScript.triggerEvent("resume", target: "document", data: #"{"a":1}"#),
-            BridgeScript.logJs(hostile, level: hostile),
             BridgeScript.withPlugin(hostile, js: "received.push({ ran: true });")
         ].joined(separator: "\n"))
-        XCTAssertEqual(received.count, 6)
+        XCTAssertEqual(received.count, 5)
         XCTAssertEqual(received[0]["eventName"] as? String, hostile)
         XCTAssertEqual(received[0]["target"] as? String, hostile)
         XCTAssertEqual(received[1]["eventName"] as? String, "resume")
         XCTAssertEqual((received[1]["data"] as? [String: Any])?["a"] as? Int, 1)
-        XCTAssertEqual(received[2]["message"] as? String, hostile)
-        XCTAssertEqual(received[2]["level"] as? String, hostile)
-        XCTAssertEqual(received[3]["pluginId"] as? String, hostile)
-        XCTAssertEqual(received[4]["consoleError"] as? String, "Unable to execute JS in plugin, no such plugin found for id \(hostile)")
-        XCTAssertEqual(received[5]["ran"] as? Bool, true)
+        XCTAssertEqual(received[2]["pluginId"] as? String, hostile)
+        XCTAssertEqual(received[3]["consoleError"] as? String, "Unable to execute JS in plugin, no such plugin found for id \(hostile)")
+        XCTAssertEqual(received[4]["ran"] as? Bool, true)
     }
 
     // MARK: - save on errors

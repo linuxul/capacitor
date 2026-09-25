@@ -608,16 +608,6 @@ open class CapacitorBridge: CAPBridgeProtocol {
         self.triggerJSEvent(eventName: eventName, target: "document", data: data)
     }
 
-    public func logToJs(_ message: String, _ level: String = "log") {
-        DispatchQueue.main.async {
-            self.webView?.evaluateJavaScript(BridgeScript.logJs(message, level: level)) { (_, error) in
-                if let error = error {
-                    CAPLog.print(error)
-                }
-            }
-        }
-    }
-
     // MARK: - CAPBridgeProtocol: Paths, Files, Assets
 
     /**

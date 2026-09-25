@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0F83E885285A332E006C43CB /* AppUUID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F83E884285A332D006C43CB /* AppUUID.swift */; };
 		0F8F33B327DA980A003F49D6 /* PluginConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8F33B127DA980A003F49D6 /* PluginConfig.swift */; };
 		373A69C1255C9360000A6F44 /* NotificationHandlerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 373A69C0255C9360000A6F44 /* NotificationHandlerProtocol.swift */; };
 		373A69F2255C95D0000A6F44 /* NotificationRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 373A69F1255C95D0000A6F44 /* NotificationRouter.swift */; };
@@ -150,7 +149,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0F83E884285A332D006C43CB /* AppUUID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUUID.swift; sourceTree = "<group>"; };
 		0F8F33B127DA980A003F49D6 /* PluginConfig.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PluginConfig.swift; sourceTree = "<group>"; };
 		373A69C0255C9360000A6F44 /* NotificationHandlerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationHandlerProtocol.swift; sourceTree = "<group>"; };
 		373A69F1255C95D0000A6F44 /* NotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRouter.swift; sourceTree = "<group>"; };
@@ -399,7 +397,6 @@
 				62E79C562638AF7500414164 /* assets */,
 				A71289E527F380A500DADDF3 /* Router.swift */,
 				A7BE62CB2B486A5400165ACB /* KeyValueStore.swift */,
-				0F83E884285A332D006C43CB /* AppUUID.swift */,
 			);
 			path = Capacitor;
 			sourceTree = "<group>";
@@ -679,7 +676,6 @@
 				A7BE62CC2B486A5400165ACB /* KeyValueStore.swift in Sources */,
 				62959B172524DA7800A3D7F1 /* JSExport.swift in Sources */,
 				373A69C1255C9360000A6F44 /* NotificationHandlerProtocol.swift in Sources */,
-				0F83E885285A332E006C43CB /* AppUUID.swift in Sources */,
 				625AF1ED258963C700869675 /* WebViewAssetHandler.swift in Sources */,
 				84E1AA158C184FBD77B9C196 /* PluginRegistry.swift in Sources */,
 				F60EB38FB3879388AB223CBE /* AsyncPluginCalls.swift in Sources */,
