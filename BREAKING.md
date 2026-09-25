@@ -19,7 +19,7 @@ With `CapacitorHttp` enabled, the bridge replaces `fetch` and `XMLHttpRequest`. 
 
 - `fetch` no longer modifies the `init` object or the headers passed to it, and a `Request` object with a body can be fetched from the local server.
 - An aborted `AbortSignal` rejects `fetch` with an `AbortError`. The native request itself is not cancelled.
-- Responses with status 204, 205 or 304 (and 101, 103) have a `null` body instead of making `fetch` throw. A status a `Response` cannot represent is reported as a `TypeError`, like a network error.
+- Responses with status 204, 205 or 304 have a `null` body instead of making `fetch` throw. A status a `Response` cannot represent (outside 200–599, such as 101 or 103) is reported as a `TypeError`, like a network error.
 - `Blob` bodies are sent base64 encoded, the same way as `File`. `ArrayBuffer` and other binary views are sent like a `Uint8Array`. They were serialized as JSON before.
 - `XMLHttpRequest` is a subclass of the WebView's implementation, so `xhr instanceof XMLHttpRequest` holds again and the shared prototype is no longer rewritten.
 - A synchronous `XMLHttpRequest` (`open(method, url, false)`) keeps the WebView implementation instead of silently becoming asynchronous. `open()` accepts a `URL` object and can be called twice.
