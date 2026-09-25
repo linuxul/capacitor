@@ -67,47 +67,6 @@ class WebViewLocalServerTest {
     }
 
     @Test
-    fun closeClosesTheOpenedStream() {
-        val stream = WebViewLocalServer.LazyInputStream(handler, request)
-
-        assertEquals(0, stream.read())
-        stream.close()
-
-        assertTrue(handler.opened.single().closed)
-    }
-
-    @Test
-    fun closeBeforeUseOpensNothingAndNothingAfterwards() {
-        val stream = WebViewLocalServer.LazyInputStream(handler, request)
-
-        stream.close()
-
-        assertEquals(-1, stream.read())
-        assertEquals(0, stream.available())
-        assertTrue(handler.opened.isEmpty())
-    }
-
-    @Test
-    fun missingStreamReportsNothingAvailableInsteadOfANegativeCount() {
-        handler.missing = true
-        val stream = WebViewLocalServer.LazyInputStream(handler, request)
-
-        assertEquals(0, stream.available())
-        assertEquals(-1, stream.read())
-        assertFalse(stream.exists())
-        stream.close()
-    }
-
-    @Test
-    fun availableCountsTheWrappedStream() {
-        val stream = WebViewLocalServer.LazyInputStream(handler, request)
-
-        assertEquals(1000, stream.available())
-        assertTrue(stream.exists())
-        assertEquals(1, handler.opened.size)
-    }
-
-    @Test
     fun injectorClosesTheStreamItReads() {
         val page = TrackingStream("<html><head></head></html>".toByteArray())
 

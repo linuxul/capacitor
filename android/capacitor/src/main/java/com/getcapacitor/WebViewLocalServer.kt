@@ -639,56 +639,6 @@ public class WebViewLocalServer internal constructor(
         register(Uri.withAppendedPath(uriPrefix, "**"), handler)
     }
 
-    /**
-     * The WebView reads the InputStream on a separate threadpool. We can use that to parallelize
-     * loading.
-     *
-     * The wrapped stream is opened lazily, on first use, never in the constructor. A handler that
-     * yields nothing is retried on the next call, as it was before, and reads as an empty stream.
-     * [close] closes the wrapped stream if it was opened; a closed stream is never reopened.
-     */
-    internal class LazyInputStream(private val handler: PathHandler, private val request: WebResourceRequest) : InputStream() {
-        // Opened on the request thread, then read and closed on the WebView's threads.
-        private var inputStream: InputStream? = null
-        private var closed = false
-
-        @Synchronized
-        private fun getInputStream(): InputStream? {
-            if (closed) {
-                return null
-            }
-            if (inputStream == null) {
-                inputStream = handler.handle(request)
-            }
-            return inputStream
-        }
-
-        /**
-         * Whether the handler has a stream for the request. Opens it.
-         */
-        fun exists(): Boolean = getInputStream() != null
-
-        // InputStream.available() has no "missing" value, so a missing stream reports 0 like an exhausted one.
-        override fun available(): Int = getInputStream()?.available()?.coerceAtLeast(0) ?: 0
-
-        override fun read(): Int = getInputStream()?.read() ?: -1
-
-        override fun read(b: ByteArray): Int = getInputStream()?.read(b) ?: -1
-
-        override fun read(b: ByteArray, off: Int, len: Int): Int = getInputStream()?.read(b, off, len) ?: -1
-
-        override fun skip(n: Long): Long = getInputStream()?.skip(n) ?: 0
-
-        override fun close() {
-            val opened =
-                synchronized(this) {
-                    closed = true
-                    inputStream.also { inputStream = null }
-                }
-            opened?.close()
-        }
-    }
-
     private companion object {
         const val CAPACITOR_FILE_START = Bridge.CAPACITOR_FILE_START
         const val CAPACITOR_CONTENT_START = Bridge.CAPACITOR_CONTENT_START
