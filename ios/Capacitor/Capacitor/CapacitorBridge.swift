@@ -489,7 +489,7 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
                 try function(plugin, pluginCall)
             } catch {
                 // like on Android, a method that throws does not keep its call
-                pluginCall.reject(error.localizedDescription, nil, error)
+                pluginCall.reject(error)
                 return
             }
         case .async(let function):

@@ -28,7 +28,7 @@ import Foundation
 /// ```
 ///
 /// The bridge calls these methods on its serial plugin queue, not on the main thread. An error that a method throws
-/// rejects its call.
+/// rejects its call: a ``CAPPluginError`` with its message, code and data, any other error with its description.
 ///
 /// An `async` method is registered with `async`. Returning resolves the call, with the `JSObject` or `Encodable` value
 /// the method returns, if any:
@@ -111,8 +111,7 @@ public struct CAPPluginMethod {
                                                     _ method: @escaping (Plugin) -> (CAPPluginCall) throws -> Void) -> CAPPluginMethod {
         CAPPluginMethod(name: name, returnType: returnType, invocation: .function({ plugin, call in
             guard let plugin = plugin as? Plugin else {
-                call.reject(mismatchMessage(name, expected: Plugin.self, actual: plugin), "UNIMPLEMENTED")
-                return
+                throw mismatch(name, expected: Plugin.self, actual: plugin)
             }
             try method(plugin)(call)
         }))
@@ -156,7 +155,7 @@ public struct CAPPluginMethod {
             do {
                 return try JSValueEncoder().encodeJSObject(value)
             } catch {
-                throw EncodingFailure(underlyingError: error)
+                throw CAPPluginError("Failed encoding response", underlyingError: error)
             }
         }
     }
@@ -168,22 +167,15 @@ public struct CAPPluginMethod {
     ) -> CAPPluginMethod {
         CAPPluginMethod(name: name, returnType: .promise, invocation: .async({ plugin, call in
             guard let plugin = plugin as? Plugin else {
-                call.reject(mismatchMessage(name, expected: Plugin.self, actual: plugin), "UNIMPLEMENTED")
-                return nil
+                throw mismatch(name, expected: Plugin.self, actual: plugin)
             }
             return try data(await method(plugin)(call))
         }))
     }
 
-    /// The value an async method returned could not be encoded into the object it resolves the call with.
-    private struct EncodingFailure: LocalizedError {
-        let underlyingError: Error
-        var errorDescription: String? { "Failed encoding response" }
-    }
-
     /// Why a method registered with a method of `expected` cannot be called on `actual`.
-    private static func mismatchMessage(_ name: String, expected: CAPPlugin.Type, actual: CAPPlugin) -> String {
-        "Method \(name) is registered with a method of \(expected), which the plugin \(type(of: actual)) is not"
+    private static func mismatch(_ name: String, expected: CAPPlugin.Type, actual: CAPPlugin) -> CAPPluginError {
+        .unimplemented("Method \(name) is registered with a method of \(expected), which the plugin \(type(of: actual)) is not")
     }
 
     // MARK: - Methods registered by selector

@@ -52,7 +52,7 @@ internal final class AsyncPluginCalls {
                 case .success(nil):
                     call.resolveIfUnsettled()
                 case .failure(let error):
-                    call.reject(error.localizedDescription, nil, error)
+                    call.reject(error)
                     return
                 }
                 if call.keepAlive {
