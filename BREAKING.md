@@ -273,6 +273,18 @@ The official plugins (`@capacitor/app`, `@capacitor/camera`, `@capacitor/local-n
 
 `npm install @capacitor/camera` installs the upstream plugin instead, without the fork's fixes and with the plugin API that 9.0 deprecates. Plugins 9.x require the fork 9.0 or later.
 
+### Community plugins
+
+The community plugins ported to the fork (`@capacitor-community/admob`, `@capacitor-community/sqlite`, …) each have a release in their own repository, `https://github.com/linuxul/<repository>/releases`, with the plugin's own version as the tag:
+
+```json
+"dependencies": {
+  "@capacitor-community/sqlite": "https://github.com/linuxul/capacitor-sqlite/releases/download/9.0.0/capacitor-community-sqlite-9.0.0.tgz"
+}
+```
+
+Their first releases for the fork 9.0 raised each plugin's major version and require `@capacitor/core` 9.0.0 or later.
+
 ## Supported platforms
 
 - **iOS 17** is the minimum deployment target.
