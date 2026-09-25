@@ -29,6 +29,25 @@ import Foundation
 ///
 /// The bridge calls these methods on its serial plugin queue, not on the main thread. An error that a method throws
 /// rejects its call.
+///
+/// An `async` method is registered with `async`. Returning resolves the call, with the `JSObject` or `Encodable` value
+/// the method returns, if any:
+///
+/// ```swift
+/// public let pluginMethods: [CAPPluginMethod] = [
+///     .async("pickPhoto", CameraPlugin.pickPhoto)
+/// ]
+///
+/// @MainActor
+/// private func pickPhoto(_ call: CAPPluginCall) async throws -> Photo {
+///     let picker = PhotoPicker(presentingFrom: bridge?.viewController)
+///     return try await picker.pick()
+/// }
+/// ```
+///
+/// A method runs on the main thread by being `@MainActor` and registered with `async`, whether the method itself is
+/// `async` or not. A synchronous `@MainActor` method registered with `promise`, `callback` or `none` runs on the
+/// bridge queue: in the Swift 5 language mode the compiler accepts it without a warning.
 public struct CAPPluginMethod {
     /// How the result of the method is returned to JavaScript. The raw values are part of the JS protocol and must not change.
     public enum ReturnType: String {
@@ -47,6 +66,9 @@ public struct CAPPluginMethod {
         case selector(Selector)
         /// Called on the bridge queue. What it throws rejects the call.
         case function((CAPPlugin, CAPPluginCall) throws -> Void)
+        /// Started from the bridge queue in a task the bridge tracks. It returns the data to resolve the call with, or
+        /// nil when the method returned nothing.
+        case async((CAPPlugin, CAPPluginCall) async throws -> PluginCallResultData?)
     }
 
     internal init(name: String, returnType: ReturnType, invocation: Invocation) {
@@ -96,6 +118,69 @@ public struct CAPPluginMethod {
         }))
     }
 
+    // MARK: - Async methods
+
+    /// An `async` method whose call JavaScript awaits as a promise. When the method returns, the call is resolved
+    /// without data, unless the method settled it already.
+    ///
+    /// The method starts from the bridge queue in a `Task` of its own, so async methods do not wait for each other and
+    /// may finish in any order. When the page reloads or navigates, the bridge rejects the calls that are still running
+    /// with "The plugin call was cancelled" and cancels their tasks; what a method sends after that is dropped.
+    ///
+    /// - Parameters:
+    ///   - name: The name of the method in JavaScript.
+    ///   - method: The method, as an unapplied reference such as `CameraPlugin.pickPhoto`. A `@MainActor` method runs
+    ///     on the main actor.
+    public static func async<Plugin: CAPPlugin>(_ name: String,
+                                                _ method: @escaping (Plugin) -> (CAPPluginCall) async throws -> Void) -> CAPPluginMethod {
+        asyncFunction(name, method) { _ in nil }
+    }
+
+    /// An `async` method that resolves its call with the object it returns.
+    ///
+    /// The method is run like one that returns nothing.
+    public static func async<Plugin: CAPPlugin>(_ name: String,
+                                                _ method: @escaping (Plugin) -> (CAPPluginCall) async throws -> JSObject) -> CAPPluginMethod {
+        asyncFunction(name, method) { $0 }
+    }
+
+    /// An `async` method that resolves its call with the value it returns, encoded with `JSValueEncoder` into an object.
+    /// A value that cannot be encoded as an object rejects the call with "Failed encoding response".
+    ///
+    /// The method is run like one that returns nothing.
+    public static func async<Plugin: CAPPlugin, Value: Encodable>(
+        _ name: String,
+        _ method: @escaping (Plugin) -> (CAPPluginCall) async throws -> Value
+    ) -> CAPPluginMethod {
+        asyncFunction(name, method) { value in
+            do {
+                return try JSValueEncoder().encodeJSObject(value)
+            } catch {
+                throw EncodingFailure(underlyingError: error)
+            }
+        }
+    }
+
+    private static func asyncFunction<Plugin: CAPPlugin, Value>(
+        _ name: String,
+        _ method: @escaping (Plugin) -> (CAPPluginCall) async throws -> Value,
+        _ data: @escaping (Value) throws -> PluginCallResultData?
+    ) -> CAPPluginMethod {
+        CAPPluginMethod(name: name, returnType: .promise, invocation: .async({ plugin, call in
+            guard let plugin = plugin as? Plugin else {
+                call.reject(mismatchMessage(name, expected: Plugin.self, actual: plugin), "UNIMPLEMENTED")
+                return nil
+            }
+            return try data(await method(plugin)(call))
+        }))
+    }
+
+    /// The value an async method returned could not be encoded into the object it resolves the call with.
+    private struct EncodingFailure: LocalizedError {
+        let underlyingError: Error
+        var errorDescription: String? { "Failed encoding response" }
+    }
+
     /// Why a method registered with a method of `expected` cannot be called on `actual`.
     private static func mismatchMessage(_ name: String, expected: CAPPlugin.Type, actual: CAPPlugin) -> String {
         "Method \(name) is registered with a method of \(expected), which the plugin \(type(of: actual)) is not"
@@ -126,25 +211,5 @@ public struct CAPPluginMethod {
             return nil
         }
         return selector
-    }
-}
-
-extension CAPPluginMethod.Invocation {
-    /// Calls the method on `plugin` with `call`. What the method throws rejects the call.
-    ///
-    /// - Returns: false when the method threw.
-    internal func invoke(on plugin: CAPPlugin, with call: CAPPluginCall) -> Bool {
-        switch self {
-        case .selector(let selector):
-            plugin.perform(selector, with: call)
-        case .function(let function):
-            do {
-                try function(plugin, call)
-            } catch {
-                call.reject(error.localizedDescription, nil, error)
-                return false
-            }
-        }
-        return true
     }
 }

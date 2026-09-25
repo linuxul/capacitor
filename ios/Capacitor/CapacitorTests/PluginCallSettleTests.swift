@@ -124,6 +124,33 @@ class PluginCallSettleTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(counter.counts.successes, 1)
     }
 
+    func testResolveIfUnsettledOnlyAnswersAnOpenCall() {
+        let counter = Counter()
+        let call = counter.call()
+        XCTAssertFalse(call.isSettled)
+        call.resolveIfUnsettled()
+        XCTAssertTrue(call.isSettled)
+        call.resolveIfUnsettled()
+        call.rejectIfUnsettled("late")
+        XCTAssertEqual(counter.counts.successes, 1)
+        XCTAssertEqual(counter.counts.errors, 0)
+
+        let rejected = counter.call()
+        rejected.rejectIfUnsettled("cancelled")
+        rejected.resolveIfUnsettled()
+        XCTAssertTrue(rejected.isSettled)
+        XCTAssertEqual(counter.counts.errors, 1)
+
+        // a call kept alive never settles, and is only answered on purpose
+        let keptAlive = counter.call(keepAlive: true)
+        keptAlive.resolveIfUnsettled()
+        keptAlive.rejectIfUnsettled("cancelled")
+        keptAlive.resolve()
+        XCTAssertFalse(keptAlive.isSettled)
+        XCTAssertEqual(counter.counts.successes, 2)
+        XCTAssertEqual(counter.counts.errors, 1)
+    }
+
     func testListenersStillReceiveEveryEvent() {
         let plugin = SettleTestPlugin()
         let counter = Counter()

@@ -121,6 +121,8 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     let pluginRegistry = PluginRegistry()
     // Calls we are storing to resolve later
     var storedCalls = ConcurrentDictionary<CAPPluginCall>()
+    // Calls of async plugin methods that have not returned yet
+    let asyncCalls = AsyncPluginCalls()
     private var injectMiscFiles: [String] = []
     private var canInjectJS: Bool = true
 
@@ -196,6 +198,8 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     }
 
     deinit {
+        // nothing can receive the results of async methods any more
+        asyncCalls.cancelAll()
         // the message handler needs to removed to avoid any retain cycles
         webViewDelegationHandler.cleanUp()
         for observer in observers {
@@ -266,8 +270,11 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
     /**
      Reset the state of the bridge between navigations to avoid
      sending data back to the page from a previous page.
+
+     Async plugin methods that are still running are cancelled, and their calls rejected, as on Android.
      */
     func reset() {
+        asyncCalls.cancelAll()
         storedCalls.withLock { $0.removeAll() }
         removeAllPluginListeners()
     }
@@ -446,27 +453,53 @@ open class CapacitorBridge: NSObject, CAPBridgeProtocol {
             return
         }
 
-        // Create a plugin call object and handle the success/error callbacks
         dispatchQueue.async { [weak self] in
-            // The error handler has no call parameter, but needs keepAlive to tell the page whether to keep its callback.
-            // The call is alive whenever its handler runs, so a weak reference is enough.
-            weak var weakPluginCall: CAPPluginCall?
-            let pluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: call.method,
-                                           options: JSTypes.coerceDictionaryToJSObject(call.options,
-                                                                                       formattingDatesAsStrings: plugin.shouldStringifyDatesInCalls) ?? [:],
-                                           success: { (result: CAPPluginCallResult, pluginCall: CAPPluginCall) in
-                                            self?.toJs(result: JSResult(call: call, callResult: result), save: pluginCall.keepAlive)
-                                           }, error: { (error: CAPPluginCallError) in
-                                            let save = weakPluginCall?.keepAlive ?? false
-                                            self?.toJsError(error: JSResultError(call: call, callError: error), save: save)
-                                           })
-            weakPluginCall = pluginCall
-            pluginCall.pluginName = call.pluginId
-
-            // a method that threw has been rejected; like on Android, only a method that returns keeps its call
-            if invocation.invoke(on: plugin, with: pluginCall), pluginCall.keepAlive {
-                self?.saveCall(pluginCall)
+            guard let self else {
+                return
             }
+            self.invoke(invocation, on: plugin, with: self.makePluginCall(for: call, formattingDatesAsStrings: plugin.shouldStringifyDatesInCalls))
+        }
+    }
+
+    /// Creates the call object for `call`, whose results are sent to the page.
+    private func makePluginCall(for call: JSCall, formattingDatesAsStrings: Bool) -> CAPPluginCall {
+        // The error handler has no call parameter, but needs keepAlive to tell the page whether to keep its callback.
+        // The call is alive whenever its handler runs, so a weak reference is enough.
+        weak var weakPluginCall: CAPPluginCall?
+        let pluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: call.method,
+                                       options: JSTypes.coerceDictionaryToJSObject(call.options, formattingDatesAsStrings: formattingDatesAsStrings) ?? [:],
+                                       success: { [weak self] (result: CAPPluginCallResult, pluginCall: CAPPluginCall) in
+                                        self?.toJs(result: JSResult(call: call, callResult: result), save: pluginCall.keepAlive)
+                                       }, error: { [weak self] (error: CAPPluginCallError) in
+                                        let save = weakPluginCall?.keepAlive ?? false
+                                        self?.toJsError(error: JSResultError(call: call, callError: error), save: save)
+                                       })
+        weakPluginCall = pluginCall
+        pluginCall.pluginName = call.pluginId
+        return pluginCall
+    }
+
+    /// Calls a plugin method on the bridge queue, and saves its call when the method returned and kept the call alive.
+    private func invoke(_ invocation: CAPPluginMethod.Invocation, on plugin: CapacitorPlugin, with pluginCall: CAPPluginCall) {
+        switch invocation {
+        case .selector(let selector):
+            plugin.perform(selector, with: pluginCall)
+        case .function(let function):
+            do {
+                try function(plugin, pluginCall)
+            } catch {
+                // like on Android, a method that throws does not keep its call
+                pluginCall.reject(error.localizedDescription, nil, error)
+                return
+            }
+        case .async(let function):
+            asyncCalls.start(pluginCall, { try await function(plugin, pluginCall) }, keepAlive: { [weak self] call in
+                self?.saveCall(call)
+            })
+            return
+        }
+        if pluginCall.keepAlive {
+            saveCall(pluginCall)
         }
     }
 

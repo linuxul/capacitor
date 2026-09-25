@@ -28,7 +28,7 @@ open class CAPPluginCall: NSObject {
     /// Guards the mutable state of the call.
     private let stateLock = NSLock()
     private var lockedKeepAlive = false
-    private var isSettled = false
+    private var settled = false
 
     public init(callbackId: String, methodName: String, options: JSObject, success: @escaping CAPPluginCallSuccessHandler, error: @escaping CAPPluginCallErrorHandler) {
         self.callbackId = callbackId
@@ -47,16 +47,46 @@ open class CAPPluginCall: NSObject {
             if lockedKeepAlive {
                 return true
             }
-            if isSettled {
+            if settled {
                 return false
             }
-            isSettled = true
+            settled = true
             return true
         }
         if !claimed {
             CAPLog.print("⚡️  \(pluginName ?? "Plugin").\(methodName) (callbackId \(callbackId)) already settled; dropping \(attempt)")
         }
         return claimed
+    }
+
+    /// Whether a call that is not kept alive has sent its result. A call that is kept alive never settles.
+    internal var isSettled: Bool {
+        stateLock.withLock { settled }
+    }
+
+    /// Resolves the call without data, unless it has settled or is kept alive. Nothing is logged when it is not
+    /// resolved: this is how the bridge answers an async method that returned nothing.
+    internal func resolveIfUnsettled() {
+        if claimUnsettled() {
+            successHandler(CAPPluginCallResult(nil), self)
+        }
+    }
+
+    /// Rejects the call with `message`, unless it has settled or is kept alive, without logging when it is not rejected.
+    internal func rejectIfUnsettled(_ message: String) {
+        if claimUnsettled() {
+            errorHandler(CAPPluginCallError(message: message, code: nil, error: nil, data: nil))
+        }
+    }
+
+    private func claimUnsettled() -> Bool {
+        stateLock.withLock {
+            if lockedKeepAlive || settled {
+                return false
+            }
+            settled = true
+            return true
+        }
     }
 }
 
