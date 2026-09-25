@@ -27,7 +27,6 @@ import androidx.fragment.app.Fragment
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.getcapacitor.android.R
-import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.util.HostMask
 import com.getcapacitor.util.InternalUtils
 import com.getcapacitor.util.WebColor
@@ -126,8 +125,7 @@ public class Bridge private constructor(
     // Our Handler for posting to the main thread
     private val mainHandler: Handler = Handler(activity.mainLooper)
 
-    // A map of Plugin Id's to PluginHandle's
-    private val plugins: MutableMap<String, PluginHandle> = HashMap()
+    private val pluginRegistry = PluginRegistry(this)
 
     // Saved plugin calls: kept alive, waiting for permissions, or waiting for an activity result
     private val savedCallStore = SavedCallStore()
@@ -261,7 +259,7 @@ public class Bridge private constructor(
      * first, through [Plugin.shouldOverrideLoad]; see [NavigationPolicy] for the rest.
      */
     public fun launchIntent(url: Uri): Boolean =
-        when (navigationPolicy.decide(url.scheme, url.host, url.path) { askPluginsToOverrideLoad(url) }) {
+        when (navigationPolicy.decide(url.scheme, url.host, url.path) { pluginRegistry.shouldOverrideLoad(url) }) {
             NavigationPolicy.Decision.LOAD -> false
 
             NavigationPolicy.Decision.BLOCK -> true
@@ -275,13 +273,6 @@ public class Bridge private constructor(
                 true
             }
         }
-
-    private fun askPluginsToOverrideLoad(url: Uri): Boolean? {
-        for (handle in plugins.values) {
-            handle.instance.shouldOverrideLoad(url)?.let { return it }
-        }
-        return null
-    }
 
     private fun isNewBinary(): Boolean {
         var versionCode = ""
@@ -371,7 +362,7 @@ public class Bridge private constructor(
     public fun reset() {
         callDispatcher.cancelRunningCalls()
         savedCallStore.reset()
-        eachPlugin { it.removeAllListeners() }
+        pluginRegistry.forEach { it.removeAllListeners() }
     }
 
     /**
@@ -457,65 +448,14 @@ public class Bridge private constructor(
      * @param pluginClass a class inheriting from Plugin
      */
     public fun registerPlugin(pluginClass: Class<out Plugin>) {
-        val pluginId = pluginId(pluginClass) ?: return
-
-        try {
-            plugins[pluginId] = PluginHandle(this, pluginClass)
-        } catch (ex: InvalidPluginException) {
-            logInvalidPluginException(pluginClass)
-        } catch (ex: PluginLoadException) {
-            logPluginLoadException(pluginClass, ex)
-        }
+        pluginRegistry.register(pluginClass)
     }
 
     public fun registerPluginInstance(plugin: Plugin) {
-        val clazz = plugin.javaClass
-        val pluginId = pluginId(clazz) ?: return
-
-        try {
-            plugins[pluginId] = PluginHandle(this, plugin)
-        } catch (ex: InvalidPluginException) {
-            logInvalidPluginException(clazz)
-        }
+        pluginRegistry.register(plugin)
     }
 
-    private fun pluginId(clazz: Class<out Plugin>): String? {
-        val pluginName = pluginName(clazz) ?: return null
-        val pluginId = pluginName.ifEmpty { clazz.simpleName }
-        Logger.debug("Registering plugin instance: $pluginId")
-        return pluginId
-    }
-
-    private fun pluginName(clazz: Class<out Plugin>): String? {
-        val pluginAnnotation = clazz.getAnnotation(CapacitorPlugin::class.java)
-        if (pluginAnnotation == null) {
-            Logger.error("Plugin doesn't have the @CapacitorPlugin annotation. Please add it")
-            return null
-        }
-
-        return pluginAnnotation.name
-    }
-
-    private fun logInvalidPluginException(clazz: Class<out Plugin>) {
-        Logger.error(
-            "Plugin " +
-                clazz.name +
-                " is invalid. Ensure the @CapacitorPlugin annotation exists on the plugin class and" +
-                " the class extends Plugin"
-        )
-    }
-
-    private fun logPluginLoadException(clazz: Class<out Plugin>, ex: Exception) {
-        Logger.error("Plugin " + clazz.name + " failed to load", ex)
-    }
-
-    public fun getPlugin(pluginId: String): PluginHandle? = plugins[pluginId]
-
-    private inline fun eachPlugin(block: (Plugin) -> Unit) {
-        for (handle in plugins.values) {
-            block(handle.instance)
-        }
-    }
+    public fun getPlugin(pluginId: String): PluginHandle? = pluginRegistry[pluginId]
 
     /**
      * Call a method on a plugin.
@@ -682,7 +622,7 @@ public class Bridge private constructor(
         try {
             val globalJS = JSExport.getGlobalJS(activity, config.isLoggingEnabled, isDevMode)
             val bridgeJS = JSExport.getBridgeJS(activity)
-            val pluginJS = JSExport.getPluginJS(plugins.values)
+            val pluginJS = JSExport.getPluginJS(pluginRegistry.handles)
             val localUrlJS = "window.WEBVIEW_SERVER_URL = ${JsStrings.literal(localUrl)};"
             val miscJS = JSExport.getMiscFileJS(miscJSFileInjections, activity)
 
@@ -798,49 +738,49 @@ public class Bridge private constructor(
      * Handle an onNewIntent lifecycle event and notify the plugins
      */
     public fun onNewIntent(intent: Intent?) {
-        eachPlugin { it.dispatchOnNewIntent(intent) }
+        pluginRegistry.forEach { it.dispatchOnNewIntent(intent) }
     }
 
     /**
      * Handle an onConfigurationChanged event and notify the plugins
      */
     public fun onConfigurationChanged(newConfig: Configuration?) {
-        eachPlugin { it.dispatchOnConfigurationChanged(newConfig) }
+        pluginRegistry.forEach { it.dispatchOnConfigurationChanged(newConfig) }
     }
 
     /**
      * Handle onRestart lifecycle event and notify the plugins
      */
     public fun onRestart() {
-        eachPlugin { it.dispatchOnRestart() }
+        pluginRegistry.forEach { it.dispatchOnRestart() }
     }
 
     /**
      * Handle onStart lifecycle event and notify the plugins
      */
     public fun onStart() {
-        eachPlugin { it.dispatchOnStart() }
+        pluginRegistry.forEach { it.dispatchOnStart() }
     }
 
     /**
      * Handle onResume lifecycle event and notify the plugins
      */
     public fun onResume() {
-        eachPlugin { it.dispatchOnResume() }
+        pluginRegistry.forEach { it.dispatchOnResume() }
     }
 
     /**
      * Handle onPause lifecycle event and notify the plugins
      */
     public fun onPause() {
-        eachPlugin { it.dispatchOnPause() }
+        pluginRegistry.forEach { it.dispatchOnPause() }
     }
 
     /**
      * Handle onStop lifecycle event and notify the plugins
      */
     public fun onStop() {
-        eachPlugin { it.dispatchOnStop() }
+        pluginRegistry.forEach { it.dispatchOnStop() }
     }
 
     /**
@@ -848,7 +788,7 @@ public class Bridge private constructor(
      */
     public fun onDestroy() {
         callDispatcher.cancelRunningCalls()
-        eachPlugin { it.dispatchOnDestroy() }
+        pluginRegistry.forEach { it.dispatchOnDestroy() }
 
         handlerThread.quitSafely()
     }
