@@ -37,6 +37,38 @@ func tryParseJson(_ data: Data) -> Any {
     }
 }
 
+/// The query string values of a URL parameter from JavaScript: one per element for an array, otherwise one.
+///
+/// Numbers and booleans are written the way the Android runtime writes them (`JSONObject.getString`), instead of
+/// being force cast to `String`.
+private func queryValues(_ value: Any) -> [String] {
+    if let array = value as? [Any] {
+        return array.map(queryValue)
+    }
+    return [queryValue(value)]
+}
+
+private func queryValue(_ value: Any) -> String {
+    switch value {
+    case let string as String:
+        return string
+    case let number as NSNumber:
+        if CFGetTypeID(number) == CFBooleanGetTypeID() {
+            return number.boolValue ? "true" : "false"
+        }
+        return number.stringValue
+    case is NSNull:
+        return "null"
+    default:
+        if JSONSerialization.isValidJSONObject(value),
+           let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]),
+           let json = String(data: data, encoding: .utf8) {
+            return json
+        }
+        return String(describing: value)
+    }
+}
+
 /// Helper to convert the headers dictionary to lower case keys. This allows case-insensitive querying in the bridge javascript.
 /// - Parameters:
 ///     - headers: The headers as dictionary. The type is unspecific because the incoming headers are coming from the
@@ -77,35 +109,23 @@ open class HttpRequestHandler {
         }
 
         public func setUrlParams(_ params: [String: Any], _ shouldEncodeUrlParams: Bool = true) -> CapacitorHttpRequestBuilder {
-            if params.count != 0 {
-                // swiftlint:disable force_cast
-                var cmps = URLComponents(url: url!, resolvingAgainstBaseURL: true)
-                if cmps?.queryItems == nil {
-                    cmps?.queryItems = []
-                }
+            guard !params.isEmpty, let url = url, var cmps = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
+                return self
+            }
 
-                if shouldEncodeUrlParams {
-                    var urlSafeParams: [URLQueryItem] = []
-                    for (key, value) in params {
-                        if let arr = value as? [String] {
-                            arr.forEach { str in
-                                urlSafeParams.append(URLQueryItem(name: key, value: str))
-                            }
-                        } else {
-                            urlSafeParams.append(URLQueryItem(name: key, value: (value as! String)))
-                        }
-                    }
-                    cmps!.queryItems?.append(contentsOf: urlSafeParams)
-                } else {
-                    cmps?.query = params.flatMap { key, value -> [String] in
-                        if let arrayValue = value as? [String] {
-                            return arrayValue.map { "\(key)=\($0)" }
-                        } else {
-                            return ["\(key)=\(value)"]
-                        }
-                    }.joined(separator: "&")
+            if shouldEncodeUrlParams {
+                var queryItems = cmps.queryItems ?? []
+                for (key, value) in params {
+                    queryItems.append(contentsOf: queryValues(value).map { URLQueryItem(name: key, value: $0) })
                 }
-                url = cmps!.url!
+                cmps.queryItems = queryItems
+            } else {
+                cmps.query = params.flatMap { key, value in
+                    queryValues(value).map { "\(key)=\($0)" }
+                }.joined(separator: "&")
+            }
+            if let urlWithParams = cmps.url {
+                self.url = urlWithParams
             }
             return self
         }
@@ -225,10 +245,16 @@ open class HttpRequestHandler {
                 return
             }
 
-            setCookiesFromResponse(response as! HTTPURLResponse, config)
+            // A URL loader for a scheme other than http(s) answers with a plain URLResponse.
+            guard let response = response as? HTTPURLResponse else {
+                call.reject("The response to \(urlString) is not an HTTP response", NSURLErrorDomain, URLError(.badServerResponse), nil)
+                return
+            }
+
+            setCookiesFromResponse(response, config)
 
             let type = ResponseType(rawValue: responseType) ?? .default
-            call.resolve(self.buildResponse(data, response as! HTTPURLResponse, responseType: type))
+            call.resolve(self.buildResponse(data, response, responseType: type))
         }
 
         task.resume()

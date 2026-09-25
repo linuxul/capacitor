@@ -13,12 +13,14 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
         request.httpMethod = method
         headers = [:]
         if let lang = Locale.autoupdatingCurrent.languageCode {
+            let acceptLanguage: String
             if let country = Locale.autoupdatingCurrent.regionCode {
-                headers["Accept-Language"] = "\(lang)-\(country),\(lang);q=0.5"
+                acceptLanguage = "\(lang)-\(country),\(lang);q=0.5"
             } else {
-                headers["Accept-Language"] = "\(lang);q=0.5"
+                acceptLanguage = "\(lang);q=0.5"
             }
-            request.addValue(headers["Accept-Language"]!, forHTTPHeaderField: "Accept-Language")
+            headers["Accept-Language"] = acceptLanguage
+            request.addValue(acceptLanguage, forHTTPHeaderField: "Accept-Language")
         }
     }
 
@@ -32,7 +34,7 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
     }
 
     public func getRequestDataAsFormUrlEncoded(_ data: JSValue) throws -> Data? {
-        guard var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false) else { return nil }
+        guard let url = request.url, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
         components.queryItems = []
 
         guard let obj = data as? JSObject else {
@@ -47,8 +49,8 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
             components.queryItems?.append(URLQueryItem(name: key.addingPercentEncoding(withAllowedCharacters: allowed)?.replacingOccurrences(of: "%20", with: "+") ?? key, value: value.addingPercentEncoding(withAllowedCharacters: allowed)?.replacingOccurrences(of: "%20", with: "+")))
         }
 
-        if components.query != nil {
-            return Data(components.query!.utf8)
+        if let query = components.query {
+            return Data(query.utf8)
         }
 
         return nil
@@ -72,11 +74,11 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
             overrideContentType(boundary)
         }
         strings.forEach { key, value in
-            data.append("\r\n--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
-            data.append(value.data(using: .utf8)!)
+            data.append(Data("\r\n--\(boundary)\r\n".utf8))
+            data.append(Data("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".utf8))
+            data.append(Data(value.utf8))
         }
-        data.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        data.append(Data("\r\n--\(boundary)--\r\n".utf8))
 
         return data
     }
@@ -140,33 +142,37 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
             guard let item = entry as? [String: String] else {
                 throw CapacitorUrlRequestError.serializationError("Data must be an array for FormData")
             }
+            guard let key = item["key"], let value = item["value"] else {
+                throw CapacitorUrlRequestError.serializationError("FormData entries must have a key and a value")
+            }
 
-            let type = item["type"]
-            let key = item["key"]
-            let value = item["value"]!
+            switch item["type"] {
+            case "base64File":
+                guard let fileName = item["fileName"], let fileContentType = item["contentType"] else {
+                    throw CapacitorUrlRequestError.serializationError("FormData file [ \(key) ] must have a fileName and a contentType")
+                }
+                guard let fileData = Data(base64Encoded: value) else {
+                    throw CapacitorUrlRequestError.serializationError("FormData file [ \(key) ] is not valid base64")
+                }
 
-            if type == "base64File" {
-                let fileName = item["fileName"]
-                let fileContentType = item["contentType"]
-
-                data.append("--\(boundary)\r\n".data(using: .utf8)!)
-                data.append("Content-Disposition: form-data; name=\"\(key!)\"; filename=\"\(fileName!)\"\r\n".data(using: .utf8)!)
-                data.append("Content-Type: \(fileContentType!)\r\n".data(using: .utf8)!)
-                data.append("Content-Transfer-Encoding: binary\r\n".data(using: .utf8)!)
-                data.append("\r\n".data(using: .utf8)!)
-
-                data.append(Data(base64Encoded: value)!)
-
-                data.append("\r\n".data(using: .utf8)!)
-            } else if type == "string" {
-                data.append("--\(boundary)\r\n".data(using: .utf8)!)
-                data.append("Content-Disposition: form-data; name=\"\(key!)\"\r\n".data(using: .utf8)!)
-                data.append("\r\n".data(using: .utf8)!)
-                data.append(value.data(using: .utf8)!)
-                data.append("\r\n".data(using: .utf8)!)
+                data.append(Data("--\(boundary)\r\n".utf8))
+                data.append(Data("Content-Disposition: form-data; name=\"\(key)\"; filename=\"\(fileName)\"\r\n".utf8))
+                data.append(Data("Content-Type: \(fileContentType)\r\n".utf8))
+                data.append(Data("Content-Transfer-Encoding: binary\r\n".utf8))
+                data.append(Data("\r\n".utf8))
+                data.append(fileData)
+                data.append(Data("\r\n".utf8))
+            case "string":
+                data.append(Data("--\(boundary)\r\n".utf8))
+                data.append(Data("Content-Disposition: form-data; name=\"\(key)\"\r\n".utf8))
+                data.append(Data("\r\n".utf8))
+                data.append(Data(value.utf8))
+                data.append(Data("\r\n".utf8))
+            default:
+                break
             }
         }
-        data.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        data.append(Data("--\(boundary)--\r\n".utf8))
 
         return data
     }
@@ -176,7 +182,10 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
             guard let stringData = body as? String else {
                 throw CapacitorUrlRequestError.serializationError("[ data ] argument could not be parsed as string")
             }
-            return Data(base64Encoded: stringData)
+            guard let fileData = Data(base64Encoded: stringData) else {
+                throw CapacitorUrlRequestError.serializationError("[ data ] argument for a request of data type [ file ] must be base64")
+            }
+            return fileData
         } else if dataType == "formData" {
             return try getRequestDataFromFormData(body, contentType)
         }
@@ -196,18 +205,15 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
     }
 
     public func setRequestHeaders(_ headers: [String: Any]) {
-        headers.keys.forEach { (key: String) in
-            let value = headers[key]
-            request.setValue("\(value!)", forHTTPHeaderField: key)
-            self.headers[key] = "\(value!)"
+        for (key, value) in headers {
+            request.setValue("\(value)", forHTTPHeaderField: key)
+            self.headers[key] = "\(value)"
         }
     }
 
     public func setRequestBody(_ body: JSValue, _ dataType: String? = nil) throws {
-        let contentType = self.getRequestHeader("Content-Type") as? String
-
-        if contentType != nil {
-            request.httpBody = try getRequestData(body, contentType!, dataType)
+        if let contentType = self.getRequestHeader("Content-Type") as? String {
+            request.httpBody = try getRequestData(body, contentType, dataType)
         }
     }
 
@@ -233,5 +239,15 @@ open class CapacitorUrlRequest: NSObject, URLSessionTaskDelegate {
             return URLSession.shared
         }
         return URLSession(configuration: URLSessionConfiguration.default, delegate: self, delegateQueue: nil)
+    }
+}
+
+extension CapacitorUrlRequest.CapacitorUrlRequestError: LocalizedError {
+    /// The message is what the rejected call reports to JavaScript.
+    public var errorDescription: String? {
+        switch self {
+        case .serializationError(let message):
+            return message ?? "The request data could not be serialized"
+        }
     }
 }
