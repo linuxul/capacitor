@@ -152,15 +152,14 @@ public object HttpRequestHandler {
             val urlQuery = urlQueryBuilder.toString()
 
             val uri = url.toURI()
-            // Same as the Java original: URI.getFragment() has no leading "#", so a fragment is
-            // appended straight onto the query rather than separated from it.
+            // URI.getFragment() has no leading "#".
             val unEncodedUrlString =
                 uri.scheme +
                     "://" +
                     uri.authority +
                     uri.path +
                     (if (urlQuery != "") "?$urlQuery" else "") +
-                    (if (uri.fragment != null) uri.fragment else "")
+                    (if (uri.fragment != null) "#" + uri.fragment else "")
             this.url = URL(unEncodedUrlString)
 
             return this

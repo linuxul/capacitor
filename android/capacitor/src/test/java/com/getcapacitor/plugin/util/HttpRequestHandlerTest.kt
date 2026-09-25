@@ -119,6 +119,31 @@ class HttpRequestHandlerTest {
         assertEquals(expectedUrl, actualUrl)
     }
 
+    @Test
+    fun urlParamsKeepTheFragmentApartFromTheQuery() {
+        val actualUrl =
+            HttpURLConnectionBuilder()
+                .setUrl(URL("https://example.com/search?q=1#results"))
+                .setUrlParams(JSObject().put("page", "2"))
+                .url!!
+
+        // The fragment was appended to the last parameter ("page=2results") and so sent to the server.
+        assertEquals("https://example.com/search?q=1&page=2#results", actualUrl.toString())
+        assertEquals("q=1&page=2", actualUrl.query)
+        assertEquals("results", actualUrl.ref)
+    }
+
+    @Test
+    fun urlParamsKeepTheFragmentOfAUrlWithoutQuery() {
+        val actualUrl =
+            HttpURLConnectionBuilder()
+                .setUrl(URL("https://example.com/list#top"))
+                .setUrlParams(JSObject().put("page", "2"))
+                .url!!
+
+        assertEquals("https://example.com/list?page=2#top", actualUrl.toString())
+    }
+
     private companion object {
         const val BASE_URL = "https://httpbin.org/get"
         const val PARAMS_JSON = "{\"k\": \"a&b\"}\n"
